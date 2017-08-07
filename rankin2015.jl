@@ -1,3 +1,7 @@
+module Rankin2015
+
+export BistableParams, Simulation, create_inputs, responses, partial_collect, rlengths
+
 using Plots
 using Parameters
 using Base.Iterators: drop, take, partition
@@ -56,15 +60,17 @@ type Simulation
   If::AbstractArray{Float64,2}
 end
 
-function OfflineInputs(DF,PR,sim_length;dt=1/1000,params=BistableParams())
+function create_inputs(DF,PR,sim_length;dt=1/1000,params=BistableParams())
   const p = params
   const t = 0:dt:sim_length
-  const f_Is = Float64[1,1+DF]
-  const f = Float64[1,1+DF/2,1+DF]
 
   triplets = floor(Int,PR*sim_length/4)
-  aba_fs = repeat([1,2,1],outer=triplets)
-  aba_ts = cumsum([0; repeat([1/PR,1/PR,2/PR],outer=triplets)])[1:end-1]
+  freqs = ones(Int,3*triplets)
+  freqs[2:3:end] = 2
+  times = 1/PR*ones(3*triplets)
+  times[3:3:end] = 2/PR
+  times[2:end] = cumsum(times[1:end-1])
+  times[1] = 0.0
 
   function input(t::Float64)
     if t > 0.0
@@ -75,58 +81,21 @@ function OfflineInputs(DF,PR,sim_length;dt=1/1000,params=BistableParams())
   end
 
   If = zeros(length(t),2)
-  max_t_len = floor(Int,PR*10/dt)
-  for i in eachindex(aba_fs)
-    fi = aba_fs[i] == f_Is[1] ? 1 : 2
-
-    start_t_i = floor(Int,aba_ts[i]/dt) + 1
+  max_t_len = floor(Int,10/dt*1/PR)
+  for i in eachindex(freqs)
+    start_t_i = floor(Int,times[i]/dt) + 1
     for t_i in start_t_i:(start_t_i + max_t_len)
       t_i <= length(t) || break
-      If[t_i,fi] += input(t[t_i] - aba_ts[i])
+      If[t_i,freqs[i]] += input(t[t_i] - times[i])
     end
   end
 
   If
 end
 
-type OnlineInputs <: AbstractArray{Float64,2}
-  freqis::Vector{Float64}
-  times::Vector{Float64}
-  t::Range{Float64}
-  f::Function
-  max_t::Float64
-end
-
-function OnlineInputs(DF,PR,sim_length;dt=1/1000,params=BistableParams())
-  const p = params
-  t = 0:dt:sim_length
-  triplets = floor(Int,PR*sim_length/4)
-
-  function input(t::Float64)
-    if t > 0.0
-      (exp(2)/p.α_1^2) * t^2*exp(-2t / p.α_1) +
-        (p.Λ*exp(2)/p.α_2^2) * t^2*exp(-2t / p.α_2)
-    else 0.0
-    end
-  end
-
-  freqis = repeat([1,2,1],outer=triplets)
-  times = cumsum([0; repeat([1/PR,1/PR,2/PR],outer=triplets)])[1:end-1]
-  max_t = 10*1/PR
-
-  OnlineInputs(freqis,times,t,input,max_t)
-end
-
-Base.size(x::OnlineInputs) = (length(x.t),2)
-function Base.getindex(x::OnlineInputs,i::Int,j::Int)
-  ks = find((x.times .<= x.t[i] .< (x.times .+ x.max_t)) .& (x.freqis .== j))
-  if isempty(ks) 0.0
-  else sum(k -> x.f(x.t[i] - x.times[k]),ks) end
-end
-
-function Simulation(DF,PR,sim_length;dt=1/1000,
-                    params=BistableParams(),inputs=OfflineInputs)
-  If = inputs(DF,PR,sim_length,dt=dt,params=params)
+function Simulation(DF,PR,sim_length;dt=1/1000,params=BistableParams(),
+                    inputs=create_inputs(DF,PR,sim_length,dt=dt,params=params))
+  If = inputs
 
   const p = params
   const t = 0:dt:sim_length
@@ -193,7 +162,7 @@ function response_fn(sim)
 
     function response(u)
       y = α*u[r] + (1-α)y
-      y[2] > (y[1] + y[3])/2
+      (y[1] + y[3])/2 > y[2]
     end
   end
 end
@@ -220,34 +189,24 @@ function responses(sim::Simulation)
   return (f(u) for u in sim.us)
 end
 
+function rlengths(rs)
+  oldval::Int = -1
+  len::Int = 0
+  lengths = Int[]
+  for r in rs
+    if r*1 == oldval
+      len += 1
+    elseif len > 0
+      push!(lengths,len)
+      len = 1
+      oldval = r*1
+    else
+      oldval = r*1
+      len = 1
+    end
+  end
+  push!(lengths,len)
+  lengths
+end
 
-# OLD CODE:
-#   rates = u[:,r]
-
-#   rates[1,:] *= α
-#   for i in 1:(size(rates,1)-1)
-#     rates[i+1,:] = α * rates[i+1,:] + (1-α) * rates[i,:]
-#   end
-#   rates
-# end
-
-
-# function responses(t,u)
-#   rs = filter_response(t,u)
-#   rs[:,2] .> (rs[:,1] + rs[:,3])/2
-# end
-
-
-
-# sanity checks: does 2 st and 20 st yield a plausible distribution?
-# 20 st does, but not 2, there are still periods of segregation
-# something is wrong, probably about the input...
-
-# the qualitivative feel of the first few figures is well matched
-# I haven't checked the gamma distribution yet
-
-# t,u = simulate(5,8,120)=
-
-# plot([results[:,[a[1],a[2],a[3]]]])
-
-# TODO: simulate and test bistable
+end
