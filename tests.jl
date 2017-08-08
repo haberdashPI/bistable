@@ -33,7 +33,7 @@ df[:,:x] = 0.0
                    dt=1/200,params=BistableParams(γ=df[r,:gamma]))
   df[r,:x] = mean(responses(sim))
 end
-# above is IN PROGRESS!!!
+
 filename = "noise_level_"*Dates.format(now(),"yyyy-mm-dd_HH.MM")*".csv"
 println("Wrote results to "*filename)
 writetable(filename,df)
@@ -67,7 +67,7 @@ n_repeats = 50
 sim_length = 240
 dt = 1/200
 @showprogress 1 "Simulating [phase lengths]..." for r in 1:n_repeats
-  sim = Simulation(5,8,sim_length,dt=dt,params=BistableParams(γ=0.05))
+  sim = Simulation(5,8,sim_length,dt=dt)
   lengths = rlengths(responses(sim))
   df_0 = DataFrame(repeat = fill(r,length(lengths)),
                    lengths = lengths * dt,

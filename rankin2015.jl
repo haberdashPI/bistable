@@ -154,7 +154,7 @@ function asmatrix(itr,N)
   xs
 end
 
-const τ_response = 0.05
+const τ_response = 0.5
 function response_fn(sim)
   let dt = sim.t[2] - sim.t[1],
     α = dt / (τ_response + dt),
