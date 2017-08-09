@@ -41,7 +41,8 @@ ggplot(means,aes(x=log(DF),y=log(PR),
                  fill = cut(x,0:11/11),
                  label=round(x,2))) +
   geom_raster(interpolate=F) + geom_text(size=3) +
-  facet_wrap(~paste("input spread =",sprintf("%05.2f",round(sigma_p,2)),"(semitones)")) +
+  facet_wrap(~paste("input spread =",sprintf("%05.2f",round(sigma_p,2)),
+                    "(semitones)")) +
   scale_x_continuous(breaks=log(DFs),labels=DFs) +
   scale_y_continuous(breaks=log(PRs),labels=PRs) +
   xlab(expression(paste(Delta,"f (semitones)"))) +
@@ -60,6 +61,6 @@ normalized = df %>%
   mutate(nlengths = lengths/mean(lengths))
 
 ggplot(subset(normalized,index > 1),aes(x=nlengths)) +
-  geom_histogram(bins=50) + theme_classic() + xlab('Normalized Phase Length (s)')
+  geom_histogram(bins=50) + theme_classic() + xlab('Normalized Phase Length')
 
 ggsave(paste("phase_lengths_",Sys.Date(),".pdf",sep=""),width=5,height=5)
