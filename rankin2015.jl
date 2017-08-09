@@ -1,13 +1,14 @@
 module Rankin2015
 
-export BistableParams, Simulation, create_inputs, responses, partial_collect, rlengths
+export BistableParams, Simulation, create_inputs, responses, partial_collect,
+    rlengths
 
 using Plots
 using Parameters
 using Base.Iterators: drop, take, partition
 using Lazy
 
-@with_kw type BistableParams
+@with_kw struct BistableParams
   # threshold parameters
   θ_F::Float64 = 0.2  # threshold
   k_F::Float64 = 12   # threshold slope
@@ -54,10 +55,10 @@ const d = [10,11,12]
 const χ = [13,14,15]
 const Σ_I = [16,17,18]
 
-type Simulation
+struct Simulation
   t::Range{Float64}
   us::Base.Generator
-  If::AbstractArray{Float64,2}
+  If::Matrix{Float64}
 end
 
 function create_inputs(DF,PR,sim_length;dt=1/1000,params=BistableParams())
@@ -143,7 +144,7 @@ end
 
 function asmatrix(itr,N)
   x = first(itr)
-  xs = Array{Float64,2}(N,length(x))
+  xs = Matrix{Float64}(N,length(x))
   xs[1,:] = x
   i = 1
   for x in drop(itr,1)
