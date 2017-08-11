@@ -1,9 +1,8 @@
 module Rankin2015
 
-export BistableParams, Simulation, create_inputs, responses, partial_collect,
-    rlengths
+export BistableParams, Simulation, create_inputs, create_int_inputs,
+  int_responses, responses, partial_collect, rlengths
 
-using Plots
 using Parameters
 using Base.Iterators: drop, take, partition
 using Lazy
@@ -62,9 +61,6 @@ struct Simulation
 end
 
 function create_inputs(DF,PR,sim_length;dt=1/1000,params=BistableParams())
-  const p = params
-  const t = 0:dt:sim_length
-
   triplets = floor(Int,PR*sim_length/4)
   freqs = ones(Int,3*triplets)
   freqs[2:3:end] = 2
@@ -72,6 +68,28 @@ function create_inputs(DF,PR,sim_length;dt=1/1000,params=BistableParams())
   times[3:3:end] = 2/PR
   times[2:end] = cumsum(times[1:end-1])
   times[1] = 0.0
+
+  create_input_helper(PR,0:dt:sim_length,dt,freqs,times,params)
+end
+
+function create_int_inputs(trial_length,DF,PR,sim_length;
+                           dt=1/1000,params=BistableParams())
+
+  triplets = floor(Int,PR*sim_length/4 - PR*sim_length/4/(trial_length+1))
+  freqs = ones(Int,3*triplets)
+  freqs[2:3:end] = 2
+
+  times = 1/PR*ones(3*triplets)
+  times[3:3:end] = 2/PR
+  times[(3*trial_length):(3*trial_length):end] = 3/PR + 2/PR
+  times[2:end] = cumsum(times[1:end-1])
+  times[1] = 0.0
+
+  create_input_helper(PR,0:dt:sim_length,dt,freqs,times,params)
+end
+
+function create_input_helper(PR,t,dt,freqs,times,params)
+  const p = params
 
   function input(t::Float64)
     if t > 0.0
@@ -156,9 +174,10 @@ function asmatrix(itr,N)
 end
 
 const τ_response = 0.5
+
 function response_fn(sim)
   let dt = sim.t[2] - sim.t[1],
-    α = dt / (τ_response + dt),
+    α = dt / (τ_response + dt)
     y = 0
 
     function response(u)
@@ -185,16 +204,44 @@ function partial_collect(sim::Simulation;
   return sim.t[ii],U,sim.If[ii,:],mapslices(response_fn(sim),U,2)
 end
 
-function responses(sim::Simulation)
-  f = response_fn(sim)
-  return (f(u) for u in sim.us)
+struct Responses
+  vals::Array{Bool}
+  len::Float64
 end
 
-function rlengths(rs)
+Base.mean(x::Responses) = mean(x.vals)
+
+function responses(sim::Simulation)
+  f = response_fn(sim)
+  return Responses((f(u) for u in sim.us),sim.t[2] - sim.t[1])
+end
+
+function int_responses(trial_length,PR,sim::Simulation)
+  dt = sim.t[2]- sim.t[1]
+  unit = 1/PR * 4 * (trial_length+1)
+  indices = @> (floor(Int,t/dt)+1 for t in 0:unit:maximum(sim.t)) drop(1)
+  resp = response_fn(sim)
+
+  state = start(sim.us)
+  last = 1
+
+  responses = map(indices) do i
+    sum_x = sum(1:(i - last)) do j
+      x,state = next(sim.us,state)
+      resp(x)
+    end
+    last = i
+    return sum_x > 0.5
+  end
+
+  Responses(responses,unit)
+end
+
+function rlengths(rs::Responses)
   oldval::Int = -1
   len::Int = 0
   lengths = Int[]
-  for r in rs
+  for r in rs.vals
     if r*1 == oldval
       len += 1
     elseif len > 0
@@ -207,7 +254,7 @@ function rlengths(rs)
     end
   end
   push!(lengths,len)
-  lengths
+  lengths .* rs.len
 end
 
 end
