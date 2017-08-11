@@ -98,4 +98,4 @@ normalized = df %>%
 ggplot(subset(normalized,index > 1),aes(x=nlength)) +
   geom_histogram(bins=50) + theme_classic() + xlab('Normalized Phase Length')
 
-ggsave(paste("../../plots/phase_lengths_",Sys.Date(),".pdf",sep=""),width=5,height=5)
+ggsave(paste("../../plots/int_phase_lengths_",Sys.Date(),".pdf",sep=""),width=5,height=5)
