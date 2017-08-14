@@ -213,7 +213,7 @@ Base.mean(x::Responses) = mean(x.vals)
 
 function responses(sim::Simulation)
   f = response_fn(sim)
-  return Responses((f(u) for u in sim.us),sim.t[2] - sim.t[1])
+  return Responses(collect(f(u) for u in sim.us),sim.t[2] - sim.t[1])
 end
 
 function int_responses(trial_length,PR,sim::Simulation)

@@ -23,7 +23,8 @@ ggplot(means,aes(x=log(DF),y=log(PR),
   xlab(expression(paste(Delta,"f (semitones)"))) +
   ylab("Presentation rate (Hz)")
 
-ggsave(paste("../../plots/noise_level_",Sys.Date(),".pdf",sep=""),width=11,height=8)
+ggsave(paste("../../plots/noise_level_",Sys.Date(),".pdf",sep=""),
+       width=11,height=8)
 
 ########################################
 # Parameter sigma_p
@@ -48,7 +49,8 @@ ggplot(means,aes(x=log(DF),y=log(PR),
   ylab("Presentation rate (Hz)") +
   scale_fill_brewer(palette='RdBu',drop=F) + theme_classic()
 
-ggsave(paste("../../plots/input_spread_",Sys.Date(),".pdf",sep=""),width=11,height=8)
+ggsave(paste("../../plots/input_spread_",Sys.Date(),".pdf",sep=""),
+       width=11,height=8)
 
 
 ########################################
@@ -62,7 +64,25 @@ normalized = df %>%
 ggplot(subset(normalized,index > 1),aes(x=nlength)) +
   geom_histogram(bins=50) + theme_classic() + xlab('Normalized Phase Length')
 
-ggsave(paste("../../plots/phase_lengths_",Sys.Date(),".pdf",sep=""),width=5,height=5)
+ggsave(paste("../../plots/phase_lengths_",Sys.Date(),".pdf",sep=""),
+       width=5,height=5)
+
+
+
+########################################
+## phase lengths
+df = read.csv('../../data/int_cont_phase_lengths_2017-08-14_09.15.csv')
+
+normalized = df %>%
+  group_by(repeat.) %>%
+  mutate(nlength = length/mean(length))
+
+ggplot(subset(normalized,index > 1),aes(x=nlength)) +
+  geom_histogram(bins=50) + theme_classic() + xlab('Normalized Phase Length') +
+  xlim(0,8)
+
+ggsave(paste("../../plots/int_cont_phase_lengths_",Sys.Date(),".pdf",sep=""),
+       width=5,height=5)
 
 
 ########################################
@@ -85,7 +105,8 @@ ggplot(means,aes(x=log(DF),y=log(PR),
   ylab("Presentation rate (Hz)") +
   scale_fill_brewer(palette='RdBu',drop=F) + theme_classic()
 
-ggsave(paste("../../plots/int_van_noorden_",Sys.Date(),".pdf",sep=""),width=11,height=8)
+ggsave(paste("../../plots/int_van_noorden_",Sys.Date(),".pdf",sep=""),
+       width=11,height=8)
 
 ########################################
 ## intermittant phase lengths
@@ -98,4 +119,5 @@ normalized = df %>%
 ggplot(subset(normalized,index > 1),aes(x=nlength)) +
   geom_histogram(bins=50) + theme_classic() + xlab('Normalized Phase Length')
 
-ggsave(paste("../../plots/int_phase_lengths_",Sys.Date(),".pdf",sep=""),width=5,height=5)
+ggsave(paste("../../plots/int_phase_lengths_",Sys.Date(),".pdf",sep=""),
+       width=5,height=5)

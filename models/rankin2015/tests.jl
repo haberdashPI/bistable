@@ -36,7 +36,6 @@ df[:,:x] = 0.0
 end
 
 
-
 filename = "noise_level_"*Dates.format(now(),"yyyy-mm-dd_HH.MM")*".csv"
 println("Wrote results to "*filename)
 writetable(filename,df)
@@ -97,6 +96,29 @@ end
 filename = "../../int_van_noorden_"*Dates.format(now(),"yyyy-mm-dd_HH.MM")*".csv"
 println("Wrote results to "*filename)
 writetable(filename,df)
+
+
+########################################
+# Intermittant stimulus, continuous phase lengths
+df = DataFrame()
+n_repeats = 50
+sim_length = 240
+dt = 1/200
+@showprogress 1 "Simulating [phase lengths]..." for r in 1:n_repeats
+  inputs = create_int_inputs(3,5,8,sim_length,dt=dt)
+  sim = Simulation(5,8,sim_length,dt=dt,inputs=inputs)
+  lengths = rlengths(responses(sim))
+  df_0 = DataFrame(repeat = fill(r,length(lengths)),
+                   length = lengths,
+                   index = indices(lengths,1))
+  df = vcat(df,df_0)
+end
+
+filename = ("../../data/int_cont_phase_lengths_"*
+              Dates.format(now(),"yyyy-mm-dd_HH.MM")*".csv")
+println("Wrote results to "*filename)
+writetable(filename,df)
+
 
 ########################################
 # Intermittant phase lengths
