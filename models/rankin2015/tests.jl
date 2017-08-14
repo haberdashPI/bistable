@@ -1,7 +1,6 @@
 include("rankin2015.jl")
 using Rankin2015
 
-using Plots; plotlyjs()
 using IterTools
 using DataFrames
 using ProgressMeter
@@ -150,6 +149,8 @@ inputs = create_int_inputs(3,5,8,sim_length,dt=dt)
 t,u,If,rs = collect(Simulation(5,8,sim_length,dt=dt,inputs=inputs))
 
 marks = sum(If .> 0.5,2) .> 0
+
+using Plots; gr()
 
 plot(t,u[:,Rankin2015.r],label=["A" "AB" "B"])
 scatter!(t[find(marks)],zeros(sum(marks)),
