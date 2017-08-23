@@ -1,6 +1,6 @@
 library(ggplot2)
 library(dplyr)
-
+library(feather)
 ########################################
 ## Parameter gamma
 
@@ -98,4 +98,38 @@ normalized = df %>%
 ggplot(subset(normalized,index > 1),aes(x=nlength)) +
   geom_histogram(bins=50) + theme_classic() + xlab('Normalized Phase Length')
 
-ggsave(paste("../../plots/phase_lengths_",Sys.Date(),".pdf",sep=""),width=5,height=5)
+ggsave(paste("../../plots/int_phase_lengths_",Sys.Date(),".pdf",sep=""),
+       width=5,height=5)
+
+##################################################
+## switch input levels (in intermittent stimulus)
+
+df = read_feather('../../data/switch_input_levels_2017-08-18_13.15.feather')
+ggplot(df,aes(x=nearby_level,..density..,fill=switch)) +
+  geom_histogram(alpha=0.5,bins=50)
+
+means = NULL
+for(t in seq(1e-4,0.25,length.out=100)){
+  means0 = df %>%
+    mutate(less_than_t = nearby_level < t) %>%
+    group_by(less_than_t) %>%
+    summarize(prop_switch = mean(switch))
+  means0$thresh = t
+  means = rbind(means,means0)
+}
+
+ggplot(means,aes(y=100*prop_switch,x=thresh,color=less_than_t)) +
+  geom_line(size=2) +
+  theme_classic(base_size=18) +
+  theme(legend.position = c(0.9, 0.9),
+        legend.justification='right') +
+  ylab('% Switching') +
+  xlab(expression(paste("Threshold (",theta,")"))) +
+  scale_color_brewer("",palette='Set1',
+                     labels=c(expression(paste("Recent Input",phantom(x)>=theta)),
+                              expression(paste("Recent Input",phantom(x)<theta))))
+
+ggsave(paste("../../plots/switch_input_levels_",Sys.Date(),".pdf",sep=""),
+       width=6,height=4,useDingbats=F)
+
+ks.test(subset(df,switch)$nearby_level,subset(df,!switch)$nearby_level)

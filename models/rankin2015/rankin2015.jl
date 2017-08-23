@@ -1,7 +1,7 @@
 module Rankin2015
 
 export BistableParams, Simulation, create_inputs, create_int_inputs,
-  int_responses, responses, partial_collect, rlengths
+  int_responses, responses, partial_collect, rlengths, switch_indices
 
 using Parameters
 using Base.Iterators: drop, take, partition
@@ -154,7 +154,7 @@ function Simulation(DF,PR,sim_length;dt=1/1000,params=BistableParams(),
     u_1
   end
 
-  u = 1e-6*rand(n_params)
+  u = 1e-6rand(n_params)
   us = (u = bistable(i,t_i,u) for (i,t_i) in enumerate(t))
 
   Simulation(t,us,If)
@@ -255,6 +255,19 @@ function rlengths(rs::Responses)
   end
   push!(lengths,len)
   lengths .* rs.len
+end
+
+function switch_indices(rs::Responses)
+  oldval::Int = -1
+  len::Int = 0
+  times = Int[]
+  for (i,r) in enumerate(rs.vals)
+    if r*1 != oldval
+      push!(times,i)
+      oldval = r*1
+    end
+  end
+  times
 end
 
 end
