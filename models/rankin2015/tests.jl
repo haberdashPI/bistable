@@ -1,6 +1,8 @@
 include("rankin2015.jl")
 using Rankin2015
 
+using DSP
+using Feather
 using IterTools
 using DataFrames
 using ProgressMeter
@@ -161,3 +163,56 @@ filename = ("../../plots/int_responses_"*
 println("Wrote plot to "*filename)
 
 savefig(filename)
+
+########################################
+## How do gaps influence switching?
+
+df = DataFrame()
+n_repeats = 50
+sim_length = 240
+dt = 1/200
+inputs = create_int_inputs(3,5,8,sim_length,dt=dt)
+lowpass = digitalfilter(Lowpass(4;fs=200), Butterworth(2))
+filt_input_level = filt(lowpass, sum(inputs,2))
+filt_input_level /= maximum(filt_input_level)
+
+@showprogress 1 "Simulating [phase lengths]..." for r in 1:n_repeats
+  sim = Simulation(5,8,sim_length,dt=dt,inputs=inputs)
+  switches = switch_indices(responses(sim))
+
+  # find non-switch areas far from switches
+  a = 1
+  b = 2
+  non_switches = Int[]
+  for i in indices(inputs,1)
+    if b < length(switches)
+      if switches[b] == i
+        a += 1
+        b += 1
+      end
+      diff = min(abs(i - switches[a]),abs(i - switches[b]))
+    else
+      diff = abs(i - switches[a])
+    end
+
+    if diff > 0.2/dt
+      push!(non_switches,i)
+    end
+  end
+
+  df_0 = DataFrame(time = switches.*dt,
+                   current_level = squeeze(sum(view(inputs,switches,:),2),2),
+                   nearby_level = filt_input_level[switches],
+                   switch = true)
+
+  df_1 = DataFrame(time = non_switches.*dt,
+                   current_level = squeeze(sum(view(inputs,non_switches,:),2),2),
+                   nearby_level = filt_input_level[non_switches],
+                   switch = false)
+  df = vcat(df,df_0,df_1)
+end
+
+filename = ("../../data/switch_input_levels_"*
+              Dates.format(now(),"yyyy-mm-dd_HH.MM")*".feather")
+println("Wrote results to "*filename)
+Feather.write(filename,df)
