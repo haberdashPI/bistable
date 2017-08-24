@@ -3,9 +3,9 @@
 
 This is a work-in-progress bistability modeling project. 
 
-- *Completed* Step 1 is to replicate the basic behavior described in [Rankin et al. 2015](https://doi.org/10.1371/journal.pcbi.1004555)
-- Step 2 is to replicate outcomes of Deb's (Chakrabarty) model
-- Step 3 is to introduce simple bi-stable components to Deb's model
+- [x] Step 1 is to replicate the basic behavior described in [Rankin et al. 2015](https://doi.org/10.1371/journal.pcbi.1004555)
+- [ ] Step 2 is to replicate outcomes of Deb's (Chakrabarty) model
+- [ ] Step 3 is to introduce simple bi-stable components to Deb's model
 
 # Setup
 
