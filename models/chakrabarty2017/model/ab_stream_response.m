@@ -11,18 +11,18 @@ for freq_i=1:length(freqs)
     [base, a_reference, b_reference] = stimfn(freqs(freq_i),deltas(delta_i));
 
     % run the model
-    layer_1_base = run_model(base,aud_model,1);
-    layer_1_a_reference = run_model(a_reference,aud_model,1);
-    layer_1_b_reference = run_model(b_reference,aud_model,1);
+    layer_1_base = run_model_layer(base,aud_model,1);
+    layer_1_a_reference = run_model_layer(a_reference,aud_model,1);
+    layer_1_b_reference = run_model_layer(b_reference,aud_model,1);
 
     for tau_i = taus
-      layer_2_base = run_model(layer_1_base,aud_model,2,tau_i);
-      layer_2_a_reference = run_model(layer_1_a_reference,aud_model,2,tau_i);
-      layer_2_b_reference = run_model(layer_1_b_reference,aud_model,2,tau_i);
+      layer_2_base = run_model_layer(layer_1_base,aud_model,2,tau_i);
+      layer_2_a_reference = run_model_layer(layer_1_a_reference,aud_model,2,tau_i);
+      layer_2_b_reference = run_model_layer(layer_1_b_reference,aud_model,2,tau_i);
 
-      hebb_base = run_model(layer_2_base,aud_model,3);
-      hebb_a_reference = run_model(layer_2_a_reference,aud_model,3);
-      hebb_b_reference = run_model(layer_2_b_reference,aud_model,3);
+      hebb_base = run_model_layer(layer_2_base,aud_model,3);
+      hebb_a_reference = run_model_layer(layer_2_a_reference,aud_model,3);
+      hebb_b_reference = run_model_layer(layer_2_b_reference,aud_model,3);
 
       a_dist(delta_i,tau_i,freq_i) = ...
           hebb_dist(hebb_base(end-5:end,:),hebb_a_reference(end-5:end,:));

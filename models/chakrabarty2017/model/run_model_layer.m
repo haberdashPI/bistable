@@ -1,4 +1,4 @@
-function out = run_model(x,model,layer,layer2_i)
+function out = run_model_layer(x,model,layer,layer2_i)
 
 if layer == 1
   spect = wav2aud(x,model.spect_paras);
