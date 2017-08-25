@@ -3,9 +3,15 @@
 
 This is a work-in-progress bistability modeling project. 
 
-- [x] Step 1 is to replicate the basic behavior described in [Rankin et al. 2015](https://doi.org/10.1371/journal.pcbi.1004555)
-- [ ] Step 2 is to replicate outcomes of Deb's (Chakrabarty) model
-- [ ] Step 3 is to introduce simple bi-stable components to Deb's model
+- [x] Step 1 - replicate the basic behavior described in [Rankin et al. 2015](https://doi.org/10.1371/journal.pcbi.1004555)
+- [ ] Step 2 - replicate outcomes of Deb's (Chakrabarty) model
+  - [x] asynchronous vs. synchronous
+  - [x] buildup
+  - [ ] [Mychelle et al 2013](https://doi.org/10.1121/1.4789866) data
+  - [ ] generate and save pdfs of results
+- [ ] Step 3 - introduce simple bi-stable components to Deb's model
+  - [ ] figure out how to generate a continuous response 
+        from Deb's model
 
 # Setup
 
