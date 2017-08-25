@@ -15,7 +15,9 @@ This is a work-in-progress bistability modeling project.
 
 # Setup
 
-You probably want files that end in inputs.ipynb stripped of their output upon commit. Locally your output will remain unchanged unless you use git checkout.
+If you modify files that end in `.inputs.ipynb`, they should be stripped of
+their output upon commit. Locally your output will remain unchanged unless you
+use git checkout.
 
 To set this up, you need to setup local configuration and enable execution privlegeds for the output filtering script:
 
