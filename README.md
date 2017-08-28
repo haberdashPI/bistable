@@ -12,6 +12,7 @@ This is a work-in-progress bistability modeling project.
 - [ ] Step 3 - introduce simple bi-stable components to Deb's model
   - [ ] figure out how to generate a continuous response 
         from Deb's model
+  - [ ] refactor the model to ensure I can modify it with ease
 
 # Setup
 
