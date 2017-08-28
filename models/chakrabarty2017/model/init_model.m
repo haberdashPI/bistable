@@ -3,7 +3,7 @@ function model = init_model(base_dir,preload_layer2)
 model = struct();
 model.spect_paras = [10 8 -2 -1];
 model.layer_1=load([base_dir '/model.mat']);
-model.delta_interia = 4;
+model.delta_inertia = 4;
 
 if ~(nargin == 1) && preload_layer2
   model.preloaded = 1;
