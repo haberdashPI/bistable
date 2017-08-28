@@ -7,7 +7,7 @@ This is a work-in-progress bistability modeling project.
 - [ ] Step 2 - replicate outcomes of Deb's (Chakrabarty) model
   - [x] asynchronous vs. synchronous
   - [x] buildup
-  - [ ] [Mychelle et al 2013](https://doi.org/10.1121/1.4789866) data
+  - [ ] [Micheyl et al 2013](https://doi.org/10.1121/1.4789866) data
   - [ ] generate and save pdfs of results
 - [ ] Step 3 - introduce simple bi-stable components to Deb's model
   - [ ] figure out how to generate a continuous response 
