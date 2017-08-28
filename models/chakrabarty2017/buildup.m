@@ -57,4 +57,6 @@ mdist = mdist(:,1) - mdist
 t = 4;
 sigma = 1;
 resps = bsxfun(@gt,mdist,t+sigma*randn([size(mdist) 10000]));
-prop_streaming = mean(resps,3)
+prop_streaming = mean(resps,3);
+prop_streaming = [prop_streaming; seq_dur];
+csvwrite('../../data/buildup.csv',prop_streaming');

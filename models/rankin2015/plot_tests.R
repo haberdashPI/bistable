@@ -140,8 +140,8 @@ for(t in seq(1e-4,0.25,length.out=100)){
 }
 
 ggplot(means,aes(y=100*prop_switch,x=thresh,color=less_than_t)) +
-  geom_line(size=2) +
-  theme_classic(base_size=18) +
+  geom_line(size=1.2) +
+  theme_classic(base_size=14) +
   theme(legend.position = c(0.9, 0.9),
         legend.justification='right') +
   ylab('% Switching') +
@@ -152,5 +152,17 @@ ggplot(means,aes(y=100*prop_switch,x=thresh,color=less_than_t)) +
 
 ggsave(paste("../../plots/switch_input_levels_",Sys.Date(),".pdf",sep=""),
        width=6,height=4,useDingbats=F)
+
+
+prop_in_gaps = df %>%
+  mutate(in_gap = nearby_level < 0.01) %>%
+  group_by(in_gap) %>%
+  do(data.frame(rbind(smean.cl.boot(.$switch))))
+
+ggplot(prop_in_gaps,aes(x=in_gap,y=Mean,ymin=Lower,ymax=Upper)) +
+  geom_pointrange() +
+  theme_classic(base_size = 14) +
+  ylab('% switching') +
+  xlim('During Stimulus', 'During Gap')
 
 ks.test(subset(df,switch)$nearby_level,subset(df,!switch)$nearby_level)
