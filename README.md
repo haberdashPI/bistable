@@ -23,9 +23,9 @@ use git checkout.
 To set this up, you need to setup local configuration and enable execution privlegeds for the output filtering script:
 
 ```sh
-git config --local filter.dropoutput_ipynb.clean ./util/ipynb_output_filter.py
-git config --local filter.dropoutput_ipynb.smudge cat
-chmod +x util/ipynb_output_filter.py
+$ git config --local filter.dropoutput_ipynb.clean ./util/ipynb_output_filter.py
+$ git config --local filter.dropoutput_ipynb.smudge cat
+$ chmod +x util/ipynb_output_filter.py
 ```
 
 # File organization
