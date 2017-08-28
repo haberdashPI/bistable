@@ -1,4 +1,4 @@
-function resp = layer2_act(x,model,locs)
+function resp = calc_response_gen_mod(x,model,locs)
 ncases = size(x,1);
 ndims = size(x,2);
 

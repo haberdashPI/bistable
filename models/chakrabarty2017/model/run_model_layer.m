@@ -14,7 +14,7 @@ elseif layer == 2
 
   filtered = rate_filter(x,layer2_i);
   layer_2_locs = loc_find(model.loc,layer2_i);
-  out = calc_response_gen_mod(filtered,layer_2i,layer_2_locs);
+  out = layer2_act(filtered,layer_2i,layer_2_locs);
   out = avg_layer(out);
 
   if ~model.preloaded
