@@ -1,5 +1,3 @@
-% TODO: run and compare the results of the two versions
-
 % clc;
 % clear all
 addpath('stimulus');
