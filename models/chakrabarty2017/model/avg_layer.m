@@ -1,9 +1,9 @@
 function y=avg_layer(x)
+y = x;
+% normalize by maximum
+row_max = max(x,[],2);
+y = y ./ row_max;
 
-for i=1:size(x,1)
-    if(max(x(i,:))>0)
-    y(i,:)=x(i,:)./max(x(i,:));
-    else
-     y(i,:)=-x(i,:)./max(x(i,:));  
-    end
-end
+% keep sign of final result consistent with input
+positive_rows = row_max > 0;
+y(~positive_rows,:) = -y(~positive_rows,:);
