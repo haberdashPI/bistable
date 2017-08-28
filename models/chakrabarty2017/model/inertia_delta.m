@@ -1,18 +1,8 @@
-function [resp_data]= inertia_delta(data,hist)
+function y = inertia_delta(x,hist)
+y_hist = x(1:hist,:);
+high = y_hist > 30;
+y_hist(high) = y_hist(high)*5;
+y_hist(~high) = y_hist(~high)/5;
 
-resp_data=data;
-for n=1:350
-  temp=resp_data(:,n);
-  temp1=temp(1:hist);
-
-  for i=1:length(temp1)
-    if(temp(i)>30)
-      temp(i)=temp(i)*5;
-    else
-      temp(i)=temp(i)/5;
-    end
-  end
-
-  resp_data(:,n)=temp;
-  clear temp
-end
+y = x;
+y(1:hist,:) = y_hist;
