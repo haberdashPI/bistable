@@ -1,6 +1,7 @@
 library(ggplot2)
 library(dplyr)
 library(feather)
+library(Hmisc)
 ########################################
 ## Parameter gamma
 
@@ -126,8 +127,9 @@ ggsave(paste("../../plots/int_phase_lengths_",Sys.Date(),".pdf",sep=""),
 ## switch input levels (in intermittent stimulus)
 
 df = read_feather('../../data/switch_input_levels_2017-08-18_13.15.feather')
-ggplot(df,aes(x=nearby_level,..density..,fill=switch)) +
-  geom_histogram(alpha=0.5,bins=50)
+
+## ggplot(df,aes(x=nearby_level,..density..,fill=switch)) +
+##   geom_histogram(alpha=0.5,bins=50)
 
 means = NULL
 for(t in seq(1e-4,0.25,length.out=100)){
@@ -157,12 +159,24 @@ ggsave(paste("../../plots/switch_input_levels_",Sys.Date(),".pdf",sep=""),
 prop_in_gaps = df %>%
   mutate(in_gap = nearby_level < 0.01) %>%
   group_by(in_gap) %>%
-  do(data.frame(rbind(smean.cl.boot(.$switch))))
+  do(data.frame(rbind(smean.cl.boot(switch))))
 
-ggplot(prop_in_gaps,aes(x=in_gap,y=Mean,ymin=Lower,ymax=Upper)) +
+ggplot(prop_in_gaps,aes(x=in_gap,y=100*Mean,ymin=100*Lower,ymax=100*Upper)) +
   geom_pointrange() +
   theme_classic(base_size = 14) +
   ylab('% switching') +
-  xlim('During Stimulus', 'During Gap')
+    scale_x_discrete(labels = c(expression(paste('Gap (',level>=0.01,')')),
+                                expression(paste('Gap (',level<0.01,')')))) +
+    xlab('')
+ggsave(paste("../../plots/switch_input_levels_simple_",Sys.Date(),".pdf",sep=""),
+       width=6,height=4,useDingbats=F)
+
+
+
+prop_in_gaps2 = df %>%
+  mutate(in_gap = nearby_level < 0.01) %>%
+  group_by(in_gap) %>%
+  summarize(sswitch = sum(switch))
+
 
 ks.test(subset(df,switch)$nearby_level,subset(df,!switch)$nearby_level)

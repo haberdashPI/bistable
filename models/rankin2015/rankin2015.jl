@@ -141,10 +141,8 @@ function Simulation(DF,PR,sim_length;dt=1/1000,params=BistableParams(),
       u_1[a[k]] += (-u_0[a[k]] + u_0[r[k]])/p.τ_a * dt
       u_1[e[k]] += (-u_0[e[k]] + u_0[r[k]])/p.τ_e * dt
 
-      if isnan(p.τ_d)
-        u_1[d[k]] = 1
-      else
-        u_1[d[k]] += (-u_0[d[k]] + (1-p.κ*u_0[r[k]]))/p.τ_d * dt
+      if isnan(p.τ_d) u_1[d[k]] = 1
+      else u_1[d[k]] += (-u_0[d[k]] + (1-p.κ*u_0[r[k]]))/p.τ_d * dt
       end
 
       u_1[χ[k]] += -u_0[χ[k]] / p.τ_χ * dt +
