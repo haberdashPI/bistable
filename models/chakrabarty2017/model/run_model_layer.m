@@ -21,5 +21,5 @@ elseif layer == 2
     clear layer_2i;
   end
 else % layer == 3
-  out = coherence_wts_comb(x,0);
+  out = coherence_wts_comb(x);
 end

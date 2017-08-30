@@ -1,25 +1,14 @@
-function [resp_data_without_mom]= coherence_wts_comb(data,flag)
+function y = coherence_wts_comb(data)
 
-w_mod=zeros(size(data,2),size(data,2),size(data,1)+1);
-w_mod=weights_hebb_calc(data,w_mod);
+thresh = 0.9;
 
-resp_data=[];
+C = zeros(size(data,2));
+n = size(C,1);
+y = zeros(size(data));
+for j=1:size(data,1)-1
+  k = data(j,:) .* sign(data(j,:)-thresh);
+  C = C + k' * k;
+  C(1:(n+1):n*n) = 0; % clear diagonal
 
-for j=1:size(w_mod,3)-1
-  temp_1=data(j,:)';
-
-
-
-  temp_11=w_mod(:,:,j+1)*temp_1;
-
-  if(max(temp_11)>0)
-    temp_22=(temp_11./max(temp_11))*2;
-  else
-    temp_22=-(temp_11./max(temp_11))*2;
-  end
-  resp_data=[resp_data;temp_22'];
-  clear temp_1 temp_11;
-
+  y(j,:) = 2*avg_layer((C*data(j,:)')');
 end
-
-resp_data_without_mom = resp_data;
