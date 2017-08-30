@@ -6,7 +6,7 @@ addpath('model');
 loadload;
 
 base_dir = '/Volumes/Data/Little_Bistable_2017_08_15/deb';
-% aud_model = init_model(base_dir,1);
+aud_model = init_model(base_dir,1);
 
 fs=8000;
 tt = [1:0.06*fs]/fs;
