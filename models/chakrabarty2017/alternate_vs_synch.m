@@ -5,7 +5,13 @@ addpath('model');
 
 loadload;
 
-base_dir = '/Volumes/Data/Little_Bistable_2017_08_15/deb';
+[~,hostname] = system('hostname')
+if startsWith(hostname,'Claude')
+  base_dir = '/Volumes/Miguel/Research/deb';
+else
+  base_dir = '/Volumes/Data/Little_Bistable_2017_08_15/deb';
+end
+
 aud_model = init_model(base_dir,1);
 
 fs=8000;
