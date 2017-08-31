@@ -44,3 +44,7 @@ $ chmod +x util/ipynb_output_filter.py
 # Questsions for Deb
 1. how are you picking parameters for the auditory spectrogram?
 2. what is up with intertia_delta? why modify only the first 4 time points?
+3. in calc_response_gen_mod why are you calculating visible units and then not using them?
+4. why do you perform the same operation on the weights twice? avg_layer
+   and the first few lines of weights_hebb_calc, this seems unncessary.
+5. 
