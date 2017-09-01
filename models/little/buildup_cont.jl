@@ -1,4 +1,4 @@
-import Unitful: ms, Hz
+import Unitful: ms, Hz, kHz, s
 using Plots; plotlyjs()
 
 include("model.jl")
