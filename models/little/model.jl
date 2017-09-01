@@ -153,8 +153,7 @@ function Model(filename;spect_params=[10,8,-2,-1],thresh=0.9)
 end
 
 function run(model::Model,taus,x)
-  # remove the last element in L1 for consistency with matlab implementation
-  x_l1 = run(model.layer1,Float32.(x))[1:end-1,:]
+  x_l1 = run(model.layer1,Float32.(x))
   result = Vector{Matrix{Float32}}(maximum(taus))
   for tau in taus
     x_tau = run(model.layer2[tau],x_l1);
