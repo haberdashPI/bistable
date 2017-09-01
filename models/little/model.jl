@@ -156,8 +156,8 @@ function run(model::Model,taus,x)
   x_l1 = run(model.layer1,Float32.(x))
   result = Vector{Matrix{Float32}}(maximum(taus))
   for tau in taus
-    x_tau = run(model.layer2[tau],x_l1);
-    result[tau] = run(model.layer3,x_tau)
+    xl2_tau = run(model.layer2[tau],x_l1);
+    result[tau] = run(model.layer3,xl2_tau)
   end
   result
 end
