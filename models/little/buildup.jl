@@ -1,3 +1,4 @@
+using JLD
 import Unitful: ms, Hz
 using Plots; plotlyjs()
 
@@ -23,6 +24,7 @@ taus = 1:3
 
 audio_spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5")
 if !isdefined(:a_ref)
+  info("Initializing Stimuli")
   a_ref = Array{Any}(length(freqs),length(deltas),length(durations))
   b_ref = Array{Any}(length(freqs),length(deltas),length(durations))
 
@@ -40,30 +42,40 @@ if !isdefined(:a_ref)
   end
 end
 
-dist(x,y) = sqrt(trace((x-y)*(x-y)'))
-hebb_dist = zeros(length(freqs),length(deltas),length(durations))
-@time for (i,freq) in enumerate(freqs)
-  for (j,delta) in enumerate(deltas)
-    for (k,duration) in enumerate(durations)
-      @show (freq,delta,duration)
+if isfile("buildup_old.jld")
+  @load "buildup_old.jld" hebb_dist
+else
+  info("Simulating Streaming...")
+  hebb_dist = zeros(length(freqs),length(deltas),length(durations))
+  @time for (i,freq) in enumerate(freqs)
+    for (j,delta) in enumerate(deltas)
+      for (k,duration) in enumerate(durations)
+        @show (freq,delta,duration)
 
-      hebb_a = run(model,taus,a_ref[i,j,k])
-      hebb_b = run(model,taus,b_ref[i,j,k])
+        hebb_a = run(model,taus,a_ref[i,j,k])
+        hebb_b = run(model,taus,b_ref[i,j,k])
 
-      for tau in taus
-        hebb_dist[i,j,k] +=
-          dist(hebb_a[tau][end-5:end,:],hebb_b[tau][end-5:end,:])
+        for tau in taus
+          hebb_dist[i,j,k] +=
+            vecnorm(hebb_a[tau][end-5:end,:].-hebb_b[tau][end-5:end,:])
+        end
       end
     end
   end
+
+  @save "buildup_old.jld" hebb_dist
 end
 
 mdist = mean(hebb_dist,1)
 mdist = mdist[:,:,1:1] .- mdist
 
-t = 4
-sigma = 1
-resps = mdist .> t+sigma*randn(size(mdist)...,10000)
-prop_streaming = squeeze(mean(resps,4),(1,4))
+normed = hebb_dist[:,:,1:1] .- hebb_dist
 
-plot(ustrip(durations),prop_streaming',label = deltas')
+plot(normed[7,:,:]',label = deltas')
+
+# t = 4
+# sigma = 1
+# resps = mdist .> t+sigma*randn(size(mdist)...,10000)
+# prop_streaming = squeeze(mean(resps,4),(1,4))
+
+# plot(ustrip(durations),prop_streaming',label = deltas')
