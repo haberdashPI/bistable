@@ -27,9 +27,9 @@ if !isdefined(:stims) ||
   !isdefined(:old_deltas) ||
   !isdefined(:old_freqs) ||
   !isdefined(:old_durations) ||
-  any(old_deltas .!= deltas) ||
-  any(old_freqs .!= old_freqs) ||
-  any(durations .!= old_durations)
+  any(old_deltas != deltas) ||
+  any(old_freqs != freqs) ||
+  any(durations != durations)
 
   global old_durations = durations
   global old_deltas = deltas
@@ -57,9 +57,6 @@ function time_to_frame(time,tau)
   floor(Int,time / frame_len)
 end
 
-# TODO: try looking at the tau's sperately, see if
-# we should do something different wiht the taus
-
 info("Simulating Streaming...")
 @time for (i,freq) in enumerate(freqs)
   for (j,delta) in enumerate(deltas)
@@ -70,13 +67,10 @@ info("Simulating Streaming...")
       # compare most recent a at the start of a triplet to the most recent b
       for h in taus
         N_triplets = floor((dur-aba_seq_offset)/(4tone_len))
-        a_onset = aba_seq_offset + 4tone_len*N_triplets
-
-        ap_onset = a_onset + 2tone_len
-        ap_onset = ap_onset > dur ? ap_onset - 4tone_len : ap_onset
+        a_onset = aba_seq_offset + 4tone_len*(N_triplets-1)
 
         b_onset = a_onset + tone_len
-        b_onset = b_onset > dur ? b_onset - 4tone_len : b_onset
+        ap_onset = a_onset + 2tone_len
 
         afrom = time_to_frame(a_onset,h)
         apfrom = time_to_frame(ap_onset,h)
@@ -96,9 +90,10 @@ info("Simulating Streaming...")
   end
 end
 
-normed = hebb_dist[:,:,:,1] ./ hebb_dist[:,:,:,2]
-mdist = squeeze(mean(normed,1),1)
+Base.squeeze(f,A,dims) = squeeze(f(A,dims),dims)
 
-responses = respond(mdist,1.6,0.4^2)
+shebb = squeeze(sum,hebb_dist[:,:,:,1:2,:],4)
+normed = shebb[:,:,:,1] ./ shebb[:,:,:,2]
+responses = respond(normed,0.9,0.4^2)
 
-plot(ustrip(durations),responses',label=deltas')
+plot(ustrip(durations),squeeze(mean,responses,1)',label=deltas')
