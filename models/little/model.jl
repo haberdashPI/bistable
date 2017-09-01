@@ -164,3 +164,7 @@ function run(model::Model,taus,x)
 end
 
 frame_length(m::Model) = steps(m.layer1)
+
+function respond(x,μ,σ²,N=1000)
+  squeeze(mean(x .> μ + σ²*randn(size(x)...,N),ndims(x)+1),ndims(x)+1)
+end
