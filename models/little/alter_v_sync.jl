@@ -50,7 +50,6 @@ if !isdefined(:spect_base)
   end
 end
 
-dist(x,y) = sqrt(trace((x-y)*(x-y)'))
 @time for (i,freq) in enumerate(freqs)
   for (j,delta) in enumerate(deltas)
     @show (freq,delta)
@@ -61,9 +60,9 @@ dist(x,y) = sqrt(trace((x-y)*(x-y)'))
 
       for tau in taus
         a_dist[j,tau,i,k] =
-          dist(hebb_base[tau][end-5:end,:],hebb_a_ref[tau][end-5:end,:])
+          vecnorm(hebb_base[tau][end-5:end,:].-hebb_a_ref[tau][end-5:end,:])
         b_dist[j,tau,i,k] =
-          dist(hebb_base[tau][end-5:end,:],hebb_b_ref[tau][end-5:end,:])
+          vecnorm(hebb_base[tau][end-5:end,:].-hebb_b_ref[tau][end-5:end,:])
       end
     end
   end
