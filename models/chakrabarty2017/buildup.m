@@ -14,7 +14,7 @@ fs=8000;
 tt = [1:0.06*fs]/fs;
 
 deltas = [1 3 6 9];
-freqs=[500]; % 750 1000 1250 1500 1750 2000];
+freqs=[500 750 1000 1250 1500 1750 2000];
 seq_dur=[500 1000 1500 2000 2500 3000 3500 4000 4500 ...
          5000 5500 6000 6500 7000 7500 8000 8500 9000 9500 10000];
 
@@ -35,14 +35,14 @@ for freq_i=1:length(freqs)
       hebb_a_reference = run_model(aud_model,taus,a_reference);
       hebb_b_reference = run_model(aud_model,taus,b_reference);
 
-      cur_dist = 0
+      cur_dist = 0;
       for tau = taus
         cur_dist = cur_dist + ...
             hebb_dist(hebb_a_reference{tau}(end-5:end,:),...
                       hebb_b_reference{tau}(end-5:end,:));
       end
 
-      dist(delta_i,seq_dur_i,freq_i) = cur_dist
+      dist(delta_i,seq_dur_i,freq_i) = cur_dist;
 
       delta_i
     end
@@ -51,12 +51,34 @@ for freq_i=1:length(freqs)
   end
 end
 
-mdist = mean(dist,3)
-mdist = mdist(:,1) - mdist
+% mdist = mean(dist,3)
+mdist = dist(:,1,:) - mdist
 
 t = 4;
 sigma = 1;
 resps = bsxfun(@gt,mdist,t+sigma*randn([size(mdist) 10000]));
-prop_streaming = mean(resps,3);
+resps = mean(resps,4);
+
+df = table()
+df.freq = zeros(0);
+df.delta = zeros(0);
+df.time = zeros(0);
+df.response = zeros(0);
+
+for freq_i = 1:length(freqs)
+  for delta_i = 1:length(deltas)
+    for dur_i = 1:length(seq_dur)
+      row = {freqs(freq_i), deltas(delta_i), seq_dur(dur_i), ...
+             resps(delta_i,dur_i,freq_i)};
+      df = [df; row];
+    end
+  end
+end
+filename = ['../../data/buildup_' datestr(datetime('today'))  '.csv']
+writetable(df,filename)
+disp(['Wrote to file: ' filename])
+
+
+prop_streaming =
 prop_streaming = [prop_streaming; seq_dur];
 csvwrite('../../data/buildup.csv',prop_streaming');

@@ -3,6 +3,8 @@ import Base: run
 
 ########################################
 # util
+# TODO: do we make a running average? maybe this would be similar to the
+# effects of the "inertia"
 function standardize!(x,dims)
   x .= x .- mean(x,dims)
   x .= x ./ std(x,dims)
@@ -49,11 +51,44 @@ function inertia(m::Layer1,out::Matrix{Float32})
   return out
 end
 
+delta_t(m::Layer1) = m.steps * em.input_frame_len
+
+sig(x,s,t) = 1 / (1 + exp(-4s*(x-t)))
+
+function resemblance(m::Layer1,l1::Matrix{Float32},template::Matrix{Float32})
+  template = reshapefor(template,m)
+  standardize!(template,2)
+
+  p = 0.25
+  ytemp = (m.b' .+ template * m.w)[1,:]
+  scale = norm(ytemp,p)
+  mapslices(l1,2) do x_t
+    # norm(x_t - ytemp,p) / scale
+    sig(-norm(x_t - ytemp,p) / scale,10,-0.04)
+    # 1 / (1 + exp(4(1 - norm(x_t .- ytemp) / ylen - 0.5)))
+  end
+end
+
 function run(m::Layer1,x::Matrix{Float32})
   x = reshapefor(x,m)
   standardize!(x,2)
-  y = x * m.w
-  y .+= m.b'
+
+  y = m.b' .+ x * m.w
+  # # TODO: I could have multiple delta steps
+  # # for a single frame to have more resolution in
+  # # calculating the dynamics
+  # y = similar(x,size(x,1),size(A,2))
+  # y_old = zeros(x,size(m.w,2))
+  # c = dt(m) / m.τ
+  # for r in 1:floor(Int,size(x,1)/m.steps)
+  #   y[r,:] = y_old
+  #   y[r,:] .+= c .* (-y_old .+ m.b' .+ (x_i' * m.w))
+  # end
+  # y
+
+  # TODO: do we keep the inertia? I think
+  # I'm going to remove this when I introduce
+  # some form of mutual inhibition
   inertia(m,y)
 end
 
@@ -137,7 +172,7 @@ end
 # model operations
 
 
-const ntau = 8
+const ntau = 4 #8
 function Model(filename;spect_params=[10,8,-2,-1],thresh=0.9)
   layer1 = Layer1(filename)
 

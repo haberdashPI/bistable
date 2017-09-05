@@ -9,16 +9,25 @@ This is a work-in-progress bistability modeling project.
   - [x] buildup
   - [ ] [Micheyl et al 2013](https://doi.org/10.1121/1.4789866) data
   - [ ] generate and save pdfs of results
+        - [x] asynch
+        - [x] buildup
+        - [ ] micheyl
 - [ ] Step 3 - introduce simple bi-stable components to Deb's model
   - [X] figure out how to generate a continuous response 
         from Deb's model
   - [X] refactor the model to ensure I can modify it with ease
-  - [ ] create a graph for the continuous response version of the build up
+  - [x] create a graph for the continuous response version of the build up
 		experiment
-  - [ ] introduce leaky integration of layer1 responses
-  - [ ] introduce adaptation
-  - [ ] introduce mutual inhibition
-  - [ ] introduce noise
+        - [x] include a version that breaks down the
+              results by frequency
+        - [x] do the same for the old approach
+        - [x] compare new approach using both ``L_2`` and ``L_1`` norm
+  - [X] create a graph to visualize stimulus response in layer1
+        - [ ] how do we handle the harmonic responses?
+  - [ ] extend length of stimuli?
+  - [ ] introduce adaptation in layer 1
+  - [ ] introduce mutual inhibition in layer 1
+  - [ ] introduce noise in layer 1
 
 # File organization
 
