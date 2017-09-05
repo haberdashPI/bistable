@@ -1,6 +1,8 @@
-  using DSP
+using DSP
 using HDF5
 import Base: run
+
+using RecipesBase
 
 struct AuditorySpectrogram
   cochba::Matrix{Complex128}
@@ -8,14 +10,28 @@ struct AuditorySpectrogram
   decay_tc::Float64
   nonlinear::Float64
   octave_shift::Float64
+  fs::Int
 end
 
-function AuditorySpectrogram(filename::String;len=10,decay_tc=8,
+function AuditorySpectrogram(filename::String;fs=8000,len=10,decay_tc=8,
                              nonlinear=-2,octave_shift=-1)
+  @assert fs == 8000 "The only sample rate supported is 8000 Hz"
   h5open(filename) do file
     r = read(file,"/real")
     i = read(file,"/imag")
-    AuditorySpectrogram(r + i*im,len,decay_tc,nonlinear,octave_shift)
+    AuditorySpectrogram(r + i*im,len,decay_tc,nonlinear,octave_shift,fs)
+  end
+end
+
+@recipe function plot(as::AuditorySpectrogram,data::Matrix)
+  y_oct = floor(size(data,2)/24)
+
+  x = indices(data,1)/as.fs*frame_length(as)
+  y = 1000*2.^(indices(data,2)/24 .- (y_oct-2.5) .+ as.octave_shift)
+
+  @series begin
+    seriestype := :heatmap
+    (x,y,data')
   end
 end
 
