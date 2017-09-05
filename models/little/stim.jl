@@ -1,7 +1,7 @@
 using Unitful
 import Unitful: s, Hz
 
-insamples(len::Quantity,fs) = floor(Int,ustrip(uconvert(s,tone_len))*fs)
+insamples(len::Quantity,fs) = floor(Int,ustrip(uconvert(s,len))*fs)
 silence(tone_len,fs) = zeros(insamples(tone_len,fs))
 function tone(freq::Quantity,len::Quantity,fs)
   t = (1:insamples(len,fs)) / fs
