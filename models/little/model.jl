@@ -96,6 +96,11 @@ struct Layer2
   w_past::Vector{Matrix{Float32}}
   b::Vector{Vector{Float32}}
   steps::Int
+  function Layer2(w,w_past,b,steps)
+    @assert(length(w) == length(w_past) == length(b),
+            "w, w_past and b lengths must be equal")
+    new(w,w_past,b,steps)
+  end
 end
 
 function Layer2(filename::String,i::Int)
@@ -117,20 +122,14 @@ function Layer2(filename::String,i::Int)
   end
 end
 
-ncomps(m::Layer2) = length(m.w)
 steps(m::Layer2) = m.steps
 
 function run(m::Layer2,x::Matrix{Float32})
   x = reshapefor(x,m)
-  Σ = sum(1:ncomps(m)) do i
-    y = x[2:end,:]*m.w[i]
-    y .+= x[1:end-1,:]*m.w_past[i]
-    y .+= m.b[i]'
-    y
+  y = sum(1:length(m.w)) do i
     @fast @views x[2:end,:]*m.w[i] .+ x[1:end-1,:]*m.w_past[i] .+ m.b[i]'
   end
-
-  maxnorm!(Σ,2)
+  maxnorm!(y,2)
 end
 
 ########################################
