@@ -3,8 +3,6 @@ import Base: run
 
 ########################################
 # util
-# TODO: do we make a running average? maybe this would be similar to the
-# effects of the "inertia"
 function standardize!(x,dims)
   x .= x .- mean(x,dims)
   x .= x ./ std(x,dims)
@@ -14,7 +12,7 @@ function maxnorm!(x,dims)
   x ./= abs.(maximum(x,dims))
 end
 
-function reshapefor(x::Matrix{Float32},model)
+function reshapefor(x,model)
   n = floor(Int,size(x,1)/steps(model))
   reshape(x[1:(steps(model)*n),:]',:,n)'
 end
@@ -29,7 +27,7 @@ struct Layer1
   inertia_threshold::Float32
 end
 
-function Layer1(filename::String)
+function Layer1(filename)
   h5open(filename) do file
     Layer1(
       Float32.(read(file,"/layer1/W")),
@@ -103,11 +101,11 @@ struct Layer2
 end
 
 function Layer2(filename::String,i::Int)
-  function helper(x::Array{Float64,3})
+  function helper(x::Array{T,3}) where T
     collect(Float32.(x[:,:,i]) for i in 1:size(x,3))
   end
 
-  function helper(x::Array{Float64,2})
+  function helper(x::Array{T,2}) where T
     collect(Float32.(x[:,i]) for i in 1:size(x,2))
   end
 
@@ -170,7 +168,6 @@ end
 
 ########################################
 # model operations
-
 
 const ntau = 4 #8
 function Model(filename;spect_params=[10,8,-2,-1],thresh=0.9)
