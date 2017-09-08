@@ -41,11 +41,9 @@ end
 steps(m::Layer1) = m.steps;
 
 function inertia(m::Layer1,out::Matrix{Float32})
-  for i in 1:m.inertia_n
-    for j in 1:size(out,2)
-      out[i,j] = out[i,j] > m.inertia_threshold ? out[i,j]*5.0 : out[i,j]/5.0
-    end
-  end
+  start = view(out,1:m.inertia_n,:)
+  helper(x) = x > m.inertia_threshold ? 5.0x : x/5.0
+  start .= helper.(start)
   return out
 end
 
@@ -71,7 +69,7 @@ function run(m::Layer1,x::Matrix{Float32})
   x = reshapefor(x,m)
   standardize!(x,2)
 
-  y = m.b' .+ x * m.w
+  y = @fastmath(m.b' .+ x * m.w)
   # # TODO: I could have multiple delta steps
   # # for a single frame to have more resolution in
   # # calculating the dynamics
@@ -129,6 +127,7 @@ function run(m::Layer2,x::Matrix{Float32})
     y .+= x[1:end-1,:]*m.w_past[i]
     y .+= m.b[i]'
     y
+    @fast @views x[2:end,:]*m.w[i] .+ x[1:end-1,:]*m.w_past[i] .+ m.b[i]'
   end
 
   maxnorm!(Σ,2)
@@ -144,9 +143,9 @@ end
 function run(m::Layer3,x::Matrix{Float32})
   resp = zeros(Float32,size(x))
   C = zeros(Float32,size(x,2),size(x,2))
-  for i in 1:size(x,1)
+  @fastmath @views for i in 1:size(x,1)
     k = x[i,:] .* sign.(x[i,:].-m.thresh)
-    C += k*k'
+    C .+= k .* k'
     # for j in 1:size(C,1) C[j,j] = 0.0 end
 
     resp[i,:] = 2maxnorm!(C*x[i,:],1)
