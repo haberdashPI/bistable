@@ -12,6 +12,9 @@ struct AuditorySpectrogram
   octave_shift::Float64
   fs::Int
 end
+Base.show(io::IO,x::AuditorySpectrogram) =
+  write(io,"AuditorySpectrogram(len=$(x.len),decay_tc=$(x.decay_tc),"*
+        "nonlinear=$(x.nonlinear),octave_shift=$(x.octave_shift))")
 
 function AuditorySpectrogram(filename::String;fs=8000,len=10,decay_tc=8,
                              nonlinear=-2,octave_shift=-1)
@@ -23,6 +26,7 @@ function AuditorySpectrogram(filename::String;fs=8000,len=10,decay_tc=8,
   end
 end
 
+# a recipe for plotting the spectrogram (via Plots.jl)
 @recipe function plot(as::AuditorySpectrogram,data::Matrix)
   y_oct = floor(size(data,2)/24)
 
