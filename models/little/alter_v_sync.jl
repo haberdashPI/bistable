@@ -18,45 +18,26 @@ tone_len = 60ms
 
 taus = [1,3];
 
+if !isdefined(:model)
+  model = Model("/Users/davidlittle/Data",l1_c_a = 0.0f0)
+end
+
 a_dist = zeros(length(deltas),maximum(taus),length(freqs),2)
 b_dist = zeros(length(deltas),maximum(taus),length(freqs),2)
-
-audio_spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5")
-
-if !isdefined(:model)
-  model = Model("/Users/davidlittle/Data/model.h5")
-end
-
-
-if !isdefined(:spect_base)
-  spect_base = Array{Any}(length(freqs),length(deltas),2);
-  spect_a_ref = Array{Any}(length(freqs),length(deltas),2);
-  spect_b_ref = Array{Any}(length(freqs),length(deltas),2);
-  @time for (i,freq) in enumerate(freqs)
-    for (j,delta) in enumerate(deltas)
-      @show (freq,delta)
-      for k in 1:2
-        if k == 1
-          base, a_ref, b_ref = alter_ab(tone_len,ab_repeats,fs,freq,delta)
-        else
-          base, a_ref, b_ref = sync_ab(tone_len,ab_repeats,fs,freq,delta)
-        end
-
-        spect_base[i,j,k] = run(audio_spect,base)
-        spect_a_ref[i,j,k] = run(audio_spect,a_ref)
-        spect_b_ref[i,j,k] = run(audio_spect,b_ref)
-      end
-    end
-  end
-end
 
 @time for (i,freq) in enumerate(freqs)
   for (j,delta) in enumerate(deltas)
     @show (freq,delta)
     for k in 1:2
-      hebb_base = run(model,taus,spect_base[i,j,k])
-      hebb_a_ref = run(model,taus,spect_a_ref[i,j,k])
-      hebb_b_ref = run(model,taus,spect_b_ref[i,j,k])
+      if k == 1
+        base, a_ref, b_ref = alter_ab(tone_len,ab_repeats,fs,freq,delta)
+      else
+        base, a_ref, b_ref = sync_ab(tone_len,ab_repeats,fs,freq,delta)
+      end
+
+      hebb_base = run(model,taus,base)
+      hebb_a_ref = run(model,taus,a_ref)
+      hebb_b_ref = run(model,taus,b_ref)
 
       for tau in taus
         a_dist[j,tau,i,k] =
