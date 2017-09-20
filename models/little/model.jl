@@ -57,9 +57,11 @@ steps(m::Layer1) = m.steps;
 
 function inertia(m::Layer1,out::Matrix{Float32})
   start = view(out,1:m.inertia_n,:)
-  helper(x) = x > m.inertia_threshold ? 5.0x : x/5.0
-  start .= helper.(start)
-  return out
+  map!(start,start) do x
+    x > m.inertia_threshold ? 5.0x : x/5.0
+  end
+
+  out
 end
 
 unit_ordering_by(m::Layer1,from,to) =
