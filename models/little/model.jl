@@ -1,17 +1,13 @@
 using HDF5
+using Unitful: s
 import Base: run
 
 include("audio_spect.jl")
 ########################################
 # util
-function standardize!(x,dims)
-  x .= x .- mean(x,dims)
-  x .= x ./ std(x,dims)
-end
-
-function standardize!(x)
-  x .= x .- mean(x)
-  x .= x ./ std(x)
+function standardize!(x,dims...)
+  x .= x .- mean(x,dims...)
+  x .= x ./ std(x,dims...)
 end
 
 function maxnorm!(x,dims)
@@ -90,10 +86,11 @@ function run(m::Layer1,x::Matrix{Float32};
              use_inertia=true,return_adaptation=false)
   N_t = floor(Int,size(x,1)/steps(m))
   y = similar(x,N_t,size(m.w,2))
-  adapt = zeros(eltype(x),N_t*m.N_a+1,size(m.w,2))
+  adapt = zeros(Float32,N_t*m.N_a+1,size(m.w,2))
   adapt_index = 1
   c = delta_t(m) / m.N_a / m.τ_a
 
+  old = similar(x,size(m.w,2))
   for t in 1:N_t
     indices = m.steps*(t-1)+1 : m.steps*t
 
@@ -102,10 +99,10 @@ function run(m::Layer1,x::Matrix{Float32};
     x_i = standardize!(x[indices,:]'[:])
     y[t,:] .= m.b .+ (x_i' * m.w)' .- m.c_a.*adapt[adapt_index,:]
 
-    old = adapt[adapt_index,:]
+    old .= view(adapt,adapt_index,:)
     for i in 1:m.N_a
       adapt_index += 1
-      old = adapt[adapt_index,:] .= old .+ c.*(y[t,:] .- old)
+      old .= adapt[adapt_index,:] .= old .+ c.*(y[t,:] .- old)
     end
   end
 
@@ -198,7 +195,7 @@ end
 
 const ntau = 4 #8
 function Model(dir;
-               l1_N_a=5,
+               l1_N_a=1,
                l1_τ_a=1.5s,
                l1_c_a=1f0,
                layer3_thresh=0.9,
@@ -230,7 +227,10 @@ function Model(dir;
   return Model(audio_spect,layer1,layer2,layer3)
 end
 
-const spect_cache = Dict{Vector,Matrix}()
+# avoid redefining this constant when the script is re-evaluated
+@static if !isdefined(:spect_cache)
+  const spect_cache = Dict{Vector,Matrix}()
+end
 
 function run_spect(model::Model,x::Vector)
   get!(spect_cache,x) do
@@ -240,7 +240,7 @@ end
 
 run(model::Model,taus,x::Vector) = run(model,taus,run_spect(model,x))
 function run(model::Model,taus,x::Matrix)
-  x_l1 = run(model.layer1,Float32.(x_spect))
+  x_l1 = run(model.layer1,Float32.(x))
   result = Vector{Matrix{Float32}}(maximum(taus))
   for tau in taus
     xl2_tau = run(model.layer2[tau],x_l1);
@@ -252,7 +252,7 @@ end
 layer1_ordering_by(m::Model,x::Vector,y::Vector) =
   unit_ordering_by(m.layer1,Float32.(run_spect(m,x)),Float32.(run_spect(m,y)))
 
-frame_length(m::Model) = 1/m.spect.fs * steps(m.layer1) * frame_length(m.spect)
+frame_length(m::Model) = s/m.spect.fs * steps(m.layer1) * frame_length(m.spect)
 
 function respond(x,μ,σ²,N=1000)
   squeeze(mean(x .> μ + σ²*randn(size(x)...,N),ndims(x)+1),ndims(x)+1)
