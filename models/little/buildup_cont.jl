@@ -5,7 +5,7 @@ using DataFrames
 using Feather
 
 include("model.jl")
-include("jl")
+include("stim.jl")
 
 if !isdefined(:model)
   model = Model("/Users/davidlittle/Data")
