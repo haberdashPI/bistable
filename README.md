@@ -23,9 +23,12 @@ This is a work-in-progress bistability modeling project.
         - [x] do the same for the old approach
         - [x] compare new approach using both ``L_2`` and ``L_1`` norm
   - [X] create a graph to visualize stimulus response in layer1
-        - [ ] how do we handle the harmonic responses?
-  - [ ] extend length of stimuli?
+        - [x] simple - discriminability of a and b
+        - [ ] cluster
+        - [ ] spectral-temporal modulation filters
   - [ ] introduce adaptation in layer 1
+        - [ ] how does first approach affect psychophysical benchmarks
+        - [ ] create some graphs, using the normed quanities (not responses)
   - [ ] introduce mutual inhibition in layer 1
   - [ ] introduce noise in layer 1
 
@@ -44,16 +47,14 @@ This is a work-in-progress bistability modeling project.
 * **plans.md**: Notes about the plans for this project
 
 # Questsions for Deb
-1. how are you picking parameters for the auditory spectrogram?
-2. what is up with intertia_delta? why modify only the first 4 time points?
-3. in calc_response_gen_mod why are you calculating visible units and then not using them?
-4. why do you perform the same operation on the weights twice? avg_layer
-   and the first few lines of weights_hebb_calc, this seems unncessary.
-5. for the conditional model implementation you basically
-   skip frames, is that intentional?
-6. why subtract the starting value for the buildup experiemnt,
+
+0. can you show/send me the clustering work? might be usreful to me (deb will send result data of clusters and the spectral modulation representation of those weights)
+1. how are you picking parameters for the auditory spectrogram? (frame rate)
+2. what is up with intertia_delta? why modify only the first 4 time points? (to emphasize the target sound, which helps separate it from the non-target)
+3. in calc_response_gen_mod why are you calculating visible units and then not using them? (we don't need to use them, but in general for backward pass we would)
+4. why subtract the starting value for the buildup experiemnt,
    i know it gives the "right" answers but what is the theoretical
-   justification for it?
+   justification for it? (short answer, there isn't really one, deb just wanted to get a result consistent with the human data)
 
 # Problems/Questions 
 1. I noticed that when you plot out the buildup by frequency, there are some
