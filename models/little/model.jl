@@ -94,8 +94,8 @@ function run(m::Layer1,x::Matrix{Float32};
   for t in 1:N_t
     indices = m.steps*(t-1)+1 : m.steps*t
 
-    # TODO: if we redefine training, we could reorganize
-    # weights to make the transpose unncessary
+    # TODO: if we redefine the weight ordering, we could reorganize
+    # weights to make this transpose unncessary
     x_i = standardize!(x[indices,:]'[:])
     y[t,:] .= m.b .+ (x_i' * m.w)' .- m.c_a.*adapt[adapt_index,:]
 
