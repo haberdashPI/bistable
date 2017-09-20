@@ -41,9 +41,9 @@ b_dist = zeros(length(deltas),maximum(taus),length(freqs),2)
 
       for tau in taus
         a_dist[j,tau,i,k] =
-          vecnorm(hebb_base[tau][end-5:end,:].-hebb_a_ref[tau][end-5:end,:])
+          vecnorm(hebb_base[tau][end-5:end-1,:].-hebb_a_ref[tau][end-5:end-1,:])
         b_dist[j,tau,i,k] =
-          vecnorm(hebb_base[tau][end-5:end,:].-hebb_b_ref[tau][end-5:end,:])
+          vecnorm(hebb_base[tau][end-5:end-1,:].-hebb_b_ref[tau][end-5:end-1,:])
       end
     end
   end
