@@ -1,8 +1,14 @@
 using HDF5
 using Unitful: s
+using Parameters
 import Base: run
 
+# TODO: what if we include the sigmoid operations (the reall model) at each
+# layer instead of the weird, maxnorm thing that is happening right now?
+
 include("audio_spect.jl")
+
+const Seconds = typeof(1f0*s)
 ########################################
 # util
 function standardize!(x,dims...)
@@ -11,7 +17,7 @@ function standardize!(x,dims...)
 end
 
 function maxnorm!(x,dims)
-  x ./= abs.(maximum(x,dims))
+  x ./= max.(1e-16,abs.(maximum(x,dims)))
 end
 
 function reshapefor(x,model)
@@ -19,36 +25,40 @@ function reshapefor(x,model)
   reshape(x[1:(steps(model)*n),:]',:,n)'
 end
 
+@with_kw struct LayerParams
+  τ_a::Seconds = 1.5s
+  c_a::Float32 = 1
+  c_mi::Float32 = 0.6
+  use_sig::Bool = false
+end
+
+sig(x) = 1 / (1 + exp(-x))
+
 ########################################
 # layer 1
-
-const Seconds = typeof(1f0*s)
-
 struct Layer1
   w::Matrix{Float32}
   b::Vector{Float32}
 
   steps::Int
-  N_a::Int
-  τ_a::Seconds
-  c_a::Float32
-
+  params::LayerParams
   input_frame_len::Seconds
 
   inertia_n::Int
   inertia_threshold::Float32
 end
-Base.show(io::IO,x::Layer1) =
-  write(io,"Layer1(N_a=$(x.N_a),τ_a=$(x.τ_a),c_a=$(x.c_a),"*
-        "inertia_n=$(x.inertia_n),intertia_θ=$(x.inertia_threshold))")
 
-function Layer1(filename,audio_spect;
-                N_a=5,τ_a=1.5s,c_a=0.3)
+Base.show(io::IO,x::Layer1) =
+  write(io,"Layer1(τ_a=$(x.params.τ_a),"*
+        "c_a=$(x.params.c_a),inertia_n=$(x.inertia_n),"*
+        "intertia_θ=$(x.inertia_threshold))")
+
+function Layer1(filename,audio_spect,params=LayerParams())
   h5open(filename) do file
     Layer1(
       Float32.(read(file,"/layer1/W")),
       Float32.(squeeze(read(file,"/layer1/b")',2)),
-      3,N_a,τ_a,c_a,
+      3,params,
       1/audio_spect.fs * frame_length(audio_spect) * s,4,30
     )
   end
@@ -86,78 +96,89 @@ delta_t(m::Layer1) = m.steps * m.input_frame_len
 
 function run(m::Layer1,x::Matrix{Float32};
              use_inertia=true,return_adaptation=false)
-  N_t = floor(Int,size(x,1)/steps(m))
-  y = similar(x,N_t,size(m.w,2))
-  adapt = zeros(Float32,N_t*m.N_a+1,size(m.w,2))
-  adapt_index = 1
-  c = delta_t(m) / m.N_a / m.τ_a
+  x = reshapefor(x,m)
+  standardize!(x,2)
+  p = m.params
 
-  old = similar(x,size(m.w,2))
-  for t in 1:N_t
-    indices = m.steps*(t-1)+1 : m.steps*t
+  a = zeros(Float32,size(m.w,2))
+  y = similar(x,size(x,1),size(m.w,2))
+  y[1,:] = y_t = zeros(view(y,1,:))
 
-    # TODO: if we redefine the weight ordering, we could reorganize
-    # weights to make this transpose unncessary
-    x_i = standardize!(x[indices,:]'[:])
-    y[t,:] .= m.b .+ (x_i' * m.w)' .- m.c_a.*adapt[adapt_index,:]
+  c_a = delta_t(m) / p.τ_a
+  c_mi = p.c_mi / length(y_t)
+  for t in 1:size(x,1)
+    y_t .= (x[t,:]' * m.w)' .+ m.b' .-
+      p.c_a.*a .- # adaptation
+      (y_t .- sum(y_t)).*c_mi # mutual inhibitoin
 
-    old .= view(adapt,adapt_index,:)
-    for i in 1:m.N_a
-      adapt_index += 1
-      old .= adapt[adapt_index,:] .= old .+ c.*(y[t,:] .- old)
-    end
+    y[t,:] = p.use_sig ? y_t .= sig.(y_t) : y_t
+    a .+= c_a.*(y_t .- a)
   end
-
-  y = use_inertia ? inertia(m,y) : y
-
-  return_adaptation ? (y,adapt) : y
+  use_inertia ? inertia(m,y) : y
 end
 
 ########################################
 # layer 2
 
+# TODO: test out a version treat W as a tensor and b as a matrix
 struct Layer2
-  w::Vector{Matrix{Float32}}
-  w_past::Vector{Matrix{Float32}}
-  b::Vector{Vector{Float32}}
+  w::Array{Float32,3}
+  w_past::Array{Float32,3}
+  b::Array{Float32,2}
+  params::LayerParams
   steps::Int
-  function Layer2(w,w_past,b,steps)
-    @assert(length(w) == length(w_past) == length(b),
+  layer1_len::Seconds
+  function Layer2(w,w_past,b,params,steps,layer1_len)
+    @assert(size(w,3) == size(w_past,3) == size(b,2),
             "w, w_past and b lengths must be equal")
-    new(w,w_past,b,steps)
+    new(w,w_past,b,params,steps,layer1_len)
   end
 end
 Base.show(io::IO,x::Layer2) =
   !get(io,:compact,false) ? write(io,"Layer2(τ=$(x.steps))") :
   write(io,"L2(τ=$(x.steps))")
 
-function Layer2(filename::String,i::Int)
-  function helper(x::Array{T,3}) where T
-    collect(Float32.(x[:,:,i]) for i in 1:size(x,3))
-  end
-
-  function helper(x::Array{T,2}) where T
-    collect(Float32.(x[:,i]) for i in 1:size(x,2))
-  end
-
+function Layer2(filename::String,layer1::Layer1,steps::Int,params::LayerParams)
   h5open(filename) do file
     Layer2(
-      helper(read(file,"/layer2/tau$i/W")),
-      helper(read(file,"/layer2/tau$i/Wpast")),
-      helper(read(file,"/layer2/tau$i/b")),
-      i
+      Float32.(read(file,"/layer2/tau$steps/W")),
+      Float32.(read(file,"/layer2/tau$steps/Wpast")),
+      Float32.(read(file,"/layer2/tau$steps/b")),
+      params,
+      steps,
+      delta_t(layer1)
     )
   end
 end
 
 steps(m::Layer2) = m.steps
+delta_t(m::Layer2) = m.layer1_len * m.steps
 
 function run(m::Layer2,x::Matrix{Float32})
   x = reshapefor(x,m)
-  y = sum(1:length(m.w)) do i
-    @fastmath @views x[2:end,:]*m.w[i] .+ x[1:end-1,:]*m.w_past[i] .+ m.b[i]'
+  p = m.params
+  y_sum = sum(1:size(m.w,3)) do i
+    y = similar(x,size(x,1)-1,size(m.w,2))
+    y[1,:] = y_t = zeros(view(y,1,:))
+    a = zeros(y_t)
+
+    c_a = delta_t(m) / p.τ_a
+    c_mi = p.c_mi / length(y_t)
+    for t in 2:size(x,1)
+      y_t .= (view(x,t,:)'*m.w[:,:,i])' .+
+        (view(x,t-1,:)'*m.w_past[:,:,i])' .+
+        m.b[:,i] .-
+        p.c_a.*a .- # adaptation
+        (y_t .- sum(y_t)).*c_mi # mututal inhibition
+
+      y[t-1,:] = p.use_sig ? y_t .= sig.(y_t) : y_t
+
+      a .+= c_a.*(y_t .- a)
+    end
+
+    y
   end
-  maxnorm!(y,2)
+  maxnorm!(y_sum,2)
 end
 
 ########################################
@@ -170,7 +191,7 @@ end
 function run(m::Layer3,x::Matrix{Float32})
   resp = zeros(Float32,size(x))
   C = zeros(Float32,size(x,2),size(x,2))
-  @fastmath @views for i in 1:size(x,1)
+  @views for i in 1:size(x,1)
     k = x[i,:] .* sign.(x[i,:].-m.thresh)
     C .+= k .* k'
     # for j in 1:size(C,1) C[j,j] = 0.0 end
@@ -180,7 +201,6 @@ function run(m::Layer3,x::Matrix{Float32})
 
   resp
 end
-
 
 ########################################
 # model defintion
@@ -197,9 +217,8 @@ end
 
 const ntau = 4 #8
 function Model(dir;
-               l1_N_a=1,
-               l1_τ_a=1.5s,
-               l1_c_a=1f0,
+               l1params = LayerParams(),
+               l2params = LayerParams(),
                layer3_thresh=0.9,
                spect_len=10,spect_decay_tc=8,
                spect_nonlinear=-2,spect_octave_shift=-1)
@@ -213,15 +232,12 @@ function Model(dir;
   )
 
   filename = joinpath(dir,"model.h5")
-  layer1 = Layer1(filename,audio_spect,
-                  N_a=l1_N_a,
-                  τ_a=l1_τ_a,
-                  c_a=l1_c_a)
+  layer1 = Layer1(filename,audio_spect,l1params)
 
   layer2 = Vector{Layer2}(ntau)
   for tau in 1:ntau
     info("Loading Layer2(tau=$tau)...")
-    layer2[tau] = Layer2(filename,tau)
+    layer2[tau] = Layer2(filename,layer1,tau,l2params)
   end
 
   layer3 = Layer3(layer3_thresh)
@@ -240,15 +256,21 @@ function run_spect(model::Model,x::Vector)
   end
 end
 
-run(model::Model,taus,x::Vector) = run(model,taus,run_spect(model,x))
-function run(model::Model,taus,x::Matrix)
-  x_l1 = run(model.layer1,Float32.(x))
-  result = Vector{Matrix{Float32}}(maximum(taus))
+run(model::Model,taus,x::Vector;keys...) =
+  run(model,taus,run_spect(model,x);keys...)
+function run(model::Model,taus,x::Matrix;return_all=false)
+  l1 = run(model.layer1,Float32.(x))
+  l2 = Vector{Matrix{Float32}}(maximum(taus))
+  l3 = Vector{Matrix{Float32}}(maximum(taus))
   for tau in taus
-    xl2_tau = run(model.layer2[tau],x_l1);
-    result[tau] = run(model.layer3,xl2_tau)
+    l2[tau] = run(model.layer2[tau],l1)
+    l3[tau] = run(model.layer3,l2[tau])
   end
-  result
+  if return_all
+    l1,l2,l3
+  else
+    l3
+  end
 end
 
 layer1_ordering_by(m::Model,x::Vector,y::Vector) =

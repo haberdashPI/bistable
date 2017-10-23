@@ -138,7 +138,7 @@ function run(s::AuditorySpectrogram,x::Vector{Float64})
       if (frame_len == 1)
     	  v5[:, ch] = y4
       else
-        v5[:, ch] = mean(reshape(y4, frame_len, N))'
+        v5[:, ch] = mean(reshape(y4, frame_len, N),1)'
       end
 	  end
   end

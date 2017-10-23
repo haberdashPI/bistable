@@ -1,5 +1,7 @@
 using Distributions
 using Plots; plotlyjs()
+using Feather
+using DataFrames
 
 import Unitful: ms, Hz
 
@@ -18,9 +20,9 @@ tone_len = 60ms
 
 taus = [1,3];
 
-if !isdefined(:model)
-  model = Model("/Users/davidlittle/Data",l1_c_a = 0.0f0)
-end
+# if !isdefined(:model)
+  model = Model("/Users/davidlittle/Data",l1_c_a = 1)
+# end
 
 a_dist = zeros(length(deltas),maximum(taus),length(freqs),2)
 b_dist = zeros(length(deltas),maximum(taus),length(freqs),2)
@@ -48,6 +50,24 @@ b_dist = zeros(length(deltas),maximum(taus),length(freqs),2)
     end
   end
 end
+
+Base.squeeze(f,A,dims) = squeeze(f(A,dims),dims)
+
+asum = squeeze(sum,a_dist[:,taus,:,:],2)
+bsum = squeeze(sum,b_dist[:,taus,:,:],2)
+
+r_indices = CartesianRange(size(asum))
+conditions = ["alternating","synchronous"]
+
+df = vcat(DataFrame(aresp = asum[:],bresp = bsum[:],
+                    freq = ustrip([freqs[ii[2]] for ii in r_indices][:]),
+                    delta = [deltas[ii[1]] for ii in r_indices][:],
+                    condition = [conditions[ii[3]] for ii in r_indices][:]))
+
+filename = ("../../data/async_adapt_"*
+              Dates.format(now(),"yyyy-mm-dd_HH.MM")*".feather")
+Feather.write(filename,df)
+println("Wrote results to "*filename)
 
 const norm = Normal()
 dprime(a,b) = quantile(norm,a) - quantile(norm,b)

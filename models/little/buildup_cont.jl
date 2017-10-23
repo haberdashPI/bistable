@@ -7,15 +7,17 @@ using Feather
 include("model.jl")
 include("stim.jl")
 
-if !isdefined(:model)
-  model = Model("/Users/davidlittle/Data")
-end
+# if !isdefined(:model)
+model = Model("/Users/davidlittle/Data",
+              l1params = LayerParams(c_mi = 0.3,c_a = 1),
+              l2params = LayerParams(c_mi = 0.3,c_a = 1))
+# end
 
 fs = 8000
 
 tone_len = 60ms
 deltas = [1, 3, 6, 9]
-freqs = [500Hz 750Hz 1000Hz 1250Hz 1500Hz 1750Hz 2000Hz]
+freqs = [1000Hz]#[500Hz 750Hz 1000Hz 1250Hz 1500Hz 1750Hz 2000Hz]
 duration = 10s
 durations = linspace(500.0ms,duration,20)
 
@@ -68,14 +70,32 @@ info("Simulating Streaming...")
   end
 end
 
+
+# model = Model("/Users/davidlittle/Data",
+#               l1params = LayerParams(c_mi = 0,c_a = 0),
+#               l2params = LayerParams(c_mi = 0,c_a = 0))
+# l1,l2,l3 = run(model,taus,aba(tone_len,32,fs,1000Hz,9),
+#                return_all=true)
+
+
+
 Base.squeeze(f,A,dims) = squeeze(f(A,dims),dims)
 
 shebb = squeeze(sum,hebb_dist[:,:,:,:,:],4)
 normed = shebb[:,:,:,1] ./ shebb[:,:,:,2]
-responses = respond(normed,0.9,0.4^2)
+responses = respond(normed,1.2,0.4^2)
 
-# plot(ustrip(durations),normed[3,:,:]',label=deltas')
-plot(ustrip(durations),squeeze(mean,responses,1)',label=deltas')
+plot(ustrip(durations),responses[1,:,:]',label=deltas')
+
+# responses = respond(normed,1.8,0.5^2)
+# plot(ustrip(durations),responses_adapt[3,:,:]',
+#      label=deltas',subplot=1,layout=(2,1))
+
+# plot(ustrip(durations),responses_all[3,:,:]',label=deltas',subplot=1,layout=(3,1))
+# plot!(ustrip(durations),responses_adapt[3,:,:]',label=deltas',subplot=2,layout=(3,1))
+# plot!(ustrip(durations),responses_none[3,:,:]',label=deltas',subplot=3)
+
+# # plot(ustrip(durations),squeeze(mean,responses,1)',label=deltas')
 
 # r_indices = CartesianRange(size(responses))
 # df = DataFrame(response = responses[:],
@@ -83,7 +103,7 @@ plot(ustrip(durations),squeeze(mean,responses,1)',label=deltas')
 #                delta = [deltas[ii[2]] for ii in r_indices][:],
 #                time = ustrip([durations[ii[3]] for ii in r_indices][:]))
 
-# filename = ("../../data/buildup_cont_L1_"*
+# filename = ("../../data/buildup_cont_adapt_"*
 #               Dates.format(now(),"yyyy-mm-dd_HH.MM")*".feather")
 # Feather.write(filename,df)
 # println("Wrote results to "*filename)
