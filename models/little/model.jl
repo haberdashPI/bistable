@@ -34,11 +34,33 @@ end
 
 sig(x) = 1 / (1 + exp(-x))
 
+function adapt(fn,layer,x,indices=1:size(x,1))
+  p = layer.params
+  y_t = similar(x,size(layer.w,2))
+  c_a = delta_t(layer) / p.τ_a
+  c_mi = p.c_mi / length(y_t)
+  a = zeros(y_t)
+
+  y = similar(x,size(x,1),size(layer.w,2))
+
+  for t in indices
+    y_t .= fn(x,t) .-
+      p.c_a.*a .- # adaptation
+      (y_t .- sum(y_t)).*c_mi # mutual inhibitoin
+    y[t,:] = p.use_sig ? y_t .= sig.(y_t) : y_t
+
+    a .+= c_a.*(y_t .- a)
+  end
+
+  y
+end
+
 ########################################
 # layer 1
 struct Layer1
   w::Matrix{Float32}
   b::Vector{Float32}
+  bv::Vector{Float32}
 
   steps::Int
   params::LayerParams
@@ -58,6 +80,7 @@ function Layer1(filename,audio_spect,params=LayerParams())
     Layer1(
       Float32.(read(file,"/layer1/W")),
       Float32.(squeeze(read(file,"/layer1/b")',2)),
+      Float32.(squeeze(read(file,"/layer1/bv")',2)),
       3,params,
       1/audio_spect.fs * frame_length(audio_spect) * s,4,30
     )
@@ -94,44 +117,38 @@ run(m::Layer1,x::Matrix;params...)= run(m,Float32.(x);params...)
 
 delta_t(m::Layer1) = m.steps * m.input_frame_len
 
-function run(m::Layer1,x::Matrix{Float32};
-             use_inertia=true,return_adaptation=false)
+function run(m::Layer1,x::Matrix{Float32};use_inertia=true)
   x = reshapefor(x,m)
   standardize!(x,2)
   p = m.params
 
-  a = zeros(Float32,size(m.w,2))
-  y = similar(x,size(x,1),size(m.w,2))
-  y[1,:] = y_t = zeros(view(y,1,:))
-
-  c_a = delta_t(m) / p.τ_a
-  c_mi = p.c_mi / length(y_t)
-  for t in 1:size(x,1)
-    y_t .= (x[t,:]' * m.w)' .+ m.b' .-
-      p.c_a.*a .- # adaptation
-      (y_t .- sum(y_t)).*c_mi # mutual inhibitoin
-
-    y[t,:] = p.use_sig ? y_t .= sig.(y_t) : y_t
-    a .+= c_a.*(y_t .- a)
+  y = adapt(m,x) do x,t
+    (x[t,:]' * m.w)' .+ m.b
   end
+
   use_inertia ? inertia(m,y) : y
+end
+
+# get a visible response for each hidden unit
+function display(m::Layer1)
+  sig.(m.w .+ m.bv)
 end
 
 ########################################
 # layer 2
 
-# TODO: test out a version treat W as a tensor and b as a matrix
 struct Layer2
   w::Array{Float32,3}
   w_past::Array{Float32,3}
   b::Array{Float32,2}
+  bv::Array{Float32,2}
   params::LayerParams
   steps::Int
   layer1_len::Seconds
-  function Layer2(w,w_past,b,params,steps,layer1_len)
-    @assert(size(w,3) == size(w_past,3) == size(b,2),
+  function Layer2(w,w_past,b,bv,params,steps,layer1_len)
+    @assert(size(w,3) == size(w_past,3) == size(b,2) == size(bv,2),
             "w, w_past and b lengths must be equal")
-    new(w,w_past,b,params,steps,layer1_len)
+    new(w,w_past,b,bv,params,steps,layer1_len)
   end
 end
 Base.show(io::IO,x::Layer2) =
@@ -144,6 +161,7 @@ function Layer2(filename::String,layer1::Layer1,steps::Int,params::LayerParams)
       Float32.(read(file,"/layer2/tau$steps/W")),
       Float32.(read(file,"/layer2/tau$steps/Wpast")),
       Float32.(read(file,"/layer2/tau$steps/b")),
+      Float32.(read(file,"/layer2/tau$steps/bv")),
       params,
       steps,
       delta_t(layer1)
@@ -158,27 +176,21 @@ function run(m::Layer2,x::Matrix{Float32})
   x = reshapefor(x,m)
   p = m.params
   y_sum = sum(1:size(m.w,3)) do i
-    y = similar(x,size(x,1)-1,size(m.w,2))
-    y[1,:] = y_t = zeros(view(y,1,:))
-    a = zeros(y_t)
-
-    c_a = delta_t(m) / p.τ_a
-    c_mi = p.c_mi / length(y_t)
-    for t in 2:size(x,1)
-      y_t .= (view(x,t,:)'*m.w[:,:,i])' .+
+    y = adapt(m,x,2:size(x,1)) do x,t
+      (view(x,t,:)'*m.w[:,:,i])' .+
         (view(x,t-1,:)'*m.w_past[:,:,i])' .+
-        m.b[:,i] .-
-        p.c_a.*a .- # adaptation
-        (y_t .- sum(y_t)).*c_mi # mututal inhibition
-
-      y[t-1,:] = p.use_sig ? y_t .= sig.(y_t) : y_t
-
-      a .+= c_a.*(y_t .- a)
+        m.b[:,i]
     end
-
-    y
+    @views y[2:end,:]
   end
-  maxnorm!(y_sum,2)
+  p.use_sig || maxnorm!(y_sum,2)
+end
+
+# get a visible response for each hidden unit at specified set of
+# time steps for a given mixture
+function display(m::Layer2,x::Matrix{Float32},i)
+  p = resize((x[1:end-1]'*m.w_past[:,:,i]),size(m.w_past,1),1,size(x,1)-1)
+  m.w[:,:,i] .+ p .+ m.bv
 end
 
 ########################################
