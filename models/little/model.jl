@@ -13,7 +13,7 @@ const Seconds = typeof(1f0*s)
 # util
 function standardize!(x,dims...)
   x .= x .- mean(x,dims...)
-  x .= x ./ std(x,dims...)
+  x .= x ./ max.(1e-16,std(x,dims...))
 end
 
 function maxnorm!(x,dims)
@@ -183,7 +183,11 @@ function run(m::Layer2,x::Matrix{Float32})
     end
     @views y[2:end,:]
   end
-  p.use_sig || maxnorm!(y_sum,2)
+  # NOTE: as written this just assumes z_k values are uniform.
+  # this is a bug, but I want to change things slowly from the original
+  # deb model. (It's also not clear how adaptation would apply to
+  # during the calculation of z).
+  p.use_sig ? y_sum / size(m.w,3) : maxnorm!(y_sum,2)
 end
 
 # get a visible response for each hidden unit at specified set of
@@ -268,18 +272,27 @@ function run_spect(model::Model,x::Vector)
   end
 end
 
-run(model::Model,taus,x::Vector;keys...) =
-  run(model,taus,run_spect(model,x);keys...)
-function run(model::Model,taus,x::Matrix;return_all=false)
+run(model::Model,taus,x::AbstractArray;keys...) =
+  run(model,taus,run_spect(model,Float64.(x));keys...)
+function run(model::Model,taus,x::Matrix;upto=3)
+  if upto == 0
+    return x
+  end
+
   l1 = run(model.layer1,Float32.(x))
+  if upto == 1
+    return l1
+  end
   l2 = Vector{Matrix{Float32}}(maximum(taus))
   l3 = Vector{Matrix{Float32}}(maximum(taus))
   for tau in taus
     l2[tau] = run(model.layer2[tau],l1)
-    l3[tau] = run(model.layer3,l2[tau])
+    if upto > 2
+      l3[tau] = run(model.layer3,l2[tau])
+    end
   end
-  if return_all
-    l1,l2,l3
+  if upto == 2
+    l2
   else
     l3
   end

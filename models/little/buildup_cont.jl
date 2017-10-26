@@ -9,11 +9,9 @@ include("stim.jl")
 
 # if !isdefined(:model)
 model = Model("/Users/davidlittle/Data",
-              l1params = LayerParams(c_mi = 0.3,c_a = 1),
-              l2params = LayerParams(c_mi = 0.3,c_a = 1))
+              l1params = LayerParams(c_mi = 0,c_a = 0,use_sig=true),
+              l2params = LayerParams(c_mi = 0,c_a = 0,use_sig=false))
 # end
-
-fs = 8000
 
 tone_len = 60ms
 deltas = [1, 3, 6, 9]
@@ -74,7 +72,7 @@ end
 # model = Model("/Users/davidlittle/Data",
 #               l1params = LayerParams(c_mi = 0,c_a = 0),
 #               l2params = LayerParams(c_mi = 0,c_a = 0))
-# l1,l2,l3 = run(model,taus,aba(tone_len,32,fs,1000Hz,9),
+# l1,l2,l3 = run(model,taus,aba(tone_len,32,1000Hz,9),
 #                return_all=true)
 
 
@@ -83,9 +81,13 @@ Base.squeeze(f,A,dims) = squeeze(f(A,dims),dims)
 
 shebb = squeeze(sum,hebb_dist[:,:,:,:,:],4)
 normed = shebb[:,:,:,1] ./ shebb[:,:,:,2]
-responses = respond(normed,1.2,0.4^2)
+responses = respond(normed,1.0,0.4^2)
 
 plot(ustrip(durations),responses[1,:,:]',label=deltas')
+plot(ustrip(durations),normed[1,:,:]',label=deltas')
+
+# plot(ustrip(durations),shebb[1,:,:,1]',label=deltas')
+# plot(ustrip(durations),shebb[1,:,:,2]',label=deltas')
 
 # responses = respond(normed,1.8,0.5^2)
 # plot(ustrip(durations),responses_adapt[3,:,:]',
