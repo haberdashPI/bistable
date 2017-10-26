@@ -56,7 +56,7 @@ end
 
 frame_length(s::AuditorySpectrogram) = round(Int,s.len * 2^(4+s.octave_shift))
 
-function run(s::AuditorySpectrogram,x::Vector{Float64})
+function run(s::AuditorySpectrogram,x::Vector)
   L, M = size(s.cochba)	# p_max = L - 2
   L_x = length(x)	# length of input
 

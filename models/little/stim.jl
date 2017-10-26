@@ -1,22 +1,17 @@
 using Unitful
-import Unitful: s, Hz
+using TimedPlayback
 
-insamples(len::Quantity,fs) = floor(Int,ustrip(uconvert(s,len))*fs)
-silence(tone_len,fs) = zeros(insamples(tone_len,fs))
-function tone(freq::Quantity,len::Quantity,fs)
-  t = (1:insamples(len,fs)) / fs
-  sin.(2π * ustrip(uconvert(Hz,freq)) * t)
-end
+setup_sound(sample_rate=8000Hz)
 
-function alter_ab(tone_len,ab_repeats,fs,freq,delta)
-  space = silence(tone_len,fs)
+function alter_ab(tone_len,ab_repeats,freq,delta)
+  space = silence(tone_len,sample_rate=fs)
 
   a_freq=freq
   b_freq=freq*(2^(delta/12))
 
-  a = tone(a_freq,tone_len,fs)
-  b = tone(b_freq,tone_len,fs)
-  space = silence(tone_len,fs)
+  a = tone(a_freq,tone_len)
+  b = tone(b_freq,tone_len)
+  space = silence(tone_len)
 
   ab_seq = Float64[]
   for i = 1:ab_repeats
@@ -31,15 +26,15 @@ function alter_ab(tone_len,ab_repeats,fs,freq,delta)
 end
 
 
-function sync_ab(tone_len,ab_repeats,fs,freq,delta)
-  space = silence(tone_len,fs)
+function sync_ab(tone_len,ab_repeats,freq,delta)
+  space = silence(tone_len)
 
   a_freq=freq
   b_freq=freq*(2^(delta/12))
 
-  a = tone(a_freq,tone_len,fs)
-  b = tone(b_freq,tone_len,fs)
-  space = silence(tone_len,fs)
+  a = tone(a_freq,tone_len)
+  b = tone(b_freq,tone_len)
+  space = silence(tone_len)
 
   ab_seq = Float64[]
   for i = 1:ab_repeats
@@ -53,15 +48,15 @@ function sync_ab(tone_len,ab_repeats,fs,freq,delta)
   base, a_reference, b_reference
 end
 
-function buildup_aba(tone_len,repeats,fs,freq,delta)
-  space = silence(tone_len,fs)
+function buildup_aba(tone_len,repeats,freq,delta)
+  space = silence(tone_len)
 
   a_freq=freq
   b_freq=freq*(2^(delta/12))
 
-  a = tone(a_freq,tone_len,fs)
-  b = tone(b_freq,tone_len,fs)
-  space = silence(tone_len,fs)
+  a = tone(a_freq,tone_len)
+  b = tone(b_freq,tone_len)
+  space = silence(tone_len)
 
   aba_seq = Float64[]
   for i = 1:repeats
@@ -75,15 +70,15 @@ function buildup_aba(tone_len,repeats,fs,freq,delta)
 end
 
 
-function aba(tone_len,repeats,fs,freq,delta)
-  space = silence(tone_len,fs)
+function aba(tone_len,repeats,freq,delta)
+  space = silence(tone_len)
 
   a_freq=freq
   b_freq=freq*(2^(delta/12))
 
-  a = tone(a_freq,tone_len,fs)
-  b = tone(b_freq,tone_len,fs)
-  space = silence(tone_len,fs)
+  a = tone(a_freq,tone_len)
+  b = tone(b_freq,tone_len)
+  space = silence(tone_len)
 
   aba_seq = Float64[]
   for i = 1:repeats

@@ -40,7 +40,7 @@ info("Simulating Streaming...")
     @show (freq,delta)
 
     repeats = ceil(Int,duration / 4tone_len)+1
-    hebb = run(model,taus,aba(tone_len,repeats,fs,freq,delta))
+    hebb = run(model,taus,aba(tone_len,repeats,freq,delta))
     for (k,dur) in enumerate(durations)
       N_triplets = floor((dur-aba_seq_offset)/4tone_len)-1
       if N_triplets < 1 continue end

@@ -10,7 +10,6 @@ include("stim.jl")
 include("audio_spect.jl")
 
 data_dir = "/Users/davidlittle/Data"
-fs = 8000
 
 deltas = [1,3,6,9,15]
 freqs = [500Hz,750Hz,1000Hz,1250Hz,1500Hz,1750Hz,2000Hz]
@@ -32,9 +31,9 @@ b_dist = zeros(length(deltas),maximum(taus),length(freqs),2)
     @show (freq,delta)
     for k in 1:2
       if k == 1
-        base, a_ref, b_ref = alter_ab(tone_len,ab_repeats,fs,freq,delta)
+        base, a_ref, b_ref = alter_ab(tone_len,ab_repeats,freq,delta)
       else
-        base, a_ref, b_ref = sync_ab(tone_len,ab_repeats,fs,freq,delta)
+        base, a_ref, b_ref = sync_ab(tone_len,ab_repeats,freq,delta)
       end
 
       hebb_base = run(model,taus,base)
