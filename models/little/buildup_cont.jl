@@ -3,14 +3,19 @@ using Plots; plotlyjs()
 using Parameters
 using DataFrames
 using Feather
+using RCall
 
 include("model.jl")
 include("stim.jl")
 
+# TODO: figure out bug that means after we change l3 params
+# we can't go back to baseline for l3
+
 # if !isdefined(:model)
 model = Model("/Users/davidlittle/Data",
-              l1params = LayerParams(c_mi = 0,c_a = 0,use_sig=true),
-              l2params = LayerParams(c_mi = 0,c_a = 0,use_sig=false))
+              l1params = LayerParams(c_mi = 0.6,c_a = 1,use_sig=false),
+              l2params = LayerParams(c_mi = 0.6,c_a = 1,use_sig=false),
+              l3params = LayerParams(c_mi = 0.6,c_a = 1))
 # end
 
 tone_len = 60ms
@@ -82,9 +87,31 @@ Base.squeeze(f,A,dims) = squeeze(f(A,dims),dims)
 shebb = squeeze(sum,hebb_dist[:,:,:,:,:],4)
 normed = shebb[:,:,:,1] ./ shebb[:,:,:,2]
 responses = respond(normed,1.0,0.4^2)
-
 plot(ustrip(durations),responses[1,:,:]',label=deltas')
+
 plot(ustrip(durations),normed[1,:,:]',label=deltas')
+
+r_indices = CartesianRange(size(normed))
+df = DataFrame(response = normed[:],
+               freq = ustrip([freqs[ii[1]] for ii in r_indices][:]),
+               delta = [deltas[ii[2]] for ii in r_indices][:],
+               time = ustrip([durations[ii[3]] for ii in r_indices][:]))
+
+R"""
+library(ggplot2)
+
+ggplot($df,aes(x=time,y=response,color=factor(delta))) + geom_line(size=1.5) +
+  xlab('duration (s)') + ylab('normed dist') +
+  theme_classic(base_size = 23) +
+  scale_color_brewer(palette='Spectral',name='Delta F (st)') +
+  theme(legend.position = c(0.2,0.85)) +
+  coord_cartesian(ylim=c(0,6))
+
+ggsave(paste('../../plots/buildup_D_1Hz_L1a_mi_L2a_mi_L3a_mi_',Sys.Date(),'.pdf',sep=''),
+    width=8,height=6)
+"""
+
+# plot(ustrip(durations),normed[1,:,:]',label=deltas')
 
 # plot(ustrip(durations),shebb[1,:,:,1]',label=deltas')
 # plot(ustrip(durations),shebb[1,:,:,2]',label=deltas')

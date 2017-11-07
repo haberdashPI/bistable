@@ -1,17 +1,37 @@
 import Unitful: ms, Hz, kHz, s
 using Plots; plotlyjs()
 using Distributions
+using RCall
+using DataFrames
+
 include("model.jl")
 include("stim.jl")
 
-model = Model("/Users/davidlittle/Data",
-              l1params = LayerParams(c_mi = 0,c_a = 0,use_sig=true),
-              l2params = LayerParams(c_mi = 0,c_a = 0,use_sig=false))
+macro matrix_as_df(X,x,y,z)
+  quote
+    let X = $X, ixs = CartesianRange(size(X))
+      DataFrame($z = X[:],
+                $x = map(x -> x[1],ixs)[:],
+                $y = map(x -> x[2],ixs)[:])
+    end
+  end
+end
+
+model = Model("/Users/davidlittle/Data")
 
 # NOTE: looking at output of single units makes basically zero sense. The
 # response is dominated by the bias, meaning that units only effectively alter
 # the output when multiple units are active.
-# heatmap(sig.(model.layer1.w .+ model.layer1.bv))
+df = @matrix_as_df(sig.(model.layer1.w .+ model.layer1.bv),input,unit,response)
+dir = "../../plots/meeting_2017_10_26/"
+
+R"""
+library(ggplot2)
+ggplot($df,aes(x=unit,y=input,fill=response)) + geom_raster() +
+  theme_classic() + xlab('Hidden Unit Index') + ylab('Visible Unit Index') +
+  scale_fill_gradient(low="black",high="white")
+ggsave(paste($dir,"visible_units.pdf",sep=""),width=6,height=5)
+"""
 
 # response to each visible unit being active at 10 and all other
 # units being 0. Consistent with normalized spectrogram for pure tone.
@@ -77,28 +97,24 @@ heatmap(R[indices[end-60:end],:])
 # calculate response distribution (assuming normal)
 # of units given tone presences and tone absence
 
-# TODO: in progress - calculate frequency bin MI
-# once that's working, we need to find
-# the "best frequency" for each unit.
-
-# TODO: I definitely think it is worth trying to use the sigmoid
-# transform in the model...
-
 function learn(x)
   n = length(x)
   μ = sum(x) / (n+1)
   sum((x .- μ).^2)
   σ = sqrt((1 + sum((x .- μ).^2)) / (n+1))
-
   Normal(μ,σ)
 end
 
-freqs = (10.^linspace(2,3.5,40))*Hz
+# NOTE: a lot about this plot changes unexpecatedly when we
+# alter the adaptation paramters, mmm....
+
+N = 40
+freqs = (10.^linspace(2,3.5,N))*Hz
 freq_resp = zeros(length(freqs),350);
 
 for (i,f) in enumerate(freqs)
   cur_tone = [silence(1s); tone(f, 1s)]
-  l1 = run(model,1,cur_tone,upto=1)
+  l1 = sig.(run(model,1,cur_tone,upto=1))
 
   # mutual information calculation assumes first half is silence and second the
   # tone in question
@@ -130,16 +146,33 @@ freq_weight = mapslices(freq_resp,1) do freqs
 end
 
 freq_width = mapslices(norm(freq_resp),1) do freqs
-  h = max(0.25,maximum(freqs))
+  h = max(0.15,maximum(freqs))
   sum(freqs .> 0.2h)
 end
 
 #freq_sort = sort(1:size(freq_resp,2),by=i -> 20freq_width[i])
 freq_sort = sort(1:size(freq_resp,2),by=i -> 50freq_width[i] + freq_weight[i])
 
-heatmap(freq_resp[:,freq_sort])
+heatmap(norm(freq_resp)[:,freq_sort])
 plot!(freq_width[freq_sort])
 
+X =
+df = @matrix_as_df(norm(freq_resp)[:,freq_sort],freq_bin,unit,response)
+
+df2 = DataFrame(bandwidth = freq_width[freq_sort],
+                index=1:length(freq_width))
+
+dir = "../../plots/meeting_2017_10_26/"
+
+R"""
+library(ggplot2)
+ggplot($df,aes(x = unit,y = freq_bin,fill = response)) + geom_raster() +
+  theme_classic() + xlab('Hidden Unit Index') + ylab('Frequency Bin') +
+  scale_fill_gradient2(low='black',mid='red',high='yellow',
+    name='normalized MI of tone vs. silence',midpoint=0.5) +
+  geom_line(data=$df2,aes(x=index,y=bandwidth,fill=0),color='white')
+ggsave(paste($dir,"freq_MI.pdf",sep=""),width=6,height=3)
+"""
 
 # okay, now I have a good way to organize layer 1, now show the responses,
 # accounting for default off and default on (by looking at biases) and correct
@@ -148,17 +181,42 @@ plot!(freq_width[freq_sort])
 
 seq = aba(60ms,10,1kHz,4)
 spect = run(model,1,seq,upto=0)
-l1_resp = run(model,1,seq,upto=1)
+l1_resp = sig.(run(model,1,seq,upto=1))
 l1_resp .= ifelse.((model.layer1.b .<= 0)',l1_resp,1 .- l1_resp)
 
-heatmap(l1_resp[:,reverse(freq_sort)]',subplot=1,layout=(2,1))
-plot!(model.spect,spect,subplot=2)
+df_l1 = @matrix_as_df(l1_resp[:,reverse(freq_sort)]',bin,time,response)
+df_spect = @matrix_as_df(spect,time,bin,response)
+
+dir = "../../plots/meeting_2017_10_26/"
+
+R"""
+library(ggplot2)
+library(cowplot)
+
+g_l1 = ggplot($df_l1,aes(x=time,y=bin,fill=response)) + geom_raster() +
+  xlab('Time Bin') + ylab('Unit') +
+  scale_fill_gradient2(low='black',mid='red',high='yellow',
+    name='"Response"',midpoint=0.5)
+
+g_spect = ggplot($df_spect,aes(x=time,y=bin,fill=response)) + geom_raster() +
+  xlab('Time Bin') + ylab('Frequency Bin') +
+  scale_fill_gradient2(low='black',mid='red',high='yellow',
+    name='Response',midpoint=10)
+
+ggdraw() +
+  draw_plot(g_l1,x=0,y=0,width=0.5,height=1) +
+  draw_plot(g_spect,x=0.5,y=0,width=0.5,height=1)
+
+ggsave(paste($dir,"l1_ordered.pdf",sep=""),width=6,height=6)
+"""
 
 # what to do for layer 2?
 #
 # I want to look at the response of elements to
 # single tones, rising and falling tones
 # and figure out if there is a way to organize them
+
+# next step: look at MI of each unit
 
 scale = Float64[]
 freqs = 10.^(linspace(2,3.5,20))
@@ -174,3 +232,29 @@ l2_resps = run(model,1:3,scale,upto=2)
 heatmap(l2_resps[1]')
 heatmap(l2_resps[2]')
 heatmap(l2_resps[3]')
+
+df = DataFrame()
+df_ = @matrix_as_df(l2_resps[1],time,bin,response)
+df_[:tau] = 1
+df = vcat(df,df_)
+
+df_ = @matrix_as_df(l2_resps[2],time,bin,response)
+df_[:tau] = 2
+df = vcat(df,df_)
+
+df_ = @matrix_as_df(l2_resps[3],time,bin,response)
+df_[:tau] = 3
+df = vcat(df,df_)
+
+
+R"""
+library(ggplot2)
+
+ggplot($df,aes(x=time,y=bin,fill=response)) + geom_raster() +
+  xlab('time bin') + ylab('unit') +
+  facet_wrap(~tau,scale="free_x") +
+  scale_fill_gradient(low="black",high="white") +
+  theme_classic()
+
+ggsave(paste($dir,"l2_raw.pdf",sep=""),width=8,height=4)
+"""

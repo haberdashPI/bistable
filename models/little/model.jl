@@ -202,15 +202,32 @@ end
 
 struct Layer3
   thresh::Float32
+  params::LayerParams
+  delta_t::Seconds
 end
 
+# function Layer3(thresh::Float32,params::LayerParams,layer2::Layer2)
+#   Layer3(thresh,params,delta_t(layer2))
+# end
+
+delta_t(m::Layer3) = m.delta_t
+
 function run(m::Layer3,x::Matrix{Float32})
+  p = m.params
   resp = zeros(Float32,size(x))
   C = zeros(Float32,size(x,2),size(x,2))
-  @views for i in 1:size(x,1)
+  A = zeros(C)
+  c_mi = p.c_mi / length(C)
+  c_a = delta_t(m) / p.τ_a
+  for i in 1:size(x,1)
     k = x[i,:] .* sign.(x[i,:].-m.thresh)
-    C .+= k .* k'
-    # for j in 1:size(C,1) C[j,j] = 0.0 end
+    # TODO: create the adaptation and MI dynamics here
+    C .+= k .* k' .-
+      p.c_a .* A .-
+      (C .- sum(C)).*c_mi
+      # for j in 1:size(C,1) C[j,j] = 0.0 end
+
+    A .+= c_a.*(C .- A)
 
     resp[i,:] = 2maxnorm!(C*x[i,:],1)
   end
@@ -225,7 +242,7 @@ struct Model
   spect::AuditorySpectrogram
   layer1::Layer1
   layer2::Vector{Layer2}
-  layer3::Layer3
+  layer3::Vector{Layer3}
 end
 
 ########################################
@@ -235,6 +252,7 @@ const ntau = 4 #8
 function Model(dir;
                l1params = LayerParams(),
                l2params = LayerParams(),
+               l3params = LayerParams(),
                layer3_thresh=0.9,
                spect_len=10,spect_decay_tc=8,
                spect_nonlinear=-2,spect_octave_shift=-1)
@@ -251,12 +269,12 @@ function Model(dir;
   layer1 = Layer1(filename,audio_spect,l1params)
 
   layer2 = Vector{Layer2}(ntau)
+  layer3 = Vector{Layer3}(ntau)
   for tau in 1:ntau
     info("Loading Layer2(tau=$tau)...")
     layer2[tau] = Layer2(filename,layer1,tau,l2params)
+    layer3[tau] = Layer3(layer3_thresh,l3params,delta_t(layer2[tau]))
   end
-
-  layer3 = Layer3(layer3_thresh)
 
   return Model(audio_spect,layer1,layer2,layer3)
 end
@@ -288,7 +306,7 @@ function run(model::Model,taus,x::Matrix;upto=3)
   for tau in taus
     l2[tau] = run(model.layer2[tau],l1)
     if upto > 2
-      l3[tau] = run(model.layer3,l2[tau])
+      l3[tau] = run(model.layer3[tau],l2[tau])
     end
   end
   if upto == 2

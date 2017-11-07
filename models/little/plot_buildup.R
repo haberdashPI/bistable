@@ -15,6 +15,14 @@ ggplot(mdf,aes(x=time,y=response,color=factor(delta))) + geom_line() +
   theme(legend.position = c(0.9,0.5))
 ggsave(paste('../../plots/buildup_cont_',Sys.Date(),".pdf",sep=""))
 
+## PRESENTATION MODE VERSION
+ggplot(mdf,aes(x=time,y=response,color=factor(delta))) + geom_line(size=1.5) +
+  xlab('duration (s)') + ylab('% streaming') +
+  theme_classic(base_size = 23) +
+  scale_color_brewer(palette='Spectral',name='Delta F (st)') +
+  theme(legend.position = c(0.75,0.5))
+ggsave(paste('../../plots/buildup_cont_',Sys.Date(),".pdf",sep=""),width=8,height=6)
+
 ggplot(df,aes(x=time,y=response,color=factor(delta))) + geom_line() +
   facet_wrap(~freq) +
   xlab('duration (s)') + ylab('% streaming') +
@@ -22,6 +30,16 @@ ggplot(df,aes(x=time,y=response,color=factor(delta))) + geom_line() +
   scale_color_brewer(palette='Spectral',name='Delta F (st)') +
   theme(legend.position = c(0.5,0.15))
 ggsave(paste('../../plots/buildup_cont_by_freq_',Sys.Date(),".pdf",sep=""))
+
+## PRESENTATION MODE VERSION
+ggplot(subset(df,freq %in% c(500,750,1000,2000)),aes(x=time,y=response,color=factor(delta))) +
+  geom_line(size=1.5) +
+  facet_wrap(~freq) +
+  xlab('duration (s)') + ylab('% streaming') +
+  theme_classic(base_size = 23) +
+  scale_color_brewer(palette='Spectral',name='Delta F (st)') +
+  theme()
+ggsave(paste('../../plots/buildup_cont_by_freq_',Sys.Date(),".pdf",sep=""),width=8,height=6)
 
 df = read_feather('../../data/buildup_cont_L1_2017-09-05_12.14.feather')
 
