@@ -36,7 +36,7 @@ sig(x) = 1 / (1 + exp(-x))
 
 function adapt(fn,layer,x,indices=1:size(x,1))
   p = layer.params
-  y_t = similar(x,size(layer.w,2))
+  y_t = fill(zero(x[1]),size(layer.w,2))
   c_a = delta_t(layer) / p.τ_a
   c_mi = p.c_mi / length(y_t)
   a = zeros(y_t)
