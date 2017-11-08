@@ -16,8 +16,8 @@ function standardize!(x,dims...)
   x .= x ./ max.(1e-16,std(x,dims...))
 end
 
-function maxnorm!(x,dims)
-  x ./= max.(1e-16,abs.(maximum(x,dims)))
+function maxnorm!(x,dims...)
+  x ./= max.(1e-16,abs.(maximum(x,dims...)))
 end
 
 function reshapefor(x,model)
@@ -206,6 +206,10 @@ struct Layer3
   delta_t::Seconds
 end
 
+Base.show(io::IO,x::Layer3) =
+  !get(io,:compact,false) ? write(io,"Layer3(θ=$(x.thresh))") :
+  write(io,"L3(θ=$(x.thresh))")
+
 # function Layer3(thresh::Float32,params::LayerParams,layer2::Layer2)
 #   Layer3(thresh,params,delta_t(layer2))
 # end
@@ -267,7 +271,6 @@ function Model(dir;
 
   filename = joinpath(dir,"model.h5")
   layer1 = Layer1(filename,audio_spect,l1params)
-
   layer2 = Vector{Layer2}(ntau)
   layer3 = Vector{Layer3}(ntau)
   for tau in 1:ntau
