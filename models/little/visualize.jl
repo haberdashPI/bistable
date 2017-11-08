@@ -1,3 +1,6 @@
+################################################################################
+# Setup
+
 import Unitful: ms, Hz, kHz, s
 using Plots; plotlyjs()
 using Distributions
@@ -7,7 +10,7 @@ using DataFrames
 include("model.jl")
 include("stim.jl")
 
-macro matrix_as_df(X,x,y,z)
+macro mat_asdf(X,x,y,z)
   quote
     let X = $X, ixs = CartesianRange(size(X))
       DataFrame($z = X[:],
@@ -19,10 +22,12 @@ end
 
 model = Model("/Users/davidlittle/Data")
 
+################################################################################
+
 # NOTE: looking at output of single units makes basically zero sense. The
 # response is dominated by the bias, meaning that units only effectively alter
 # the output when multiple units are active.
-df = @matrix_as_df(sig.(model.layer1.w .+ model.layer1.bv),input,unit,response)
+df = @mat_asdf(sig.(model.layer1.w .+ model.layer1.bv),input,unit,response)
 dir = "../../plots/meeting_2017_10_26/"
 
 R"""
@@ -156,8 +161,7 @@ freq_sort = sort(1:size(freq_resp,2),by=i -> 50freq_width[i] + freq_weight[i])
 heatmap(norm(freq_resp)[:,freq_sort])
 plot!(freq_width[freq_sort])
 
-X =
-df = @matrix_as_df(norm(freq_resp)[:,freq_sort],freq_bin,unit,response)
+df = @mat_asdf(norm(freq_resp)[:,freq_sort],freq_bin,unit,response)
 
 df2 = DataFrame(bandwidth = freq_width[freq_sort],
                 index=1:length(freq_width))
@@ -184,8 +188,8 @@ spect = run(model,1,seq,upto=0)
 l1_resp = sig.(run(model,1,seq,upto=1))
 l1_resp .= ifelse.((model.layer1.b .<= 0)',l1_resp,1 .- l1_resp)
 
-df_l1 = @matrix_as_df(l1_resp[:,reverse(freq_sort)]',bin,time,response)
-df_spect = @matrix_as_df(spect,time,bin,response)
+df_l1 = @mat_asdf(l1_resp[:,reverse(freq_sort)]',bin,time,response)
+df_spect = @mat_asdf(spect,time,bin,response)
 
 dir = "../../plots/meeting_2017_10_26/"
 
@@ -234,15 +238,15 @@ heatmap(l2_resps[2]')
 heatmap(l2_resps[3]')
 
 df = DataFrame()
-df_ = @matrix_as_df(l2_resps[1],time,bin,response)
+df_ = @mat_asdf(l2_resps[1],time,bin,response)
 df_[:tau] = 1
 df = vcat(df,df_)
 
-df_ = @matrix_as_df(l2_resps[2],time,bin,response)
+df_ = @mat_asdf(l2_resps[2],time,bin,response)
 df_[:tau] = 2
 df = vcat(df,df_)
 
-df_ = @matrix_as_df(l2_resps[3],time,bin,response)
+df_ = @mat_asdf(l2_resps[3],time,bin,response)
 df_[:tau] = 3
 df = vcat(df,df_)
 
