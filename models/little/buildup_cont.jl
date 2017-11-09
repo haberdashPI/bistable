@@ -11,15 +11,26 @@ include("stim.jl")
 # TODO: figure out bug that means after we change l3 params
 # we can't go back to baseline for l3
 
+# model progression,
+#
+# 1. all use_sig = false (with and without l3 threshold function change)
+# 2. use_sig l1 = true, l2,l3 = false
+# 3. use_sig l1,l2 = true, l3 = false, l3thresh = 0.4
+# 4. use_sig l1,l2 = true, l3 = false, l3thresh = 0.1
+
+# TODO: create a function that run this benchmark
+# rather than running this as a script
+
 # if !isdefined(:model)
 model = Model("/Users/davidlittle/Data",
-              l1params = LayerParams(c_mi = 0.6,c_a = 1,use_sig=false),
-              l2params = LayerParams(c_mi = 0.6,c_a = 1,use_sig=false),
-              l3params = LayerParams(c_mi = 0.6,c_a = 1))
+              l1params = LayerParams(c_mi = 0,c_a = 0,use_sig=true),
+              l2params = LayerParams(c_mi = 0,c_a = 0,use_sig=false),
+              l3params = LayerParams(c_mi = 0,c_a = 0,use_sig=false))
 # end
 
 tone_len = 60ms
 deltas = [1, 3, 6, 9]
+# deltas = [7, 8, 8.5, 9, 10, 11]
 freqs = [1000Hz]#[500Hz 750Hz 1000Hz 1250Hz 1500Hz 1750Hz 2000Hz]
 duration = 10s
 durations = linspace(500.0ms,duration,20)
@@ -100,15 +111,15 @@ df = DataFrame(response = normed[:],
 R"""
 library(ggplot2)
 
-ggplot($df,aes(x=time,y=response,color=factor(delta))) + geom_line(size=1.5) +
+ggplot($df,aes(x=time,y=response,color=factor(delta))) +
+  geom_line(size=3,color='black',aes(group=delta)) + geom_line(size=1.5) +
   xlab('duration (s)') + ylab('normed dist') +
   theme_classic(base_size = 23) +
-  scale_color_brewer(palette='Spectral',name='Delta F (st)') +
-  theme(legend.position = c(0.2,0.85)) +
-  coord_cartesian(ylim=c(0,6))
+  scale_color_brewer(palette='YlGn',name='Delta F (st)') +
+  theme()
 
-ggsave(paste('../../plots/buildup_D_1Hz_L1a_mi_L2a_mi_L3a_mi_',Sys.Date(),'.pdf',sep=''),
-    width=8,height=6)
+# ggsave(paste('../../plots/buildup_D_1Hz_L1a_mi_L2a_mi_L3a_mi_',Sys.Date(),'.pdf',sep=''),
+#     width=8,height=6)
 """
 
 # plot(ustrip(durations),normed[1,:,:]',label=deltas')

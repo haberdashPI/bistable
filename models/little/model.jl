@@ -224,7 +224,7 @@ function run(m::Layer3,x::Matrix{Float32})
   c_mi = p.c_mi / length(C)
   c_a = delta_t(m) / p.τ_a
   for i in 1:size(x,1)
-    k = x[i,:] .* sign.(x[i,:].-m.thresh)
+    k = x[i,:] .* max.(0f0,x[i,:].-m.thresh)
     # TODO: create the adaptation and MI dynamics here
     C .+= k .* k' .-
       p.c_a .* A .-

@@ -2,14 +2,20 @@
 
 # Bistability
 
+# RESET!!!
+
+okay, now we're going to think about how this works with the cortical model,
+rather than the DNN
+
 things I need to be working on (by priority)
 X. plot response of L1 to varying delta F
 2. bistability in layer 1 (i.e. via appropriate inhibition patterns in layer 1)
 3. visualization of layer 2 and 3
-4. fundamentals of bistable models, expanding to higher dimensions
+X. fundamentals of bistable models, expanding to higher dimensions
 X. figure out what the heck is up with sigmoid screwing up
    model behavior for L1
 6. what about sigmoid messing up L2 and L3?
+   - note: does it help if we use 0 instead of -1 in L3
   
 # File organization
 
