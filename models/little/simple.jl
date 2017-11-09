@@ -148,7 +148,6 @@ ggplot_heat(y,t,"20 Unit, MI = 10 (noise), distance-based MI (extended)",
             "simple_20unit_dist_mi_10_noise_extended.pdf")
 
 # what about when all inputs turn on simultaneously?
-
 spikes = ones(length(t),20)
 
 y,a,mi = adaptmi(identity,noise(3spikes,100ms,0.5),
@@ -164,6 +163,28 @@ y,a,mi = adaptmi(identity,3spikes,
 ggplot_heat(y,t,"20 Unit, immediate-on MI = 10, distance-based MI",
             "simple_20unit_immediate_dist_mi_10.pdf")
 
+
+spikes = zeros(length(t),20)
+spikes[:,1:4] = ones(spikes[:,1:4])
+spikes[:,15:19] = ones(spikes[:,15:19])
+y,a,mi = adaptmi(identity,3spikes,
+                 τ_a=1.5s,c_a=3,τ_mi=50ms,c_mi=10,shape=sig,
+                 W_mi=W_mi)
+ggplot_heat(y,t,"20 Unit, two spots MI = 10, distance-based MI",
+            "simple_20unit_two_spot_dist_mi_10.pdf")
+
+
+spikes = zeros(length(t),20)
+spikes[:,1:4] = ones(spikes[:,1:4])
+spikes[:,15:19] = ones(spikes[:,15:19])
+y,a,mi = adaptmi(identity,noise(3spikes,100ms,0.5),
+                 τ_a=1.5s,c_a=3,τ_mi=50ms,c_mi=10,shape=sig,
+                 W_mi=W_mi)
+ggplot_heat(y,t,"20 Unit, two spots MI = 10 (noise), distance-based MI",
+            "simple_20unit_two_spot_dist_mi_10_nosie.pdf")
+
+
+#=
 # what about when we use lateral, rather than global inhibition?
 # TODO: below is unfinished, I have no clear conclusion yet
 ψ(x,y,k=4) = let t = x-y
@@ -196,6 +217,7 @@ y,a,mi = adaptmi(identity,noise(3spikes,100ms,0.5),
 y,a,mi = adaptmi(identity,noise(3spikes,100ms,1.5),
                  τ_a=1.5s,c_a=3,τ_mi=50ms,c_mi=10,shape=sig,
                  W_mi=W_mi)
+=#
 
 # TODO: look at different subsets of neurons firing
 # TODO: find some way to have the lateral inhibition look

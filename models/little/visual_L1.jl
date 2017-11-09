@@ -28,9 +28,6 @@ model = Model("/Users/davidlittle/Data",
 
 ################################################################################
 
-# NOTE: a lot about this plot changes unexpecatedly when we
-# alter the adaptation paramters, mmm....
-
 N = 40
 freqs = (10.^linspace(2,3.5,N))*Hz
 sil_resp = zeros(length(freqs),350);
