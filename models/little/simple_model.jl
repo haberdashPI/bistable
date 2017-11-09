@@ -3,27 +3,6 @@ using Unitful: s, ms, ustrip
 # e.g. with:
 sig(x) = 1/(1+exp(-10(x-0.5)))
 
-
-function adaptmi_old(fn,x,τ_a,c_a,c_mi,shape=identity,Δt=1ms)
-  y = similar(x)
-  a = similar(x)
-
-  y_t = zeros(size(x,2))
-  a_t = zeros(size(x,2))
-
-  c_mi = c_mi / (length(y_t)-1)
-  dt_a = Δt / τ_a
-  for t in 1:size(x,1)
-    y_t = shape.(fn(x[t,:]) .- c_a.*a_t .- c_mi.*(sum(y_t) .- y_t))
-    a_t .+= dt_a .* (y_t .- a_t)
-
-    y[t,:] .= y_t
-    a[t,:] = a_t
-  end
-
-  y,a
-end
-
 function adaptmi(fn,x::AbstractArray{T};
                  τ_a=1.5s,c_a=5,τ_mi=50ms,c_mi=10,
                  shape::Function=identity,Δt=1ms,
@@ -36,7 +15,10 @@ function adaptmi(fn,x::AbstractArray{T};
   a_t = zeros(T,size(x,2))
   mi_t = zeros(T,size(x,2))
 
-  c_mi = c_mi / (length(y_t)-1)
+  if length(y_t) > 1
+    c_mi = c_mi / (length(y_t)-1)
+  end
+
   dt_a = Δt / τ_a
   dt_mi = Δt / τ_mi
   for t in 1:size(x,1)

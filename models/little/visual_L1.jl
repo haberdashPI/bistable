@@ -13,7 +13,7 @@ include("stim.jl")
 
 macro mat_asdf(X,x,y,z)
   quote
-    let X = $X, ixs = CartesianRange(size(X))
+    let X = $(esc(X)), ixs = CartesianRange(size(X))
       DataFrame($z = X[:],
                 $x = map(x -> x[1],ixs)[:],
                 $y = map(x -> x[2],ixs)[:])
@@ -72,7 +72,7 @@ df = @mat_asdf(diffs[:,freq_sort],freq_bin,unit,response)
 
 df2 = DataFrame(bandwidth = freq_stats[2,freq_sort],
                 freq = freq_stats[1,freq_sort],
-                index=1:length(freq_width))
+                index=1:length(freq_sort))
 
 dir = "../../plots/meeting_2017_11_09/"
 
@@ -83,7 +83,8 @@ ggplot($df,aes(x = unit,y = freq_bin,fill = response)) + geom_raster() +
   scale_fill_gradient2(low='black',mid='red',high='yellow',
     name='|r_silence - r_tone|',midpoint=0.5) +
   geom_line(data=$df2,aes(x=index,y=bandwidth,fill=0),color='black',size=3) +
-  geom_line(data=$df2,aes(x=index,y=bandwidth,fill=0),color='white')
+  geom_line(data=$df2,aes(x=index,y=bandwidth,fill=0),color='white') +
+  ggtitle("L1 Unit Organization by Bandwidth and Frequency")
 ggsave(paste($dir,"l1_tone_map.pdf",sep=""),width=8,height=6)
 """
 
@@ -99,6 +100,7 @@ for f in [250Hz, 500Hz, 1kHz, 2kHz]
 
   freq_str = string(round(Int,ustrip(uconvert(Hz,f))))*"Hz"
   dir = "../../plots/meeting_2017_11_09/"
+
 R"""
   library(ggplot2)
   library(cowplot)
@@ -112,13 +114,15 @@ R"""
     xlab('Time Bin') + ylab('Frequency Bin') +
     scale_fill_gradient2(low='black',mid='red',high='yellow',
       name='Response',midpoint=10)
+  body = plot_grid(g_l1,g_spect,ncol=1,align='v',rel_heights=c(3,1))
+  title = ggdraw() + draw_label(paste("L1 ABA (",$freq_str,",df = 6)",sep=""),
+                                fontface='bold')
 
-  ggdraw() +
-    draw_plot(g_l1,x=0,y=0.25,width=1,height=0.75) +
-    draw_plot(g_spect,x=0,y=0,width=0.94,height=0.25)
-
-  ggsave(paste($dir,"l1_aba_",$freq_str,"_delta6.pdf",sep=""),width=8,height=8)
+  final = plot_grid(title,body,ncol=1,rel_heights=c(0.1,1))
+  save_plot(paste($dir,"l1_aba_",$freq_str,"_delta6.pdf",sep=""),final,
+            base_height=6)
 """
+
 end
 
 
@@ -146,11 +150,14 @@ R"""
     xlab('Time Bin') + ylab('Frequency Bin') +
     scale_fill_gradient2(low='black',mid='red',high='yellow',
       name='Response',midpoint=10)
+  body = plot_grid(g_l1,g_spect,ncol=1,align='v',rel_heights=c(3,1))
 
-  ggdraw() +
-    draw_plot(g_l1,x=0,y=0.25,width=1,height=0.75) +
-    draw_plot(g_spect,x=0,y=0,width=0.94,height=0.25)
+  title = ggdraw() +
+    draw_label(paste("L1 ABA (1000Hz, df = ",$delta_str,")",sep=""),
+               fontface='bold')
 
-  ggsave(paste($dir,"l1_aba_500Hz_delta",$delta_str,".pdf",sep=""),width=8,height=8)
+  final = plot_grid(title,body,ncol=1,rel_heights=c(0.1,1))
+  save_plot(paste($dir,"l1_aba_1000Hz_delta",$delta_str,".pdf",sep=""),final,
+            base_height=6)
 """
 end
