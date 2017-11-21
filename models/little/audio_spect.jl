@@ -1,7 +1,7 @@
 using DSP
 using HDF5
 import Base: run
-
+using TimedSound
 using RecipesBase
 
 struct AuditorySpectrogram
@@ -16,8 +16,9 @@ Base.show(io::IO,x::AuditorySpectrogram) =
   write(io,"AuditorySpectrogram(len=$(x.len),decay_tc=$(x.decay_tc),"*
         "nonlinear=$(x.nonlinear),octave_shift=$(x.octave_shift))")
 
-function AuditorySpectrogram(filename::String;fs=8000,len=10,decay_tc=8,
-                             nonlinear=-2,octave_shift=-1)
+function AuditorySpectrogram(filename::String;
+                             fs=ustrip(TimedSound.samplerate()),
+                             len=10,decay_tc=8,nonlinear=-2,octave_shift=-1)
   @assert fs == 8000 "The only sample rate supported is 8000 Hz"
   h5open(filename) do file
     r = read(file,"/real")
@@ -26,16 +27,15 @@ function AuditorySpectrogram(filename::String;fs=8000,len=10,decay_tc=8,
   end
 end
 
-# a recipe for plotting the spectrogram (via Plots.jl)
+freqs(as::AuditorySpectrogram,data::AbstractMatrix) =
+  1000.*2.^(indices(data,2)./24 .- 2.5 .+ as.octave_shift)
+times(as::AuditorySpectrogram,data::AbstractMatrix) =
+  indices(data,1) ./ as.fs .* frame_length(as)
+
 @recipe function plot(as::AuditorySpectrogram,data::Matrix)
-  y_oct = floor(size(data,2)/24)
-
-  x = indices(data,1)/as.fs*frame_length(as)
-  y = 1000*2.^(indices(data,2)/24 .- (y_oct-2.5) .+ as.octave_shift)
-
   @series begin
     seriestype := :heatmap
-    (x,y,data')
+    (times(as,data),freqs(as,data),data')
   end
 end
 
@@ -55,26 +55,29 @@ function sigmoid(x,fac)
 end
 
 frame_length(s::AuditorySpectrogram) = round(Int,s.len * 2^(4+s.octave_shift))
+Δt(as::AuditorySpectrogram) = s * frame_length(as) / as.fs
 
-function run(s::AuditorySpectrogram,x::Vector)
+(s::AuditorySpectrogram)(x::TimedSound.Sound{8000,T,1}) where T = s(Float64.(x))
+(s::AuditorySpectrogram)(x::TimedSound.Sound{R}) where R =
+  error("sound must be 8kHz mono.")
+
+function (s::AuditorySpectrogram)(x::Vector{T}) where T
   L, M = size(s.cochba)	# p_max = L - 2
   L_x = length(x)	# length of input
-
-  # octave shift, nonlinear factor, frame length, leaky integration
   frame_len	= frame_length(s)
 
   # decaying factor
-  α = iszero(s.decay_tc) ? 0 : exp(-1/(s.decay_tc*2^(4+s.octave_shift)))
+  α = iszero(s.decay_tc) ? zero(T) : exp(-1/(s.decay_tc*2^(4+s.octave_shift)))
 
   # hair cell time constant in ms
-  haircell_tc = 0.5
+  haircell_tc = 1//2
   β = exp(-1/(haircell_tc*2^(4+s.octave_shift)))
 
-  # get data, allocate memory for ouput
   N = ceil(Int,L_x / frame_len) # of frames
-  length(x) == N*frame_len || push!(x,0.0)
-  v5 = zeros(N, M-1)
-  #CF = 440 * 2 .^ ((-31:97)/24)
+  if length(x) < N*frame_len
+    append!(x,fill(zero(T),N*frame_len - length(x)))
+  end
+  v5 = fill(zero(T),N, M-1)
 
   #######################################
   # last channel (highest frequency)

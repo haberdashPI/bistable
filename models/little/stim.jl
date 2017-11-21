@@ -1,7 +1,7 @@
 using Unitful
-using TimedPlayback
+using TimedSound
 
-setup_sound(sample_rate=8000Hz)
+setup_sound(sample_rate=8kHz)
 
 function alter_ab(tone_len,ab_repeats,freq,delta)
   space = silence(tone_len,sample_rate=fs)
@@ -83,6 +83,26 @@ function aba(tone_len,repeats,freq,delta)
   aba_seq = Float64[]
   for i = 1:repeats
     aba_seq = [aba_seq; a; b; a; space]
+  end
+
+  aba_seq
+  # [a; space; a; space; aba_seq]
+end
+
+function aba(tone_len,gap_len,repeats,freq,delta)
+  space = silence(tone_len)
+
+  a_freq=freq
+  b_freq=freq*(2^(delta/12))
+
+  a = tone(a_freq,tone_len)
+  b = tone(b_freq,tone_len)
+  gap = silence(gap_len)
+  space = silence(tone_len)
+
+  aba_seq = Float64[]
+  for i = 1:repeats
+    aba_seq = [aba_seq; a; gap; b; gap; a; gap; space; gap]
   end
 
   aba_seq
