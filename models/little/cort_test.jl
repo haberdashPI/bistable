@@ -6,7 +6,7 @@ setup_sound(sample_rate=8kHz)
 
 spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5")
 cort = CorticalModel(spect,rates=[2,8,32,64],scales=[0.125,1,4,16])
-tempc = TCAnalysis(cort=cort,sparsity=0.96)
+tempc = TCAnalysis(cort=cort,sparsity=0.96,frame_len=4,prior=3.0)
 
 # x = playable(sound("../../test.wav"))[0s .. 1s,:left]
 # y = cort(spect(x));
@@ -21,7 +21,7 @@ R"""
 ggsave('../../plots/run_2017_11_21/cort_6st.pdf')
 """
 
-plot_cort(cort,yc)
+plot_cort(tempc,yc)
 R"""
 ggsave('../../plots/run_2017_11_21/temp_6st.pdf')
 """

@@ -13,9 +13,9 @@ end
 scales(cm::CorticalModel) = cm.scales
 rates(cm::CorticalModel) = [.-cm.rates; cm.rates]
 freqs(cm::CorticalModel,data::Array{T,4}) where T =
-    @views freqs(cm.aspect,data[1,1,:,:])
+    @views freqs(cm.aspect,data[:,1,1,:])
 times(cm::CorticalModel,data::Array{T,4}) where T =
-    @views times(cm.aspect,data[1,1,:,:])
+    @views times(cm.aspect,data[:,1,1,:])
 
 function CorticalModel(aspect::AuditorySpectrogram;
                        rates=2.^(1:0.5:5),scales=2.^(-2:0.5:3),
@@ -31,13 +31,13 @@ end
   for (i,x) in enumerate(CartesianRange((N_r,N_s)))
     r,s = x.I
 
-    x = @views xvals(cm.aspect,data[1,1,:,:])
-    y = @views yvals(cm.aspect,data[1,1,:,:])
+    x = @views times(cm.aspect,data[:,1,1,:])
+    y = @views freqs(cm.aspect,data[:,1,1,:])
 
     @series begin
       seriestype := :heatmap
       subplot := i
-      (x,y,data[r,s,:,:]')
+      (x,y,data[:,r,s,:]')
     end
   end
 end
@@ -52,8 +52,8 @@ function pad(x,lens::T...) where T <: Number
   y
 end
 
-# transforms a bandpass frequency response into either a high or low pass filter
-# (or leave it untouched)
+# transforms a bandpass frequency response into either a high or low pass
+# response (or leaves it untouched)
 function askind(H,len,maxi,kind)
   if kind == :low
     old_sum = sum(H)
@@ -96,13 +96,6 @@ function rate_filter(rate,len,spect_len,kind)
   H .* exp.(A*im)
 end
 
-# TODO: eventually, after I've tested this against aud2cor.
-
-# 1. Change implementation to pad the signals based on nextprod rather than just
-# doubling the signals
-#
-# 2. Change implementation to order by rate, scale, time, frequency
-# instead of scale, rate, time, frequency
 function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
   N_t, N_f = size(s)
   N_r, N_s = length(rates), length(scales)
@@ -116,7 +109,7 @@ function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
   S = rfft(pad(s',2.*reverse(size(s))))
   st_ifft = plan_irfft(S,2size(s,2))
 
-  cr = zeros(eltype(s), 2N_r, N_s, N_t, N_f)
+  cr = zeros(eltype(s), N_t, 2N_r, N_s, N_f)
   for (ti,rate) in enumerate(rates)
 	  # rate filtering
 	  HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
@@ -140,7 +133,7 @@ function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
 
 			  # convolve current filter with spectrogram
         Z = (st_ifft * ((HR'.*HS) .* S))
-			  cr[(sgn==1)N_r+ti, fi, :, :] = view(Z,1:N_f,1:N_t)'
+			  cr[:,(sgn==1)N_r+ti, fi, :] = view(Z,1:N_f,1:N_t)'
 		  end
 	  end
   end
@@ -148,15 +141,14 @@ function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
   cr
 end
 
-function plot_cort(cort::CorticalModel,y)
+function plot_cort(cort,y)
   ixs = CartesianRange(size(y))
   at(ixs,i) = map(x -> x[i],ixs)
 
   df = DataFrame(response = y[:],
-                 rate = rates(cort)[at(ixs,1)][:],
-                 scale = scales(cort)[at(ixs,2)][:],
-                 time = times(cort,y)[at(ixs,3)][:],
-                 frequency = freqs(cort,y)[at(ixs,4)][:],
+                 time = times(cort,y)[at(ixs,1)][:],
+                 rate = rates(cort)[at(ixs,2)][:],
+                 scale = scales(cort)[at(ixs,3)][:],
                  freq_bin = at(ixs,4)[:])
 
   fbreaks = 2.0.^(-3:2)
