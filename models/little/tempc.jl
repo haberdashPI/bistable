@@ -2,19 +2,19 @@ using Parameters
 using ProgressMeter
 include("cortical.jl")
 
-@with_kw struct TCAnalysis
+@with_kw struct TCAnalysis <: CorticalRepresentation
   cort::CorticalModel
   τ::Seconds{Float64} = 1s
   sparsity::Float64 = 0.8
   frame_len = 10
   prior::Float64 = 1.0
 end
-Δt(tc::TCAnalysis) = Δt(tc.cort)
+Δt(tc::TCAnalysis) = Δt(tc.cort) * tc.frame_len
 
 scales(tc::TCAnalysis) = scales(tc.cort)
 rates(tc::TCAnalysis) = rates(tc.cort)
-freqs(tc::TCAnalysis) = freqs(tc.cort)
-times(tc::TCAnalysis) = times(tc.cort) .* tc.frame_len
+freqs(tc::TCAnalysis,y) = freqs(tc.cort,y)
+times(tc::TCAnalysis,y) = times(tc.cort,y) .* tc.frame_len
 
 # effecient algorithm to find the quantile of a sparse matrix
 # when we know there are no negative entries
@@ -73,13 +73,13 @@ function (tc::TCAnalysis)(x)
   N = prod(frame_dims)
   C = spzeros(eltype(x),N,N)
   Csparsity = 1-(1-tc.sparsity)^2
-  c_t = Δt(tc) / tc.τ
+  c_t = Δt(tc.cort) / tc.τ
 
   sparsity = 0
   total = 0
   @showprogress for t in 1:size(x,1)
     x_t = sparsify(@views(x[t,frame_indices]),tc.sparsity)
-    C = C .+ c_t.*(x_t .* x_t' .- C) # note: .+= is memory inefficient
+    C = C .+ c_t.*(x_t .* x_t' .- C) # note: .+= is slow (memory inefficient)
 
     # @show t
     # @show t % tc.frame_len

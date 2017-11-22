@@ -3,7 +3,9 @@ using DataFrames
 using RCall
 include("audio_spect.jl")
 
-struct CorticalModel
+abstract type CorticalRepresentation end
+
+struct CorticalModel <: CorticalRepresentation
   aspect::AuditorySpectrogram
   rates::Vector{Float64}
   scales::Vector{Float64}
@@ -141,7 +143,7 @@ function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
   cr
 end
 
-function plot_cort(cort,y)
+function rplot(cort::CorticalRepresentation,y)
   ixs = CartesianRange(size(y))
   at(ixs,i) = map(x -> x[i],ixs)
 

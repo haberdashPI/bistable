@@ -1,3 +1,5 @@
+using RCall
+using DataFrames
 using DSP
 using HDF5
 import Base: run
@@ -37,6 +39,34 @@ times(as::AuditorySpectrogram,data::AbstractMatrix) =
     seriestype := :heatmap
     (times(as,data),freqs(as,data),data')
   end
+end
+
+function rplot(as::AuditorySpectrogram,data::Matrix)
+  ixs = CartesianRange(size(data))
+  at(ixs,i) = map(x -> x[i],ixs)
+
+  df = DataFrame(response = data[:],
+                 time = times(as,data)[at(ixs,1)][:],
+                 freq_bin = at(ixs,2)[:])
+
+  fbreaks = 2.0.^(-3:2)
+  fs = freqs(as,data)
+  findices = mapslices(abs.(1000.0.*fbreaks .- fs'),2) do row
+    _, i = findmin(row)
+    i
+  end
+
+R"""
+
+  library(ggplot2)
+
+  ggplot($df,aes(x=time,y=freq_bin,fill=response)) +
+    geom_raster() +
+    scale_y_continuous(breaks=$findices,labels=$fbreaks) +
+    ylab('Frequency (kHz)') + xlab('Time (s)') +
+    scale_fill_distiller(palette='Spectral')
+
+"""
 end
 
 function sigmoid(x,fac)
