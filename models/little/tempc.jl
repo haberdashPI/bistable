@@ -81,11 +81,8 @@ function (tc::TCAnalysis)(x)
     x_t = sparsify(@views(x[t,frame_indices]),tc.sparsity)
     C = C .+ c_t.*(x_t .* x_t' .- C) # note: .+= is slow (memory inefficient)
 
-    # @show t
-    # @show t % tc.frame_len
     if t % tc.frame_len == 0
       C = sparsify!(C,Csparsity)
-      # @show size(x_t)
       xnorm = normalize(x_t,C,tc.prior)
       y[div(t,tc.frame_len)+1,frame_indices] = xnorm
 
