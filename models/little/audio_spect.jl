@@ -64,7 +64,7 @@ R"""
     geom_raster() +
     scale_y_continuous(breaks=$findices,labels=$fbreaks) +
     ylab('Frequency (kHz)') + xlab('Time (s)') +
-    scale_fill_distiller(palette='Spectral')
+    scale_fill_distiller(palette='Reds',direction=1)
 
 """
 end

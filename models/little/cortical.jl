@@ -15,9 +15,11 @@ end
 scales(cm::CorticalModel) = cm.scales
 rates(cm::CorticalModel) = [.-cm.rates; cm.rates]
 freqs(cm::CorticalModel,data::Array{T,4}) where T =
-    @views freqs(cm.aspect,data[:,1,1,:])
+  @views freqs(cm.aspect,data[:,1,1,:])
 times(cm::CorticalModel,data::Array{T,4}) where T =
-    @views times(cm.aspect,data[:,1,1,:])
+  @views times(cm.aspect,data[:,1,1,:])
+times(cm::CorticalModel,data::Array{T,2}) where T =
+  @views times(cm.aspect,data)
 
 function CorticalModel(aspect::AuditorySpectrogram;
                        rates=2.^(1:0.5:5),scales=2.^(-2:0.5:3),

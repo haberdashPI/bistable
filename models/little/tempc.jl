@@ -7,13 +7,12 @@ include("cortical.jl")
   τ::Seconds{Float64} = 1s
   sparsity::Float64 = 0.8
   frame_len = 10
+  N::Int = 25
   prior::Float64 = 1.0
 end
 Δt(tc::TCAnalysis) = Δt(tc.cort) * tc.frame_len
 
-scales(tc::TCAnalysis) = scales(tc.cort)
-rates(tc::TCAnalysis) = rates(tc.cort)
-freqs(tc::TCAnalysis,y) = freqs(tc.cort,y)
+numobjects(tc::TCAnalysis) = tc.N
 times(tc::TCAnalysis,y) = times(tc.cort,y) .* tc.frame_len
 
 # effecient algorithm to find the quantile of a sparse matrix
@@ -54,45 +53,78 @@ function sparsify!(C::SparseMatrixCSC,p)
     C.nzval[iis] = 0
     dropzeros!(C)
   end
+  C
 end
 
-function normalize(x_i,covar,shift=1.0)
-  # multidimensional equivalent of x_i / sd(x)
+matchorder(x,::UniformScaling) = x
+function matchorder(x,target)
+  matches = x' * target
+  order = Array{Int}(size(x,2))
+  remaining = IntSet(1:size(x,2))
+  for i in 1:size(x,2)
+    jmax = first(remaining)
+    for j in Iterators.drop(remaining,1)
+      if matches[j,i] > matches[jmax,i]
+        jmax = j
+      end
+    end
 
-  # NOTE: the somewhat akward spelling here
-  # is due to the limited number of methods implemented
-  # for sparse matrices
-  cholfact(covar,shift=shift)[:UP] \ x_i[:,:]
+    delete!(remaining,jmax)
+    order[i] = jmax
+  end
+
+  x[:,order]
 end
 
 function (tc::TCAnalysis)(x)
-  frame_dims = size(x,2:4...)
+  frame_dims = size(x,2:ndims(x)...)
   frame_indices = collect(CartesianRange(frame_dims))[:]
 
-  y = zeros(typeof(x[1]),div(size(x,1),tc.frame_len)+1,frame_dims...)
+  y = similar(x,div(size(x,1),tc.frame_len)+1,tc.N)
   N = prod(frame_dims)
   C = spzeros(eltype(x),N,N)
+
   Csparsity = 1-(1-tc.sparsity)^2
   c_t = Δt(tc.cort) / tc.τ
 
-  sparsity = 0
-  total = 0
+  old_ϕ = I
   @showprogress for t in 1:size(x,1)
     x_t = sparsify(@views(x[t,frame_indices]),tc.sparsity)
     C = C .+ c_t.*(x_t .* x_t' .- C) # note: .+= is slow (memory inefficient)
 
     if t % tc.frame_len == 0
-      C = sparsify!(C,Csparsity)
-      xnorm = normalize(x_t,C,tc.prior)
-      y[div(t,tc.frame_len)+1,frame_indices] = xnorm
+      # find "objects" (principle components)
+      _, ϕ = eigs(C,nev=tc.N)
+      # maintain "object" order across time slices
+      old_ϕ = ϕ = matchorder(ϕ,old_ϕ)
 
-      sparsity += length(xnorm.nzval)
-      total += length(xnorm)
+      # identify promenence of each object in the scene
+      y[div(t,tc.frame_len)+1,:] .= abs.(ϕ'x_t)
+
+      sparsify!(C,Csparsity)
     end
   end
-
-  per = round(100(1-(sparsity / total)),1)
-  perstr = per > 99.9 ? ">99.9" : string(per)
-  println("Achieved an average sparsity of $(per)%")
   y
+end
+
+function rplot(tc::TCAnalysis,data::Matrix)
+  ixs = CartesianRange(size(data))
+  at(ixs,i) = map(x -> x[i],ixs)
+  data = flipdim(data,2)
+
+  df = DataFrame(response = data[:],
+                 time = times(tc,data)[at(ixs,1)][:],
+                 object_index = at(ixs,2)[:])
+
+R"""
+
+  library(ggplot2)
+
+  ggplot($df,aes(x=time,y=object_index,fill=response)) +
+    geom_raster() +
+    ylab('Object Promenence') + xlab('Time (s)') +
+    scale_fill_distiller(palette='Reds',name='Object ID',
+                         direction=1)
+
+"""
 end
