@@ -1,16 +1,20 @@
-struct CCI_PCA{T}
+abstract type OnlinePCA{T} end
+
+struct CCI_PCA{T} <: OnlinePCA{T}
   v::Matrix{T}
   n::Int
   ε::Float64
 end
+ncomponents(x::CCI_PCA) = size(v,2)
 
-struct IPCA{T}
+struct IPCA{T} <: OnlinePCA{T}
   u::Matrix{T}
   λ::Vector{T}
   n::Int
 end
+ncomponents(x::CCI_PCA) = size(u,2)
 
-const default_pca_method = :ipca
+const default_pca_method = :ccipca
 
 # initialize using dimensions and identity matrix
 OnlinePCA(d::Number,n::Number;ε=1e-2,method=default_pca_method) =
@@ -24,8 +28,8 @@ OnlinePCA(sv::LinAlg.SVD,n::Number;ε=1e-2,method=default_pca_method) =
   method == :ipca ? IPCA(sv[:V],sv[:S].^2,n) :
   error("No online-pca method named \"$method\".")
 
-function Base.push!(pca::CCI_PCA,x::Vector)
-  v,n,ε = pca.v,pca.n,pca.ε
+function Base.LinAlg.lowrankupdate(pca::CCI_PCA,x::AbstractVector)
+  v,n,ε = copy(pca.v),pca.n,pca.ε
 
   total = norm(x)
   x = copy(x)
@@ -53,12 +57,12 @@ normalize_(x) = (n = norm(x); iszero(n) ? x : x./n)
 Base.eigvals(pca::CCI_PCA) = vec(mapslices(norm,pca.v,1))
 Base.eigvecs(pca::CCI_PCA) = mapslices(normalize_,pca.v,1)
 
-function Base.push!(pca::IPCA,x::Vector)
+function Base.LinAlg.lowrankupdate(pca::IPCA,x::AbstractVector)
   u,λ,n = pca.u,pca.λ,pca.n
   d = length(λ)
 
-  x_u = pca.u'x
-  x_p = x - pca.u*x_u
+  x_u = u'x
+  x_p = x - u*x_u
   nx_p = norm(x_p)
 
   Q = similar(u,d+1,d+1)
