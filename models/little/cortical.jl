@@ -3,9 +3,7 @@ using DataFrames
 using RCall
 include("audio_spect.jl")
 
-abstract type CorticalRepresentation end
-
-struct CorticalModel <: CorticalRepresentation
+struct CorticalModel
   aspect::AuditorySpectrogram
   rates::Vector{Float64}
   scales::Vector{Float64}
@@ -100,6 +98,10 @@ function rate_filter(rate,len,spect_len,kind)
   H .* exp.(A*im)
 end
 
+function (cm::CorticalModel)(s::Vector;rates=cm.rates,scales=cm.scales)
+  cm(cm.aspect(s),rates=rates,scales=scales)
+end
+
 function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
   N_t, N_f = size(s)
   N_r, N_s = length(rates), length(scales)
@@ -145,7 +147,7 @@ function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
   cr
 end
 
-function rplot(cort::CorticalRepresentation,y)
+function rplot(cort::CorticalModel,y)
   ixs = CartesianRange(size(y))
   at(ixs,i) = map(x -> x[i],ixs)
 
