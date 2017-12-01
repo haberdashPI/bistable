@@ -11,16 +11,21 @@ struct CorticalModel
 end
 
 scales(cm::CorticalModel) = cm.scales
-rates(cm::CorticalModel) = [.-cm.rates; cm.rates]
+rates(cm::CorticalModel) = cm.rates
+
 freqs(cm::CorticalModel,data::Array{T,4}) where T =
   @views freqs(cm.aspect,data[:,1,1,:])
+freqs(cm::CorticalModel,data::Array{T,2}) where T =
+  @views freqs(cm.aspect,data)
+
 times(cm::CorticalModel,data::Array{T,4}) where T =
   @views times(cm.aspect,data[:,1,1,:])
 times(cm::CorticalModel,data::Array{T,2}) where T =
   @views times(cm.aspect,data)
 
 function CorticalModel(aspect::AuditorySpectrogram;
-                       rates=2.^(1:0.5:5),scales=2.^(-2:0.5:3),
+                       rates=sort([-2.^(1:0.5:5); 2.^(1:0.5:5)]),
+                       scales=2.^(-2:0.5:3),
                        bandonly=true)
   CorticalModel(aspect,rates,scales,true)
 end
@@ -74,6 +79,10 @@ end
 
 # create the frequency-scale filter (filter along spectral axis)
 function scale_filter(scale,len,ts,kind)
+  if isnan(scale)
+    return ones(len)
+  end
+
   f2 = ((0:len-1)./len.*ts ./ 2 ./ abs(scale)).^2
   H = f2 .* exp.(1 .- f2)
   _,maxi = findmax(H)
@@ -83,8 +92,12 @@ end
 
 # create the temporal-rate filter (filter along temporal axis)
 function rate_filter(rate,len,spect_len,kind)
-  t = (0:len-1)./spect_len .* rate
-  h = @. rate * t^3 * exp(-4t) * cos(2π*t)
+  if isnan(rate)
+    return ones(2len)
+  end
+
+  t = (0:len-1)./spect_len .* abs(rate)
+  h = @. abs(rate) * t^3 * exp(-4t) * cos(2π*t)
   h .-= mean(h)
 
   H0 = view(fft(pad(h,2len)),1:len)
@@ -93,14 +106,26 @@ function rate_filter(rate,len,spect_len,kind)
 
   _, maxi = findmax(H)
   H ./= H[maxi]
-  H = askind(H,len,maxi,kind)
+  HR = askind(H,len,maxi,kind) .* exp.(A*im)
 
-  H .* exp.(A*im)
+  if rate >= 0
+    HR = pad(HR,2length(HR))
+	else
+    HR = pad(HR,2length(HR))
+    HR[1] = 0
+		HR[2:end] .= conj.(reverse(HR[2:end]))
+		HR[len+1] = abs(HR[len+2])
+	end
+
+  HR
 end
 
-function (cm::CorticalModel)(s::Vector;rates=cm.rates,scales=cm.scales)
+function (cm::CorticalModel)(s::AbstractVector;rates=cm.rates,scales=cm.scales)
   cm(cm.aspect(s),rates=rates,scales=scales)
 end
+
+# TODO: use complex numbers to represent the output
+# but allow plotting to show absolute value and phase
 
 function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
   N_t, N_f = size(s)
@@ -113,35 +138,34 @@ function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
   # filters, over time, need both negative and positive direction and that
   # invovles manipulating negative frequencies)
   S = rfft(pad(s',2.*reverse(size(s))))
+  S1 = fft(pad(s,2size(s,1),size(s,2)),1)
   st_ifft = plan_irfft(S,2size(s,2))
+  t_ifft = plan_ifft(S1,1)
 
-  cr = zeros(eltype(s), N_t, 2N_r, N_s, N_f)
-  for (ti,rate) in enumerate(rates)
+  cr = zeros(eltype(s), N_t, N_r, N_s, N_f)
+  rmin,rmax = extrema(cm.rates)
+  smin,smax = extrema(cm.scales)
+  for (ri,rate) in enumerate(rates)
 	  # rate filtering
 	  HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
-                         cm.bandonly ? :band :
-                         ti == 1 ? :low : ti < N_r ? :band : :high)
+                     cm.bandonly ? :band :
+                     rate == rmin ? :low : rate < rmax ? :band : :high)
 
-	  for sgn in [1,-1]
-		  # rate filtering modification (-1 for up and +1 for down)
-		  if sgn > 0
-			  HR = pad(HR,2length(HR))
-		  else
-			  HR[2:end] .= conj.(reverse(HR[2:end]))
-			  HR[size(S,1)+1] = abs(HR[size(S,1)+2])
-		  end
-
-		  for (fi,scale) in enumerate(scales)
+    for (si,scale) in enumerate(scales)
+      if isnan(scale)
+        Z = t_ifft * (HR .* S1)
+        cr[:, ri, si, :] = abs.(view(Z,1:N_t,1:N_f))
+      else
 			  # scale filtering
 			  HS = scale_filter(scale, size(S,1), spect_rate,
-                             cm.bandonly ? :band :
-                             fi == 1 ? :low : fi < size(2,1) ? :band : :high)
+                          cm.bandonly ? :band :
+                          scale == smin ? :low : scale < smax ? :band : :high)
 
 			  # convolve current filter with spectrogram
-        Z = (st_ifft * ((HR'.*HS) .* S))
-			  cr[:,(sgn==1)N_r+ti, fi, :] = view(Z,1:N_f,1:N_t)'
-		  end
-	  end
+        Z = (st_ifft * (transpose(HR.*HS') .* S))
+			  cr[:, ri, si, :] = view(Z,1:N_f,1:N_t)'
+      end
+		end
   end
 
   cr
