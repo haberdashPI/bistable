@@ -1,111 +1,63 @@
-# include("units.jl")
+# NOTES from meeting
+#=
+The key point for getting the coherence working is to make sure
+that there are time delays that allow stimuli across time to be
+compared.
+
+tasks:
+
+1. figure out if the support vectors themselves are informative
+enough of the number of objects, (probably use a different set of rates),
+why does the A stimulus disappear? (is there something wrong with the
+cortical model representation?)
+
+2. look through papers on envelope detection, think through a possible
+eeg experiment using this for merve's paper, and/or think through
+potential behavioral studies
+=#
+
+include("units.jl")
 include("tempc.jl")
 include("stim.jl")
 
+# TODO: try the current approach but
+# limit to a single temporal rate
+# to try and reporduce the results from
+# the 2009 paper
+
+# (may require looking at a rate only filter)
+
 setup_sound(sample_rate=8kHz)
 
+# TODO: what happens when we get ride of the scale filter
+
 spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=25)
-cort = CorticalModel(spect,rates=[2,8,32,64],scales=[0.125,1,4,16])
+cort = CorticalModel(spect) #,scales=[2,4,8],rates=2.^(1:5))
+tempc = TCAnalysis(cort,10)
 
-# TODO: setup TC analysis to use online or offline PCA (allowing method to
-# change in constructor)
+ab0_1_async = @> ab(60ms,240ms,120ms,20,500Hz,0.1) attenuate(10)
+ab1_async = @> ab(60ms,240ms,120ms,20,500Hz,1) attenuate(10)
 
-# TODO: plotf these representations wrt different f, Δf and Δt
+ab6_sync = @> ab(60ms,240ms,0ms,20,500Hz,6) attenuate(10)
+ab6_async = @>(ab(60ms,240ms,120ms,20,500Hz,6),attenuate(10))
 
-# TODO: implement adaptation and mutual inhibition with a location
-# based MI for different layers??
-# TODO: determine how to report the object count???
+ab12_async = @> ab(60ms,240ms,120ms,20,500Hz,12) attenuate(10)
 
-# TODO: plot component representation in spectral and cortical representation?
+ts, = tempc(ab0_1_async); ts[1] / ts[3]
+ts, = tempc(ab1_async); ts[1] / ts[3]
+ts, = tempc(ab6_async); ts[1] / ts[3]
+ts, = tempc(ab12_async); ts[1] / ts[3]
 
-#=========================================
-# iterate through various pca algorithms
-dir = "../../plots/run_2017_11_28"
-x = aba(60ms,60ms,10,1kHz,6);
-params = [(:pca,0),(:ccipca,0),(:ipca,0),(:ccipca,20),(:ipca,20)]
-for (represent,str) in [(cort,"cort")] # (spect,"spect")
-  y = represent(x)
+ts, = tempc(ab6_sync); ts[1] / ts[3]
 
-  rplot(represent,y)
-  R"ggsave(paste($dir,'/',$str,'_aba.pdf',sep=''),width=8,height=6)"
-  for (method,init_len) in params
-    tempc = TCAnalysis(represent,10,method=method,init_len=init_len)
-    tc = tempc(y)
+# TODO: show the rate only implementation here
 
-    rplot(tempc,tc)
-R"""
-    ggsave(paste($dir,'/',$str,'_',$(string(method)),'_init',
-           $(string(init_len)),'.pdf',sep=''),width=8,height=6)
-"""
+cort = CorticalModel(spect,scales=[NaN],rates=2.^(1:5))
+tempc = TCAnalysis(cort,10)
 
-    rplot(tempc,abs.(tc))
-R"""
-    ggsave(paste($dir,'/',$str,'_',$(string(method)),'_abs_init',
-           $(string(init_len)),'.pdf',sep=''),width=8,height=6)
-"""
+ts, = tempc(ab0_1_async); ts[1] / ts[3]
+ts, = tempc(ab1_async); ts[1] / ts[3]
+ts, = tempc(ab6_async); ts[1] / ts[3]
+ts, = tempc(ab12_async); ts[1] / ts[3]
 
-  end
-end
-=========================================#
-
-# cleanup of iteratation through various algorithms
-x = aba(60ms,60ms,10,1kHz,6);
-dir = "../../plots/run_2017_11_28_PCA_algorithms"
-params = [(:pca,0),(:ipca,0),(:ccipca,20)]
-for (represent,str,width,height) in [(cort,"cort",10,6),(spect,"spect",8,6)]
-  y = represent(x)
-
-  rplot(represent,y)
-  R"ggsave(paste($dir,'/',$str,'_aba.pdf',sep=''),width=$width,height=$height)"
-  for (method,init_len) in params
-    tempc = TCAnalysis(represent,10,method=method,init_len=init_len)
-    tc = tempc(y)
-
-    rplot(tempc,abs.(tc))
-R"""
-    ggsave(paste($dir,'/',$str,'_',$(string(method)),'_abs_init',
-           $(string(init_len)),'.pdf',sep=''),width=8,height=6)
-"""
-
-  end
-end
-
-# vary the stimulus parameters
-dir = "../../plots/run_2017_11_28_Stimulus_parameters"
-function plot_stages(x,dir,prefix)
-  for (represent,str,width,height) in [(cort,"cort",10,6),(spect,"spect",8,6)]
-    y = represent(x)
-
-    rplot(represent,y)
-R"""
-    ggsave(paste($dir,'/',$prefix,$str,'.pdf',sep=''),
-           width=$width,height=$height)
-"""
-
-    tempc = TCAnalysis(represent,10,method=:ipca,init_len=0)
-    tc = tempc(y)
-
-    rplot(tempc,abs.(tc))
-R"""
-    ggsave(paste($dir,'/',$prefix,$str,'_pca.pdf',sep=''),width=8,height=6)
-"""
-
-  end
-end
-
-for delta in [1,6,12]
-  x = aba(60ms,60ms,10,1kHz,delta)
-  plot_stages(x,dir,"delta$(delta)_")
-end
-
-for freq in [500Hz,1000Hz,2000Hz]
-  x = aba(60ms,60ms,10,freq,6)
-
-  plot_stages(x,dir,"freq$(ustrip(freq))Hz_")
-end
-
-for len in [30ms,42ms,60ms,85ms,120ms,240ms]
-  x = aba(len,len,10,1kHz,6)
-
-  plot_stages(x,dir,"length$(ustrip(len))ms_")
-end
+ts, = tempc(ab6_sync); ts[1] / ts[3]
