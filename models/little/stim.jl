@@ -13,7 +13,7 @@ function alter_ab(tone_len,ab_repeats,freq,delta)
   b = tone(b_freq,tone_len)
   space = silence(tone_len)
 
-  ab_seq = Float64[]
+  ab_seq = silence(0s)
   for i = 1:ab_repeats
     ab_seq = [ab_seq; a; b]
   end
@@ -36,7 +36,7 @@ function sync_ab(tone_len,ab_repeats,freq,delta)
   b = tone(b_freq,tone_len)
   space = silence(tone_len)
 
-  ab_seq = Float64[]
+  ab_seq = silence(0s)
   for i = 1:ab_repeats
     ab_seq = [ab_seq; a+b; space]
   end
@@ -58,7 +58,7 @@ function buildup_aba(tone_len,repeats,freq,delta)
   b = tone(b_freq,tone_len)
   space = silence(tone_len)
 
-  aba_seq = Float64[]
+  aba_seq = silence(0s)
   for i = 1:repeats
     aba_seq = [aba_seq; a; b; a; space]
   end
@@ -100,7 +100,7 @@ function aba(tone_len,gap_len,repeats,freq,delta)
   gap = silence(gap_len)
   space = silence(tone_len)
 
-  aba_seq = Float64[]
+  aba_seq = silence(0s)
   for i = 1:repeats
     aba_seq = [aba_seq; a; gap; b; gap; a; gap; space; gap]
   end
