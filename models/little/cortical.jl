@@ -147,6 +147,8 @@ function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
   cr
 end
 
+rplot(cort::CorticalModel,y::AbstractVector) = rplot(cort,cort(y))
+
 function rplot(cort::CorticalModel,y)
   ixs = CartesianRange(size(y))
   at(ixs,i) = map(x -> x[i],ixs)
@@ -177,8 +179,12 @@ R"""
                            levels=scalestr($(sort(scales(cort)))))
   df1$rate_title = factor(ratestr(df1$rate),
                           levels=ratestr($(sort(rates(cort)))))
+
+  df1[is.nan(df1$rate),]$response = df1[is.nan(df1$rate),]$response / 2
+  df1[is.nan(df1$scale),]$response = df1[is.nan(df1$scale),]$response / 2
   scale = sd(df1$response)
-  df1$respc = clamp(df1$response,-2*scale,2*scale)
+
+  df1$respc = clamp(df1$response,-2.5*scale,2.5*scale)
   df1$respc[abs(df1$respc) < 2e-3] = 0.0
 
   ggplot(df1,aes(x=time,y=freq_bin,fill=respc)) +

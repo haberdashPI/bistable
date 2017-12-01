@@ -41,6 +41,7 @@ times(as::AuditorySpectrogram,data::AbstractMatrix) =
   end
 end
 
+rplot(as::AuditorySpectrogram,data::AbstractVector) = rplot(as,as(data))
 function rplot(as::AuditorySpectrogram,data::Matrix)
   ixs = CartesianRange(size(data))
   at(ixs,i) = map(x -> x[i],ixs)
