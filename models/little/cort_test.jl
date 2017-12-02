@@ -50,14 +50,23 @@ ts, = tempc(ab12_async); ts[1] / ts[3]
 
 ts, = tempc(ab6_sync); ts[1] / ts[3]
 
-# TODO: show the rate only implementation here
-
 cort = CorticalModel(spect,scales=[NaN],rates=2.^(1:5))
 tempc = TCAnalysis(cort,10)
 
-ts, = tempc(ab0_1_async); ts[1] / ts[3]
-ts, = tempc(ab1_async); ts[1] / ts[3]
-ts, = tempc(ab6_async); ts[1] / ts[3]
-ts, = tempc(ab12_async); ts[1] / ts[3]
 
-ts, = tempc(ab6_sync); ts[1] / ts[3]
+ts, = tempc(ab0_1_async); ts[1] / ts[2]
+ts, = tempc(ab1_async); ts[1] / ts[2]
+ts, = tempc(ab6_async); ts[1] / ts[2]
+ts, = tempc(ab12_async); ts[1] / ts[2]
+
+ts, = tempc(ab6_sync); ts[1] / ts[2]
+
+# TODO: create an incremental version of TC, where we can show an estimate of
+# the object count at each time point
+
+# TODO: allow plots of each "object" to be generated in the
+# cortical representation
+
+# TODO: implement inverse of cortical representation so
+# we can generate spectral estimate of cortical representation
+# (note: may require high and low pass filters)
