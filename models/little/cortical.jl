@@ -120,9 +120,7 @@ function rate_filter(rate,len,spect_len,kind)
   HR
 end
 
-function (cm::CorticalModel)(s::AbstractVector;rates=cm.rates,scales=cm.scales)
-  cm(cm.aspect(s),rates=rates,scales=scales)
-end
+(cm::CorticalModel)(s::AbstractVector) = cm(cm.aspect(s))
 
 # TODO: use complex numbers to represent the output
 # but allow plotting to show absolute value and phase
