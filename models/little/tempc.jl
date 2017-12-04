@@ -7,16 +7,13 @@
 using Parameters
 include("cortical.jl")
 include("online_pca.jl")
-#=========================================
-# TODO: allow TC anlaysis to usee batch PCA
-# method
 
 abstract type TCAnalysis end
 Δt(tc::TCAnalysis) = Δt(tc.upstream)
 times(tc::TCAnalysis,x) = times(tc.upstream,x)
 
 struct OnlineTCAnalysis <: TCAnalysis
-  upstream
+  upstream::CorticalModel
   ncomponents::Int
   method::Symbol
   init_len::Int
@@ -26,47 +23,60 @@ end
 
 Base.CartesianRange(x::Int) = CartesianRange((x,))
 function (tc::OnlineTCAnalysis)(x)
-  ii = vec(collect(CartesianRange(size(x,2:ndims(x)...))))
+  tdims = size(x,2)
+  fdims = size(x,3,4)
+  tI = collect(CartesianRange(tdims))
+  fI = collect(CartesianRange(fdims))
+
   if tc.init_len > 0
-    sv, = svds(x[1:tc.init_len,ii],nsv=tc.ncomponents)
+    sv, = svds(reshape(x,prod(dims),:),nsv=tc.ncomponents)
     C = OnlinePCA(sv,tc.init_len,method=tc.method)
     start = tc.init_len+1
   else
-    C = OnlinePCA(length(ii),tc.ncomponents,method=tc.method)
+    C = OnlinePCA(prod(fdims),tc.ncomponents,method=tc.method)
     start = 1
   end
 
+  λ = similar(x,size(x,1),tc.ncomponents)
   y = similar(x,size(x,1),tc.ncomponents)
+  ϕ = similar(x,size(x,1),tc.ncomponents,fdims...)
+  λ[1:start-1,:] = 0
+  ϕ[1:start-1,:] = 0
   y[1:start-1,:] = 0
+
   for t in start:size(x,1)
-    x_t = x[t,ii]
-    C = LinAlg.lowrankupdate(C,x_t)
-    y[t,:] = eigvecs(C)' * x_t
+    x_t = reshape(view(x,t,:,:,:),size(x,2),:)
+    for ti in size(x_t,1)
+      C = LinAlg.lowrankupdate(C,x_t[ti,:])
+    end
+    λ[t,:] = eigvals(C)
+    ϕ[t,:,fI] = reshape(eigvecs(C)',:,fdims...)
+    y[t,:] = mean(x_t*eigvecs(C),1)
   end
 
-  y[:,sortperm(eigvals(C))],C
+  λ,ϕ,y
 end
 
 struct BatchTCAnalysis <: TCAnalysis
-  upstream
+  upstream::CorticalModel
   ncomponents::Int
 end
 
 (tc::BatchTCAnalysis)(x::AbstractVector) = tc(tc.upstream(x))
 function (tc::BatchTCAnalysis)(x)
-  ii = vec(collect(CartesianRange(size(x,2:ndims(x)...))))
-  @views begin
-    sv, = svds(x[:,ii],nsv=tc.ncomponents)
+  sv, = svds(reshape(x,prod(size(x,1,2)),:),nsv=tc.ncomponents)
 
-    x[:,ii]*sv[:V][:,sortperm(sv[:S])],sv
-  end
+  yv = reshape(x,prod(size(x,1,2)),:)*sv[:V]
+  y = reshape(yv,size(x,1:2...)...,:)
+  return sv[:S].^2 / size(x,1), reshape(sv[:V]',:,size(x,3,4)...), y
 end
 
 TCAnalysis(upstream,ncomponents;method=:ipca,init_len=0) =
   method ∈ [:batch,:pca] ? BatchTCAnalysis(upstream,ncomponents) :
   OnlineTCAnalysis(upstream,ncomponents,method,init_len)
-=========================================#
 
+
+#========================================
 struct TCAnalysis
   upstream::CorticalModel
   ncomponents::Int
@@ -79,8 +89,9 @@ freqs(tc::TCAnalysis,x::Array{T,3}) where T = freqs(tc.upstream,x[:,1,:])
 function (tc::TCAnalysis)(x)
   sv, = svds(reshape(x,prod(size(x,1,2)),:),nsv=tc.ncomponents)
 
-  sv[:S].^2 / size(x,1), sv[:V]
+  sv[:S].^2 / size(x,1), reshape(sv[:V],:,size(x,3,4))
 end
+========================================#
 
 function rplot(tc::TCAnalysis,data::Matrix)
   ixs = CartesianRange(size(abs.(data)))
@@ -96,7 +107,7 @@ R"""
 
   ggplot($df,aes(x=time,y=component_index,fill=response)) +
     geom_raster() +
-    ylab('Object ID') + xlab('Time (s)') +
+    ylab('Component') + ('Time (s)') +
     scale_fill_distiller(palette='Reds',name='Amplitude',
                          direction=1)
 
