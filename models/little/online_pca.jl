@@ -104,3 +104,58 @@ function project(x::IPCA,y::IPCA)
   λp
 end
 
+# NOTE: to get this
+# working I need the second half of the
+# algorithm to allow for reduced
+# rank approximations...
+# probably not worth implementing
+#========================================
+function gram_schmit(U,X)
+  Up = similar(U,size(U,1),size(U,2) + size(X,2))
+  n = size(U,2)
+
+  projn(u,v) = dot(u,v)*u
+  function projsum(i)
+    sum(1:n+i-1) do j
+      if j <= n
+        projn(U[:,j],X[:,i])
+      else
+        projn(Xp[:,j-n],X[:,i])
+      end
+    end
+  end
+
+  for i in size(X,2)
+    Xp[:,i] = normalize(X[:,i] .- projsum(i))
+  end
+
+  Xp
+end
+
+function blockupdate(pca::RSVD,X::AbstractMatrix{T}) where T
+  U,S,V = pca.U,pca.S,pca.V
+
+  # U update
+  m = size(U,2)
+  Up = gram_schmidt(U,X)
+  Xp = Up[:,m+1:end]
+
+  # S update
+  n,m = size(S)
+  Sp = fill(zero(T),size(S) .+ size(X,2)...)
+  Sp[1:n,1:m] = S
+  Sp[1:n,m+1:end] = U'X
+  Sp[n+1:end,m+1:end] = Xp'X
+
+  # V update
+  n,m = size(V)
+  Vp = fill(zero(T),size(V) .+ size(X)...)
+  Vp[1:n,1:m] = V
+  Vp[n+1:end,m+1:end] = I
+
+  # recaluate SVD
+  sv, = svds(Sp,nsv=pca.ncomponents)
+
+  RSVD(Up*sv[:U],sv[:S],sv[:Vt]*Vp')
+end
+========================================#
