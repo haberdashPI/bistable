@@ -123,9 +123,11 @@ end
 (cm::CorticalModel)(s::AbstractVector) = cm(cm.aspect(s))
 
 # TODO: use complex numbers to represent the output
-# but allow plotting to show absolute value and phase
+# but allow plotting to show absolute value and phase???
 
-function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
+function (cm::CorticalModel)(s::Matrix)
+  rates = cm.rates
+  scales = cm.scales
   N_t, N_f = size(s)
   N_r, N_s = length(rates), length(scales)
 
@@ -141,8 +143,8 @@ function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
   t_ifft = plan_ifft(S1,1)
 
   cr = zeros(eltype(s), N_t, N_r, N_s, N_f)
-  rmin,rmax = extrema(cm.rates)
-  smin,smax = extrema(cm.scales)
+  rmin,rmax = extrema(rates)
+  smin,smax = extrema(scales)
   for (ri,rate) in enumerate(rates)
 	  # rate filtering
 	  HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
