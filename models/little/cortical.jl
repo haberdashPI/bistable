@@ -169,6 +169,59 @@ function (cm::CorticalModel)(s::Matrix;rates=cm.rates,scales=cm.scales)
   cr
 end
 
+#========================================
+# TODO: code review/debug/test
+struct InvCorticalModel
+  cm::CorticalModel
+end
+Base.inv(cm::CorticalModel) = InvCorticalModel(cm)
+
+function (cmi::InvCorticalModel)(cr::Array{T,4}) where T
+  cm = cmi.cm
+  rates = cm.rates
+  scales = cm.scale
+  N_t, N_f = size(s)
+  N_r, N_s = length(rates), length(scales)
+
+  z = zeros(T,2N_t,2N_f)
+  z_cum = zeros(z) # ????
+  h_cum = zeros(z)
+  st_fft = plan_fft(spect)
+
+  for (ri,rate) in enumerate(rates)
+    if isnan(rate) break end
+	  # rate filtering
+	  HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
+                     cm.bandonly ? :band :
+                     rate == rmin ? :low : rate < rmax ? :band : :high)
+
+    for (si,scale) in enumerate(scales)
+      if isnan(rate) break end
+			# scale filtering
+			HS = scale_filter(scale, size(S,1), spect_rate,
+                        cm.bandonly ? :band :
+                        scale == smin ? :low : scale < smax ? :band : :high)
+
+      z[1:N_t,1:N_f] = cr[:,ri,si,:]
+
+      Z = st_fft * z
+      h = HR.*HS'
+      h_cum .+= h .* conj.(h)
+      z_cum .+= h .* Z
+    end
+  end
+
+  h_cum[:,1] .*= 2
+  old_sum = sum(h_cum)
+  h_cum .= cmi.norm.*h_cum + (1 .- cmi.norm).*maximum(h_cum)
+  h_cum .*= old_sum ./ sum(h_cum)
+
+  z_cum[1:2Nt,1:N_f] ./= h_cum[1:2n_t,1:N_f]
+
+  2(st_fft \ z_cum)
+end
+========================================#
+
 rplot(cort::CorticalModel,y::AbstractVector) = rplot(cort,cort(y))
 
 function rplot(cort::CorticalModel,y)
