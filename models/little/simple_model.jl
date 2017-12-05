@@ -3,35 +3,37 @@ using Unitful: s, ms, ustrip
 # e.g. with:
 sig(x) = 1/(1+exp(-10(x-0.5)))
 
-function adaptmi(fn,x::AbstractArray{T};
-                 τ_a=1.5s,c_a=5,τ_mi=50ms,c_mi=10,
-                 shape::Function=identity,Δt=1ms,
-                 W_mi=ones(T,size(x,2),size(x,2)) - I) where T
-  y = similar(x)
-  a = similar(x)
-  mi = similar(x)
+# TODO: because of some of the performance issues with keyword arguments, I use
+# a params object.  However, once julia v1.0 hits, I should be able to get
+# similar performance using just keyword arguments
+@with_kw struct AdaptMI{S,I}
+  τ_y::Seconds{Float64} = 10ms
+  shape_y::S = identity
 
-  y_t = zeros(T,size(x,2))
-  a_t = zeros(T,size(x,2))
-  mi_t = zeros(T,size(x,2))
+  c_a::Float64 = 5
+  τ_a::Seconds{Float64} = 1.5s
 
-  if length(y_t) > 1
-    c_mi = c_mi / (length(y_t)-1)
+  c_mi::Float64 = 10
+  τ_mi::Seconds{Float64} = 50ms
+  W_mi::I = inhibit_uniform
+
+  Δt::Seconds{Float64} = 1ms
+end
+
+# efficient representation of W*y where W = (ones(n,n) - I)/(n-1) for all n
+function inhibit_uniform(y)
+  x = (sum(y) .- vec(y)) ./ max(1,length(y)-1)
+  reshape(x,size(y)...)
+end
+
+# by default a call to adaptmi updates y_t at each time step so that it
+# incrementally approaches the current value of x_t
+function adaptmi(x::AbstractArray{T},params=AdaptMI()) where T =
+  adaptmi(smilar(x),params) do (y_t,t,dt)
+    I = CartesianRange(size(y_t))
+    for ii in I; y_t[ii] += (x[t,ii] - y_t[ii])*dt; end
+    y_t
   end
-
-  dt_a = Δt / τ_a
-  dt_mi = Δt / τ_mi
-  for t in 1:size(x,1)
-    y_t = shape.(fn(x[t,:]) .- c_a.*a_t .- c_mi.*mi_t)
-    a_t .+= dt_a .* (y_t .- a_t)
-    mi_t .+= dt_mi .* (W_mi*y_t .- mi_t)
-
-    y[t,:] .= y_t
-    a[t,:] = a_t
-    mi[t,:] = mi_t
-  end
-
-  y,a,mi
 end
 
 function noise!(x,τ_ε,c_ε,Δt=1ms)
@@ -44,3 +46,110 @@ function noise!(x,τ_ε,c_ε,Δt=1ms)
   x
 end
 noise(x,τ_ε,c_ε) = noise!(copy(x),τ_ε,c_ε)
+
+
+########################################
+# the generic interface a type must implement for adaptmi to work on it
+
+# timeslice(x) = a single empty time slice of the object x, where x
+# consists of multiple time slices
+function timeslice
+end
+
+# nunits(x_t) =  the number of units (dimensions) for a single time slice
+function nunits
+end
+
+# time_indices(x) = the number of time indices for x
+function time_indices
+end
+
+# after set_timeslice!(y,t,y_t), time slice t of y === y_t
+function set_timeslice!
+end
+
+# __approx(f,xs...) ≈ f(xs...)
+function __approx
+end
+
+# @approx (x1,x2) begin
+#   x1 + x2
+# end
+#
+# is equivalent to:
+#
+# __approx(+,x1,x2)
+macro approx(args,body)
+  :(__approx($(esc(args)) -> $(esc(body)),$args...))
+end
+
+##############################
+# default implementation
+# - we assume an array like object and treat the first dimension
+#   as the time dimension
+# - there is no loss due to approximation
+
+__approx(f,args...) = f(args...)
+timeslice(y) = zeros(eltype(y),size(y)[2:end]...)
+nunits(y_t) = length(y_t)
+time_indices(y) = indices(y,1)
+function set_timeslice!(y,t,y_t)
+  for ii in CartesianRange(size(y_t)); y[t,ii] = y_t[ii]; end
+  y_t
+end
+
+##############################
+# implementation for EigenSeries
+# - each time slice is an EigenSpace
+# - to approximate f(x,ys...)  we project all secondary eigenspaces ys onto the
+#   eigenspace x and then perform the operation over the resulting eigenvalues
+timeslice(y::EigenSeries) = EigenSpace(y)
+nunits(x::EigenSpace) = ncomponents(x)
+time_indices(x::EigenSeries) = indices(x.u,1)
+set_timeslice!(x::EigenSeries,t,slice) = x[t] = slice
+
+function __approx(f,x::EigenSpace,ys::EigenSpace...)
+  λ = f(x.λ,(project(x,y).λ for y in ys)...)
+  eigenspaces(x,λ)
+end
+# transform eigenvalues into eigenspace
+eigenspaces(x,λ::Vector) = EigenSpace(x.u,λ)
+# transform tuple of eigenvalues into tuple of eigenspaces
+eigenspaces(x,λs::Tuple) = map(λ -> EigenSpace(x.u,λ),λs)
+
+################################################################################
+# genertic adaptation and mutual-inhibition operation
+function adaptmi(update,y,params) where T
+  τ_y = params.τ_y, shape_y = params.shape_y
+  τ_a = params.τ_a, c_a = params.c_a
+  τ_mi = params.τ_mi, c_mi = params.c_mi, W_mi = params.W_mi
+  Δt = params.Δt
+
+  a = similar(y) # a = adaptation
+  mi = similar(y) # mi = mutual inhibition
+
+  y_t = timeslice(y)
+  a_t = timeslice(y)
+  mi_t = timeslice(y)
+
+  dt_y = Δt / τ_y
+  dt_a = Δt / τ_a
+  dt_mi = Δt / τ_mi
+
+  for t in times_indices(y)
+    y_t = update(y_t,t,dt_y)
+
+    y_t,a_t,m_i = @approx (y_t,a_t,m_t) begin
+      y_t .= shape.(y_t .- c_a.*a_t .- c_mi.*mi_t)
+      a_t .+= (y_t .- a_t).*dt_a
+      mi_t .+= (W_mi(y_t) .- mi_t).*dt_m
+
+      y_t,a_t,mi_t
+    end
+
+    set_timeslice!(y,t,y_t)
+    set_timeslice!(a,t,a_t)
+    set_timeslice!(mi,t,mi_t)
+  end
+  y,a,mi
+end

@@ -21,21 +21,15 @@ end
 
 (tc::OnlineTCAnalysis)(x::AbstractVector) = tc(tc.upstream(x))
 
+# alternative: I could have a different
+# set of eigenvectors for each time scale
 Base.CartesianRange(x::Int) = CartesianRange((x,))
 function (tc::OnlineTCAnalysis)(x)
   tdims = size(x,2)
   fdims = size(x,3,4)
+
   tI = collect(CartesianRange(tdims))
   fI = collect(CartesianRange(fdims))
-
-  if tc.init_len > 0
-    sv, = svds(reshape(x,prod(dims),:),nsv=tc.ncomponents)
-    C = OnlinePCA(sv,tc.init_len,method=tc.method)
-    start = tc.init_len+1
-  else
-    C = OnlinePCA(prod(fdims),tc.ncomponents,method=tc.method)
-    start = 1
-  end
 
   λ = similar(x,size(x,1),tc.ncomponents)
   y = similar(x,size(x,1),tc.ncomponents)
