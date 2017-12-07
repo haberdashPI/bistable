@@ -1,33 +1,44 @@
-using Einsum
-
-# TODO??: implement EigenSeries to work like EigenSpace, but with the memory managed a
-# little more efficiently
-struct EigenSeries{T}
-  u::Array{T,3}
-  λ::Array{T,2}
-end
-EigenSeries(x,n) =
-  EigenSeries(similar(x,size(x,1),prod(size(x)[2:end]),n),
-              similar(x,size(x,1),n))
-
 struct EigenSpace{T}
   u::Matrix{T}
   λ::Vector{T}
 end
 ncomponents(x::EigenSpace) = size(x.u,2)
-EigenSpace(x::EigenSeries{T}) EigenSpace(size(x.u,2),size(x.u,3))
+EigenSpace(d::Number,n::Number) = EigenSpace([I; fill(0.0,d-n,n)],fill(1.0,n))
+Base.show(io::IO,x::EigenSpace) = write(io,"EigenSpace(λ = ",string(x.λ),")")
 
-Base.setindex!(x::EigenSeries,v::EigenSpace,i::Int) =
-  EigenSpace(x.u[i,:,:],x.v[i,:]); v
+struct EigenSeries{T} <: AbstractArray{EigenSpace{T},1}
+  u::Array{T,3}
+  λ::Array{T,2}
+end
+ncomponents(x::EigenSeries) = size(x.u,3)
+EigenSeries(t,d,n) =
+  EigenSeries(Array{Float64}(t,d,n),Array{Float64}(t,n))
+EigenSeries(t,x::EigenSpace) =
+  EigenSeries(similar(x.u,(t,size(x.u)...)),
+              similar(x.λ,(t,size(x.λ)...)))
 
-# initialize using dimensions and identity matrix
-EigenSpace(d,n) = EigenSpace([I; fill(0.0,d-n,n)],fill(1.0,n),1)
+function Base.setindex!(x::EigenSeries,v::EigenSpace,i::Int)
+  x.u[i,:,:] = v.u
+  x.λ[i,:] = v.λ
+  v
+end
+EigenSpace(x::EigenSeries) = EigenSpace(size(x.u,2),size(x.u,3))
+Base.getindex(x::EigenSeries,i::Int) = EigenSpace(x.u[i,:,:],x.λ[i,:])
+Base.size(x::EigenSeries) = (size(x.u,1),)
+Base.IndexStyle(::EigenSeries) = IndexLinear()
 
 update_constants(n::Int) = n/(n+1),1/(n+1)
-update_constants(f::Float64) (1-f),f
+update_constants(f::Float64) = (1-f),f
+update(pca::EigenSpace,x::AbstractArray,c) = update(pca,vec(x),c)
+const update_complex_flag = fill(false)
+function update_was_complex()
+  result = update_complex_flag[]
+  update_complex_flag[] = false
+  result
+end
 
 function update(pca::EigenSpace,x::AbstractVector,c)
-  u,λ,n = pca.u,pca.λ
+  u,λ = pca.u,pca.λ
   d = length(λ)
 
   x_u = u'x
@@ -46,29 +57,25 @@ function update(pca::EigenSpace,x::AbstractVector,c)
   min_i = indmin(abs(λ[i]) for i in eachindex(λ))
   indices = vcat(1:min_i-1,min_i+1:d+1)
 
-  EigenSpace(u[:,indices],λ[indices],n+1)
+  if any(imag.(λ) .!= 0)
+    update_complex_flag[] = true
+  end
+  EigenSpace(real.(u[:,indices]),real.(λ[indices]))
 end
 Base.eigvals(pca::EigenSpace) = pca.λ
 Base.eigvecs(pca::EigenSpace) = pca.u
 
-Base:(-)(a::EigenSpace,b::EigenSpace) = op_helper(-,a,b)
-addp(a::EigenSpace,b::EigenSpace) = op_helper(+,a,b)
-function op_helper(op,x::EigenSpace,y::EigenSpace)
-  EigenSpace(x.u,op(x.λ,project(x,y)),x.n)
-end
-
 # aproximate y in terms of eigenvectors of x
-function project!(x::EigenSpace,y::EigenSpace)
+function project(x::EigenSpace,y::EigenSpace)
   if x.u === y.u
     y
   else
-    p = x.u'y.u
-
-    # λp = diag(p * Diagonal(y.λ) * p')
-    @einsum λp[i] := p[i,j]^2*y.λ[j]
+    λp = sum((x.u'y.u).^2 .* y.λ',2)
     EigenSpace(x.u,λp,x.n)
   end
 end
+
+
 
 # NOTE: to get this
 # working I need the second half of the

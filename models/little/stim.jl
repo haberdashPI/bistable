@@ -110,8 +110,8 @@ function aba(tone_len,gap_len,repeats,freq,delta)
 end
 
 
-function ab(tone_len,spacing_len,offset_len,repeats,freq,delta)
-  @assert spacing_len >= tone_len + offset_len
+function ab(tone_len,spacing_len,offset_ratio,repeats,freq,delta)
+  @assert 0 <= offset_ratio <= 1
   space = silence(tone_len)
 
   a_freq=freq
@@ -119,8 +119,9 @@ function ab(tone_len,spacing_len,offset_len,repeats,freq,delta)
 
   a = tone(a_freq,tone_len)
   b = tone(b_freq,tone_len)
-  ab = mix(a,[silence(offset_len);b])
-  ab = [ab; silence(spacing_len - duration(ab))]
+  ab = mix(a,[silence(offset_ratio*(tone_len+spacing_len));b])
+  ab_len = 2(tone_len+spacing_len)
+  ab = [ab; silence(ab_len - duration(ab))]
 
   ab_seq = silence(0s)
   for i = 1:repeats

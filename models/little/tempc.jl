@@ -15,60 +15,161 @@ times(tc::TCAnalysis,x) = times(tc.upstream,x)
 struct OnlineTCAnalysis <: TCAnalysis
   upstream::CorticalModel
   ncomponents::Int
-  method::Symbol
-  init_len::Int
+  rate::Seconds{Float64}
+  split_rates::Bool
 end
 
 (tc::OnlineTCAnalysis)(x::AbstractVector) = tc(tc.upstream(x))
 
+TCAnalysis(upstream,ncomponents,rate=1s;split_rates=false) =
+  OnlineTCAnalysis(upstream,ncomponents,rate,split_rates)
+
 # alternative: I could have a different
-# set of eigenvectors for each time scale
+# set of eigenseries for each time scale
 Base.CartesianRange(x::Int) = CartesianRange((x,))
 function (tc::OnlineTCAnalysis)(x)
-  tdims = size(x,2)
-  fdims = size(x,3,4)
+  if tc.split_rates
+    C_t = [EigenSpace(prod(size(x,3,4)),tc.ncomponents)
+           for i in 1:size(x,2)]
+    C = [EigenSeries(size(x,1),C_t[i]) for i in 1:size(x,2)]
 
-  tI = collect(CartesianRange(tdims))
-  fI = collect(CartesianRange(fdims))
-
-  λ = similar(x,size(x,1),tc.ncomponents)
-  y = similar(x,size(x,1),tc.ncomponents)
-  ϕ = similar(x,size(x,1),tc.ncomponents,fdims...)
-  λ[1:start-1,:] = 0
-  ϕ[1:start-1,:] = 0
-  y[1:start-1,:] = 0
-
-  for t in start:size(x,1)
-    x_t = reshape(view(x,t,:,:,:),size(x,2),:)
-    for ti in size(x_t,1)
-      C = LinAlg.lowrankupdate(C,x_t[ti,:])
+    dt = Δt(tc) / tc.rate
+    for t in indices(x,1)
+      for r in indices(x,2)
+        # approximately: C_t = (1-dt)C_t + x*x'*dt
+        C_t[r] = update(C_t[r],x[t,r,:,:],dt)
+        C[r][t] = C_t[r]
+      end
     end
-    λ[t,:] = eigvals(C)
-    ϕ[t,:,fI] = reshape(eigvecs(C)',:,fdims...)
-    y[t,:] = mean(x_t*eigvecs(C),1)
+
+    if update_was_complex()
+      warn("Rounding errors lead to complex eigenvalues in the 'correlation'"*
+           " matrix: imaginary parts ignored.")
+    end
+
+    C
+  else
+    C_t = EigenSpace(prod(size(x,3,4)),tc.ncomponents)
+    C = EigenSeries(size(x,1),C_t)
+
+    dt = Δt(tc) / tc.rate
+    for t in indices(x,1)
+      for r in indices(x,2)
+        # approximately: C_t = (1-dt)C_t + x*x'*dt
+        C_t = update(C_t,x[t,r,:,:],dt)
+      end
+      C[t] = C_t
+    end
+
+    if update_was_complex()
+      warn("Rounding errors lead to complex eigenvalues in the 'correlation'"*
+           " matrix: imaginary parts ignored.")
+    end
+
+    C
+  end
+end
+
+rplot(tc::OnlineTCAnalysis,x::TimedSound.Sound;kwds...) = rplot(tc,tc(x);kwds...)
+
+function rplot(tc::OnlineTCAnalysis,λ::Vector)
+  λ = λ[sortperm(λ,rev=true)]
+  df = DataFrame(value = λ,index = collect(eachindex(λ)))
+
+R"""
+  library(ggplot2)
+
+  ggplot($df,aes(x=index,y=value)) + geom_bar(stat='identity')
+"""
+end
+
+function rplot(tc::OnlineTCAnalysis,C::EigenSeries;n=ncomponents(C),
+               oddonly=false)
+  ii = CartesianRange(size(C.λ))
+  at(i) = map(ii -> ii[i],ii)
+  df = DataFrame(value = vec(C.λ),
+                 time = vec(ustrip(at(1) * Δt(spect))),
+                 component = vec(at(2)))
+
+  if oddonly
+    df = df[isodd.(df[:component]),:]
+  end
+  df = df[df[:component] .<= n,:]
+
+R"""
+  library(ggplot2)
+
+  ggplot($df,aes(x=time,y=value,color=factor(component),group=component)) +
+    geom_line() + scale_color_brewer(palette='Set1',name='Component') +
+    xlab('Time (s)') + ylab('Value')
+"""
+end
+
+function rplot(tc::OnlineTCAnalysis,C::EigenSpace;n=ncomponents(C),
+               oddonly=false)
+  order = sortperm(C.λ,rev=true)
+  λ = C.λ[order]
+  u = C.u[:,order]
+  u = u[:,1:min(n,end)]
+  u = reshape(u,length(scales(tc.upstream)),:,size(u,2))
+  ii = CartesianRange(size(u))
+  at(i) = vec(map(ii -> ii[i],ii))
+  function title(n)
+    nstr = @sprintf("%02d",n)
+    "Lmb_$nstr = $(round(λ[n],3))"
   end
 
-  λ,ϕ,y
+  df = DataFrame(response = vec(u),
+                 scale_index = at(1),
+                 freq_bin = at(2),
+                 component = title.(at(3)))
+
+  fbreaks = 2.0.^(-3:2)
+  fs = freqs(tc.upstream,u[:,:,1])
+  findices = mapslices(abs.(1000.0.*fbreaks .- fs'),2) do row
+    _, i = findmin(row)
+    i
+  end
+
+  if oddonly
+    df = df[isodd.(df[:component]),:]
+  end
+
+  sindices = 1:2:length(scales(tc.upstream))
+  sbreaks = scales(tc.upstream)[sindices]
+
+R"""
+
+  library(ggplot2)
+
+  ggplot($df,aes(x=scale_index,y=freq_bin,fill=response)) +
+    geom_raster() + facet_wrap(~component) +
+    scale_y_continuous(breaks=$findices,labels=$fbreaks) +
+    scale_x_continuous(breaks=$sindices,labels=$sbreaks) +
+    ylab('Frequency (kHz)') + xlab('Scale') +
+    scale_fill_distiller(palette='Reds',direction=1)
+
+"""
+
 end
 
-struct BatchTCAnalysis <: TCAnalysis
-  upstream::CorticalModel
-  ncomponents::Int
-end
+# struct BatchTCAnalysis <: TCAnalysis
+#   upstream::CorticalModel
+#   ncomponents::Int
+# end
 
-(tc::BatchTCAnalysis)(x::AbstractVector) = tc(tc.upstream(x))
-function (tc::BatchTCAnalysis)(x)
-  sv, = svds(reshape(x,prod(size(x,1,2)),:),nsv=tc.ncomponents)
+# (tc::BatchTCAnalysis)(x::AbstractVector) = tc(tc.upstream(x))
+# function (tc::BatchTCAnalysis)(x)
+#   sv, = svds(reshape(x,prod(size(x,1,2)),:),nsv=tc.ncomponents)
 
-  yv = reshape(x,prod(size(x,1,2)),:)*sv[:V]
-  y = reshape(yv,size(x,1:2...)...,:)
-  return sv[:S].^2 / size(x,1), reshape(sv[:V]',:,size(x,3,4)...), y
-end
+#   yv = reshape(x,prod(size(x,1,2)),:)*sv[:V]
+#   y = reshape(yv,size(x,1:2...)...,:)
+#   return sv[:S].^2 / size(x,1), reshape(sv[:V]',:,size(x,3,4)...), y
+# end
 
-TCAnalysis(upstream,ncomponents;method=:ipca,init_len=0) =
-  method ∈ [:batch,:pca] ? BatchTCAnalysis(upstream,ncomponents) :
-  OnlineTCAnalysis(upstream,ncomponents,method,init_len)
-
+# TCAnalysis(upstream,ncomponents;method=:ipca,init_len=0) =
+#   method ∈ [:batch,:pca] ? BatchTCAnalysis(upstream,ncomponents) :
+#   OnlineTCAnalysis(upstream,ncomponents,method,init_len)
 
 #========================================
 struct TCAnalysis
@@ -87,54 +188,54 @@ function (tc::TCAnalysis)(x)
 end
 ========================================#
 
-function rplot(tc::TCAnalysis,data::Matrix)
-  ixs = CartesianRange(size(abs.(data)))
-  at(ixs,i) = map(x -> x[i],ixs)
+# function rplot(tc::TCAnalysis,data::Matrix)
+#   ixs = CartesianRange(size(abs.(data)))
+#   at(ixs,i) = map(x -> x[i],ixs)
 
-  df = DataFrame(response = vec(data),
-                 time = vec(times(tc,data)[at(ixs,1)]),
-                 component_index = vec(at(ixs,2)))
+#   df = DataFrame(response = vec(data),
+#                  time = vec(times(tc,data)[at(ixs,1)]),
+#                  component_index = vec(at(ixs,2)))
 
-R"""
+# R"""
 
-  library(ggplot2)
+#   library(ggplot2)
 
-  ggplot($df,aes(x=time,y=component_index,fill=response)) +
-    geom_raster() +
-    ylab('Component') + ('Time (s)') +
-    scale_fill_distiller(palette='Reds',name='Amplitude',
-                         direction=1)
+#   ggplot($df,aes(x=time,y=component_index,fill=response)) +
+#     geom_raster() +
+#     ylab('Component') + ('Time (s)') +
+#     scale_fill_distiller(palette='Reds',name='Amplitude',
+#                          direction=1)
 
-"""
-end
+# """
+# end
 
-function rplot(tc::TCAnalysis,data::Array{T,3}) where T
-  ixs = CartesianRange(size(abs.(data)))
-  at(ixs,i) = map(x -> x[i],ixs)
+# function rplot(tc::TCAnalysis,data::Array{T,3}) where T
+#   ixs = CartesianRange(size(abs.(data)))
+#   at(ixs,i) = map(x -> x[i],ixs)
 
-  df = DataFrame(response = vec(data),
-                 time = vec(times(tc,data)[at(ixs,1)]),
-                 component_index = vec(at(ixs,2)),
-                 freq_index = vec(at(ixs,3)))
+#   df = DataFrame(response = vec(data),
+#                  time = vec(times(tc,data)[at(ixs,1)]),
+#                  component_index = vec(at(ixs,2)),
+#                  freq_index = vec(at(ixs,3)))
 
-  fbreaks = 2.0.^(-3:2)
-  fs = freqs(tc,data)
-  findices = mapslices(abs.(1000.0.*fbreaks .- fs'),2) do row
-    _, i = findmin(row)
-    i
-  end
+#   fbreaks = 2.0.^(-3:2)
+#   fs = freqs(tc,data)
+#   findices = mapslices(abs.(1000.0.*fbreaks .- fs'),2) do row
+#     _, i = findmin(row)
+#     i
+#   end
 
-R"""
+# R"""
 
-  library(ggplot2)
+#   library(ggplot2)
 
-  ggplot($df,aes(x=time,y=component_index,fill=response)) +
-    geom_raster() +
-    facet_wrap(~component_index) +
-    scale_y_continuous(breaks=$findices,labels=$fbreaks) +
-    ylab('Frequency (kHz') + xlab('Time (s)') +
-    scale_fill_distiller(palette='Reds',name='Amplitude',
-                         direction=1)
+#   ggplot($df,aes(x=time,y=component_index,fill=response)) +
+#     geom_raster() +
+#     facet_wrap(~component_index) +
+#     scale_y_continuous(breaks=$findices,labels=$fbreaks) +
+#     ylab('Frequency (kHz') + xlab('Time (s)') +
+#     scale_fill_distiller(palette='Reds',name='Amplitude',
+#                          direction=1)
 
-"""
-end
+# """
+# end
