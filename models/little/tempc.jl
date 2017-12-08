@@ -85,9 +85,10 @@ end
 
 function rplot(tc::OnlineTCAnalysis,C::EigenSeries;n=ncomponents(C),
                oddonly=false)
-  ii = CartesianRange(size(C.λ))
+  λ = C.λ[:,sortperm(C.λ[max(1,end-10),:],rev=true)]
+  ii = CartesianRange(size(λ))
   at(i) = map(ii -> ii[i],ii)
-  df = DataFrame(value = vec(C.λ),
+  df = DataFrame(value = vec(λ),
                  time = vec(ustrip(at(1) * Δt(spect))),
                  component = vec(at(2)))
 
