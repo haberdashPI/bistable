@@ -1,4 +1,7 @@
+using Parameters
 using Unitful: s, ms, ustrip
+
+include("online_pca.jl")
 # question: should we somehow limit the unit response???
 # e.g. with:
 sig(x) = 1/(1+exp(-10(x-0.5)))
@@ -13,9 +16,9 @@ sig(x) = 1/(1+exp(-10(x-0.5)))
   c_a::Float64 = 5
   τ_a::Seconds{Float64} = 1.5s
 
-  c_mi::Float64 = 10
-  τ_mi::Seconds{Float64} = 50ms
-  W_mi::I = inhibit_uniform
+  c_m::Float64 = 10
+  τ_m::Seconds{Float64} = 50ms
+  W_m::I = inhibit_uniform
 
   Δt::Seconds{Float64} = 1ms
 end
@@ -28,8 +31,8 @@ end
 
 # by default a call to adaptmi updates y_t at each time step so that it
 # incrementally approaches the current value of x_t
-function adaptmi(x::AbstractArray{T},params=AdaptMI()) where T =
-  adaptmi(smilar(x),params) do (y_t,t,dt)
+function adaptmi(x::AbstractArray{T},params=AdaptMI()) where T
+  adaptmi(similar(x),params) do y_t,t,dt
     I = CartesianRange(size(y_t))
     for ii in I; y_t[ii] += (x[t,ii] - y_t[ii])*dt; end
     y_t
@@ -80,7 +83,7 @@ end
 #
 # __approx(+,x1,x2)
 macro approx(args,body)
-  :(__approx($(esc(args)) -> $(esc(body)),$args...))
+  :(__approx($(esc(args)) -> $(esc(body)),$(esc(args))...))
 end
 
 ##############################
@@ -119,37 +122,38 @@ eigenspaces(x,λs::Tuple) = map(λ -> EigenSpace(x.u,λ),λs)
 
 ################################################################################
 # genertic adaptation and mutual-inhibition operation
-function adaptmi(update,y,params) where T
-  τ_y = params.τ_y, shape_y = params.shape_y
-  τ_a = params.τ_a, c_a = params.c_a
-  τ_mi = params.τ_mi, c_mi = params.c_mi, W_mi = params.W_mi
+function adaptmi(update,y,params)
+  τ_y = params.τ_y; shape_y = params.shape_y
+  τ_a = params.τ_a; c_a = params.c_a
+  τ_m = params.τ_m; c_m = params.c_m; W_m = params.W_m
   Δt = params.Δt
 
   a = similar(y) # a = adaptation
-  mi = similar(y) # mi = mutual inhibition
+  m = similar(y) # m = mutual inhibition
 
   y_t = timeslice(y)
   a_t = timeslice(y)
-  mi_t = timeslice(y)
+  m_t = timeslice(y)
 
   dt_y = Δt / τ_y
   dt_a = Δt / τ_a
-  dt_mi = Δt / τ_mi
 
-  for t in times_indices(y)
+  dt_m = Δt / τ_m
+
+  for t in time_indices(y)
     y_t = update(y_t,t,dt_y)
 
-    y_t,a_t,m_i = @approx (y_t,a_t,m_t) begin
-      y_t .= shape.(y_t .- c_a.*a_t .- c_mi.*mi_t)
+    y_t,a_t,m_t = @approx (y_t,a_t,m_t) begin
+      y_t .= shape_y.(y_t .- y_t.*c_a.*a_t .- c_m.*m_t)
       a_t .+= (y_t .- a_t).*dt_a
-      mi_t .+= (W_mi(y_t) .- mi_t).*dt_m
+      m_t .+= (W_m(y_t) .- m_t).*dt_m
 
-      y_t,a_t,mi_t
+      y_t,a_t,m_t
     end
 
     set_timeslice!(y,t,y_t)
     set_timeslice!(a,t,a_t)
-    set_timeslice!(mi,t,mi_t)
+    set_timeslice!(m,t,m_t)
   end
-  y,a,mi
+  y,a,m
 end

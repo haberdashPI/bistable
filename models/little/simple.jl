@@ -1,26 +1,33 @@
 using Unitful: ustrip, s, ms
-using Plots; plotlyjs()
+# using Plots; plotlyjs()
 using RCall
 using DataFrames
+include("units.jl")
 include("simple_model.jl")
 const Δt = 1ms
 
 R"""
 library(ggplot2)
 """
-const dir = "../../plots/meeting_2017_11_09/"
+dir = "../../plots/meeting_2017_12_07B/"
 
-function ggplot_qual(y,t,title,file)
+function ggplot_qual(y,t,title="",file=nothing)
   ii = CartesianRange(size(y))
   df = DataFrame(y=y[:],x=Float64.(ustrip.(t[map(x -> x[1],ii)[:]])),
                  unit=map(x -> x[2],ii)[:])
 
 R"""
-  ggplot($df,aes(x,y,color=factor(unit),group=unit)) + geom_line() +
+  y = ggplot($df,aes(x,y,color=factor(unit),group=unit)) + geom_line() +
     theme_classic(base_size=14) +
     scale_color_brewer(palette='Set1',name='Unit') +
     ggtitle($title) + xlab('Time (s)') + ylab('response')
-  ggsave(paste($dir,$file),width=6,height=5)
+
+  if($(file != nothing)){
+    ggsave(paste($dir,$file),width=6,height=5)
+  }else{
+    y
+  }
+
 """
 end
 
@@ -31,14 +38,141 @@ spikes[100ms .<= t,2] = 1
 spikes[200ms .<= t,3] = 1
 spikes[300ms .<= t,4] = 1
 
-y,a,mi = adaptmi(identity,3spikes,τ_a=1.5s,c_a=8,τ_mi=50ms,c_mi=0.2,shape=sig)
-ggplot_qual(y,t,"4 Unit, MI = 0.2","simple_4unit_mi_0.2.pdf")
+# hold on, what's a reasonable time constant for y
+# given the eigenspace model? probably about 1s
 
-y,a,mi = adaptmi(identity,3spikes,τ_a=1.5s,c_a=8,τ_mi=50ms,c_mi=2,shape=sig)
-ggplot_qual(y,t,"4 Unit, MI = 2","simple_4unit_mi_2.pdf")
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.2,c_a=1,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+ggplot_qual(m,t)
 
-y,a,mi = adaptmi(identity,3spikes,τ_a=1.5s,c_a=8,τ_mi=50ms,c_mi=10,shape=sig)
-ggplot_qual(y,t,"4 Unit, MI = 10","simple_4unit_mi_10.pdf")
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0,c_a=1,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=1ms,c_m=0,c_a=10,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0,c_a=1,τ_a=5*1.5s,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0,c_a=2,τ_a=5*1.5s,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.2,c_a=1,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=25ms,c_m=0.2,c_a=1,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+
+
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=1ms,c_m=0.2,c_a=1,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=1ms,c_m=0.2,c_a=5,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=1ms,c_m=2,c_a=5,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=1ms,c_m=10,c_a=5,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.2,c_a=0.1,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.2,c_a=0.4,shape_y=sig))
+ggplot_qual(y,t)
+
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.2,c_a=0.5,shape_y=sig))
+ggplot_qual(y,t)
+
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.2,τ_a=4s,c_a=0.55,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.2,τ_a=4s,c_a=0.8,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.2,τ_a=4s,c_a=0.8,c_m=0,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.2,τ_a=4s,c_a=1.2,c_m=0,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.0,τ_a=4s,c_a=0.95,c_m=0,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.0,τ_a=4s,c_a=1.2,c_m=0,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.0,τ_a=4s,c_a=0.90,c_m=0,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.0,c_a=0.8,c_m=0,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.0,c_a=0.8,c_m=1,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(10spikes,AdaptMI(τ_y=50ms,c_m=0.0,c_a=0.8,c_m=1,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+
+
+t = 0s:Δt:5s
+spikes = zeros(length(t),4)
+spikes[000ms .<= t,1] = 1
+spikes[10ms .<= t,2] = 1
+spikes[20ms .<= t,3] = 1
+spikes[30ms .<= t,4] = 1
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=50ms,c_m=0,c_a=0.8,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=50ms,c_m=0,c_a=1.2,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=50ms,c_m=0,c_a=4,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=50ms,c_m=0,c_a=20,shape_y=sig))
+ggplot_qual(y,t)
+
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=50ms,c_m=.5,c_a=20,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=50ms,c_m=20,c_a=20,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=50ms,c_m=20,τ_m=200ms,c_a=20,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=50ms,c_m=10,τ_m=200ms,c_a=10,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=50ms,c_m=3,τ_m=200ms,c_a=3,shape_y=sig))
+ggplot_qual(y,t)
+
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=50ms,c_m=0.5,τ_m=200ms,c_a=0.01,
+                                τ_a=5s,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+ggplot_qual(m,t)
 
 t = 0s:Δt:30s
 spikes = zeros(length(t),4)
@@ -47,8 +181,8 @@ spikes[100ms .<= t,2] = 1
 spikes[200ms .<= t,3] = 1
 spikes[300ms .<= t,4] = 1
 
-y,a,mi = adaptmi(identity,3spikes,τ_a=1.5s,c_a=8,τ_mi=50ms,c_mi=10,shape=sig)
-ggplot_qual(y,t,"4 Unit, MI =10 (extended)","simple_4unit_mi_10_extended.pdf")
+y,a,m = adaptmi(3spikes,AdaptMI(τ_y=50ms,c_m=0,c_a=1,shape_y=sig))
+ggplot_qual(y,t)
 
 
 t = 0s:Δt:5s
