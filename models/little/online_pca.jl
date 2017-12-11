@@ -1,9 +1,32 @@
-struct EigenSpace{T}
-  u::Matrix{T}
-  λ::Vector{T}
+abstract type EigenSpace{U,L} end
+
+struct SimpleEigenSpace{U,L} <: EigenSpace{U,L}
+  u::Vector{U}
+  λ::L
 end
-ncomponents(x::EigenSpace) = size(x.u,2)
-EigenSpace(d::Number,n::Number) = EigenSpace([I; fill(0.0,d-n,n)],fill(1.0,n))
+ncomponents(x::SimpleEigenSpace) = 1
+Base.:(*)(x::EigenSpace,y::Array) = (x.u'y.*x.λ)' * x.u'
+
+struct FullEigenSpace{U,L} <: EigenSpace{U,L}
+  u::Matrix{U}
+  λ::Vector{L}
+end
+ncomponents(x::FullEigenSpace) = size(x.u,2)
+
+function EigenSpace(u::Array,λ::Array)
+  @assert size(u,2) == size(λ,1) "Mismatched number of eigenvectors and values."
+  if size(u,2) == 1
+    SimpleEigenSpace(u[:,1],λ[1])
+  else
+    FullEigenSpace(u[:,:],λ[:])
+  end
+end
+
+EigenSpace(d::Number,n::Number) = EigenSpace(Float64,d,n)
+EigenSpace(::Type{T},d::Number,n::Number) where T =
+  n == 1 ? SimpleEigenSpace(fill(zero(T),d),zero(T)) :
+  FullEigenSpace([I; fill(zero(T),d-n,n)],fill(one(T),n))
+
 Base.show(io::IO,x::EigenSpace) = write(io,"EigenSpace(λ = ",string(x.λ),")")
 
 struct EigenSeries{T} <: AbstractArray{EigenSpace{T},1}
@@ -11,11 +34,24 @@ struct EigenSeries{T} <: AbstractArray{EigenSpace{T},1}
   λ::Array{T,2}
 end
 ncomponents(x::EigenSeries) = size(x.u,3)
-EigenSeries(t,d,n) =
-  EigenSeries(Array{Float64}(t,d,n),Array{Float64}(t,n))
-EigenSeries(t,x::EigenSpace) =
+
+EigenSeries(::Type{T},t,d,n) where T =
+  EigenSeries(Array{T}(t,d,n),Array{T}(t,n))
+EigenSeries(t,d,n) = EigenSeries(Float64,t,d,n)
+EigenSeries(t,x::FullEigenSpace) =
   EigenSeries(similar(x.u,(t,size(x.u)...)),
               similar(x.λ,(t,size(x.λ)...)))
+EigenSeries(t,x::SimpleEigenSpace) =
+  EigenSeries(similar(x.u,(t,length(x.u),1)),
+              similar(x.u,(t,1)))
+
+function Base.similar(x::EigenSeries,::Type{EigenSpace{U,L}},
+                      dims::NTuple{N,Int}) where {U,L,N}
+
+  @assert length(dims) == 1 "EigenSpaces can only have a dimensionality of 1."
+  EigenSeries(similar(x.u,U,(dims[1],size(x.u,2),size(x.u,3))),
+             similar(x.λ,L,(dims[1],size(x.λ,2))))
+end
 
 function Base.setindex!(x::EigenSeries,v::EigenSpace,i::Int)
   x.u[i,:,:] = v.u
@@ -30,14 +66,19 @@ Base.IndexStyle(::EigenSeries) = IndexLinear()
 update_constants(n::Int) = n/(n+1),1/(n+1)
 update_constants(f::Float64) = (1-f),f
 update(pca::EigenSpace,x::AbstractArray,c) = update(pca,vec(x),c)
-const update_complex_flag = fill(false)
-function update_was_complex()
-  result = update_complex_flag[]
-  update_complex_flag[] = false
-  result
-end
 
-function update(pca::EigenSpace,x::AbstractVector,c)
+function update(pca::SimpleEigenSpace,x::AbstractVector,c)
+  u,λ = pca.u,pca.λ
+  c_o,c_n = update_constants(c)
+  v = iszero(λ) ? x : c_o.*(λ.*u) .+ c_n.*(x .* x'u)
+
+  λ = norm(v)
+  SimpleEigenSpace(vec(v)./λ,λ)
+end
+Base.eigvals(pca::SimpleEigenSpace) = [pca.λ]
+Base.eigvecs(pca::SimpleEigenSpace) = pca.u[:,:]
+
+function update(pca::FullEigenSpace,x::AbstractVector,c)
   u,λ = pca.u,pca.λ
   d = length(λ)
 
@@ -57,16 +98,13 @@ function update(pca::EigenSpace,x::AbstractVector,c)
   min_i = indmin(abs(λ[i]) for i in eachindex(λ))
   indices = vcat(1:min_i-1,min_i+1:d+1)
 
-  if any(imag.(λ) .!= 0)
-    update_complex_flag[] = true
-  end
-  EigenSpace(real.(u[:,indices]),real.(λ[indices]))
+  FullEigenSpace(u[:,indices],λ[indices])
 end
 Base.eigvals(pca::EigenSpace) = pca.λ
 Base.eigvecs(pca::EigenSpace) = pca.u
 
 # aproximate y in terms of eigenvectors of x
-function project(x::EigenSpace,y::EigenSpace)
+function project(x::FullEigenSpace,y::FullEigenSpace)
   if x.u === y.u
     y
   else
@@ -75,60 +113,5 @@ function project(x::EigenSpace,y::EigenSpace)
   end
 end
 
-
-
-# NOTE: to get this
-# working I need the second half of the
-# algorithm to allow for reduced
-# rank approximations...
-# probably not worth implementing
-#========================================
-function gram_schmit(U,X)
-  Up = similar(U,size(U,1),size(U,2) + size(X,2))
-  n = size(U,2)
-
-  projn(u,v) = dot(u,v)*u
-  function projsum(i)
-    sum(1:n+i-1) do j
-      if j <= n
-        projn(U[:,j],X[:,i])
-      else
-        projn(Xp[:,j-n],X[:,i])
-      end
-    end
-  end
-
-  for i in size(X,2)
-    Xp[:,i] = normalize(X[:,i] .- projsum(i))
-  end
-
-  Xp
-end
-
-function blockupdate(pca::RSVD,X::AbstractMatrix{T}) where T
-  U,S,V = pca.U,pca.S,pca.V
-
-  # U update
-  m = size(U,2)
-  Up = gram_schmidt(U,X)
-  Xp = Up[:,m+1:end]
-
-  # S update
-  n,m = size(S)
-  Sp = fill(zero(T),size(S) .+ size(X,2)...)
-  Sp[1:n,1:m] = S
-  Sp[1:n,m+1:end] = U'X
-  Sp[n+1:end,m+1:end] = Xp'X
-
-  # V update
-  n,m = size(V)
-  Vp = fill(zero(T),size(V) .+ size(X)...)
-  Vp[1:n,1:m] = V
-  Vp[n+1:end,m+1:end] = I
-
-  # recaluate SVD
-  sv, = svds(Sp,nsv=pca.ncomponents)
-
-  RSVD(Up*sv[:U],sv[:S],sv[:Vt]*Vp')
-end
-========================================#
+# TODO: if we go with the SimpleEigenSpace,
+# is there some way to think about adaptmi???
