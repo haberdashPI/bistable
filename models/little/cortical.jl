@@ -1,3 +1,5 @@
+using Colors
+using PerceptualColourMaps
 using RecipesBase
 using DataFrames
 using RCall
@@ -80,14 +82,15 @@ end
 # create the frequency-scale filter (filter along spectral axis)
 function scale_filter(scale,len,ts,kind)
   if isnan(scale)
-    return ones(len)
+    ones(2len)
   end
 
   f2 = ((0:len-1)./len.*ts ./ 2 ./ abs(scale)).^2
   H = f2 .* exp.(1 .- f2)
   _,maxi = findmax(H)
 
-  askind(H,len,maxi,kind)
+  H = askind(H,len,maxi,kind)
+  H = [zeros(H); H]
 end
 
 # create the temporal-rate filter (filter along temporal axis)
@@ -126,9 +129,11 @@ end
 # but allow plotting to show absolute value and phase???
 
 function (cm::CorticalModel)(s::Matrix)
+  nexteven(x) = iseven(x) ? x : x+1
+
   rates = cm.rates
   scales = cm.scales
-  N_t, N_f = size(s)
+  N_t, N_f = nexteven.(size(s))
   N_r, N_s = length(rates), length(scales)
 
   # spatial-frequency represention of the spectrogram (i.e. 2D fft of s).
@@ -137,39 +142,40 @@ function (cm::CorticalModel)(s::Matrix)
   # and we want frequency not time to be the halved dimension (since the rate
   # filters, over time, need both negative and positive direction and that
   # invovles manipulating negative frequencies)
-  S = rfft(pad(s',2.*reverse(size(s))))
-  S1 = fft(pad(s,2size(s,1),size(s,2)),1)
-  st_ifft = plan_irfft(S,2size(s,2))
+  S = fft(pad(s,nexteven.(size(s))))
+  S1 = fft(pad(s,nexteven(size(s,1)),size(s,2)),1)
+  st_ifft = plan_ifft(S)
   t_ifft = plan_ifft(S1,1)
 
-  cr = zeros(eltype(s), N_t, N_r, N_s, N_f)
+  cr = zeros(Complex{eltype(s)}, N_t, N_r, N_s, N_f)
   rmin,rmax = extrema(rates)
   smin,smax = extrema(scales)
   for (ri,rate) in enumerate(rates)
 	  # rate filtering
-	  HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
+	  HR = rate_filter(rate, N_t>>1, 1000 / cm.aspect.len,
                      cm.bandonly ? :band :
                      rate == rmin ? :low : rate < rmax ? :band : :high)
 
     for (si,scale) in enumerate(scales)
       if isnan(scale)
         Z = t_ifft * (HR .* S1)
-        cr[:, ri, si, :] = abs.(view(Z,1:N_t,1:N_f))
+        cr[:, ri, si, :] = view(Z,indices(s)...)
       else
 			  # scale filtering
-			  HS = scale_filter(scale, size(S,1), spect_rate,
+			  HS = scale_filter(scale, N_f>>1, spect_rate,
                           cm.bandonly ? :band :
                           scale == smin ? :low : scale < smax ? :band : :high)
 
 			  # convolve current filter with spectrogram
-        Z = (st_ifft * (transpose(HR.*HS') .* S))
-			  cr[:, ri, si, :] = view(Z,1:N_f,1:N_t)'
+        Z = st_ifft*(HR.*HS' .* S)
+			  cr[:, ri, si, :] = view(Z,indices(s)...)
       end
 		end
   end
 
   cr
 end
+
 
 #========================================
 # TODO: code review/debug/test
@@ -229,8 +235,14 @@ rplot(cort::CorticalModel,y::AbstractVector) = rplot(cort,cort(y))
 function rplot(cort::CorticalModel,y)
   ixs = CartesianRange(size(y))
   at(ixs,i) = map(x -> x[i],ixs)
+  norm(x) = x ./ maximum(x)
 
-  df = DataFrame(response = y[:],
+  phase_map = cmap("C9")
+  tocolor(x) = phase_map[floor(Int,x*(length(phase_map)-1)+1)]
+  phase_col = Lab.(tocolor.((angle.(y[:]) .+ π)/2π))
+  col = weighted_color_mean.(norm(log.(1 + abs.(y[:]))),phase_col,Lab(colorant"lightgray"))
+
+  df = DataFrame(r_color = "#".*hex.(col),
                  time = times(cort,y)[at(ixs,1)][:],
                  rate = rates(cort)[at(ixs,2)][:],
                  scale = scales(cort)[at(ixs,3)][:],
@@ -257,19 +269,12 @@ R"""
   df1$rate_title = factor(ratestr(df1$rate),
                           levels=ratestr($(sort(rates(cort)))))
 
-  df1[is.nan(df1$rate),]$response = df1[is.nan(df1$rate),]$response / 2
-  df1[is.nan(df1$scale),]$response = df1[is.nan(df1$scale),]$response / 2
-  scale = sd(df1$response)
-
-  df1$respc = clamp(df1$response,-2.5*scale,2.5*scale)
-  df1$respc[abs(df1$respc) < 2e-3] = 0.0
-
-  ggplot(df1,aes(x=time,y=freq_bin,fill=respc)) +
+  ggplot(df1,aes(x=time,y=freq_bin,fill=r_color)) +
     geom_raster() +
     scale_y_continuous(breaks=$findices,labels=$fbreaks) +
     ylab('Frequency (kHz)') + xlab('Time (s)') +
     facet_grid(scale_title ~ rate_title) +
-    scale_fill_distiller(palette='RdBu')
+    scale_fill_identity() # scale_fill_distiller(palette='RdBu')
 
 """
 end
