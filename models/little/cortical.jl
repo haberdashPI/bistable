@@ -232,7 +232,15 @@ end
 
 rplot(cort::CorticalModel,y::AbstractVector) = rplot(cort,cort(y))
 
-function rplot(cort::CorticalModel,y)
+function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
+  rindices = indexin(rates,cort.rates)
+  sindices = indexin(scales,cort.scales)
+
+  @show rindices
+  @show sindices
+
+  y = y[:,rindices,sindices,:]
+
   ixs = CartesianRange(size(y))
   at(ixs,i) = map(x -> x[i],ixs)
   norm(x) = x ./ maximum(x)
@@ -240,12 +248,13 @@ function rplot(cort::CorticalModel,y)
   phase_map = cmap("C9")
   tocolor(x) = phase_map[floor(Int,x*(length(phase_map)-1)+1)]
   phase_col = Lab.(tocolor.((angle.(y[:]) .+ π)/2π))
-  col = weighted_color_mean.(norm(log.(1 + abs.(y[:]))),phase_col,Lab(colorant"lightgray"))
+  col = weighted_color_mean.(norm(log.(1 + abs.(y[:]))),
+                             phase_col,Lab(colorant"lightgray"))
 
   df = DataFrame(r_color = "#".*hex.(col),
                  time = times(cort,y)[at(ixs,1)][:],
-                 rate = rates(cort)[at(ixs,2)][:],
-                 scale = scales(cort)[at(ixs,3)][:],
+                 rate = rates[at(ixs,2)][:],
+                 scale = scales[at(ixs,3)][:],
                  freq_bin = at(ixs,4)[:])
 
   fbreaks = 2.0.^(-3:2)
@@ -265,9 +274,9 @@ R"""
 
   df1 = $df
   df1$scale_title = factor(scalestr(df1$scale),
-                           levels=scalestr($(sort(scales(cort)))))
+                           levels=scalestr($(sort(scales))))
   df1$rate_title = factor(ratestr(df1$rate),
-                          levels=ratestr($(sort(rates(cort)))))
+                          levels=ratestr($(sort(rates))))
 
   ggplot(df1,aes(x=time,y=freq_bin,fill=r_color)) +
     geom_raster() +
