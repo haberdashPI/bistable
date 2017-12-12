@@ -67,13 +67,31 @@ function (tc::OnlineTCAnalysis)(x)
     end
 
     C
+  elseif tc.method == :ipca_rsplit
+    nr = length(rates(tc.upstream))
+    C_t = [EigenSpace(eltype(x),prod(size(x,3,4)),tc.ncomponents) for r in 1:nr]
+    C = [EigenSeries(size(x,1),C_t[r]) for r in 1:nr]
+    dt = Δt(tc) / tc.rate
+
+    function helper_(C_t,C,x,dt)
+      @showprogress for t in indices(x,1)
+        for r in indices(x,2)
+          # approximately: C_t = (1-dt)C_t + x*x'*dt
+          C_t[r] = update(C_t[r],x[t,r,:,:],dt)
+          C[r][t] = C_t[r]
+        end
+      end
+      C
+    end
+
+    helper_(C_t,C,x,dt)
   elseif tc.method == :ipca
     C_t = EigenSpace(eltype(x),prod(size(x,3,4)),tc.ncomponents)
     C = EigenSeries(size(x,1),C_t)
 
     dt = Δt(tc) / tc.rate
 
-    function helper(C_t,C,x,dt)
+    function helper__(C_t,C,x,dt)
 
       @showprogress for t in indices(x,1)
         for r in indices(x,2)
@@ -86,7 +104,7 @@ function (tc::OnlineTCAnalysis)(x)
       C
     end
 
-    helper(C_t,C,x,dt)
+    helper__(C_t,C,x,dt)
   end
 end
 

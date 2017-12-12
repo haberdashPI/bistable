@@ -6,6 +6,10 @@ struct SimpleEigenSpace{U,L} <: EigenSpace{U,L}
 end
 ncomponents(x::SimpleEigenSpace) = 1
 Base.:(*)(x::EigenSpace,y::Array) = (x.u'y.*x.λ)' * x.u'
+function Base.convert(::Type{SimpleEigenSpace{U,L}},
+                      y::SimpleEigenSpace{U2,L2}) where {U,L,U2,L2}
+  SimpleEigenSpace{U,L}(y.u,y.λ)
+end
 
 struct FullEigenSpace{U,L} <: EigenSpace{U,L}
   u::Matrix{U}
