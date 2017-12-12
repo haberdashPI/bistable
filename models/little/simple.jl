@@ -33,7 +33,7 @@ end
 
 t = 0s:Δt:5s
 spikes = zeros(length(t),4)
-spikes[000ms .<= t,1] = 1
+spikes[000ms .<= t,1] = 2
 spikes[100ms .<= t,2] = 1
 spikes[200ms .<= t,3] = 1
 spikes[300ms .<= t,4] = 1
@@ -41,10 +41,23 @@ spikes[300ms .<= t,4] = 1
 # hold on, what's a reasonable time constant for y
 # given the eigenspace model? probably about 1s
 
-y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0.2,c_a=1,shape_y=sig))
+y,a,m = adaptmi(spikes,AdaptMI(τ_y=1s,c_m=0,c_a=0,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+
+y,a,m = adaptmi(spikes,AdaptMI(τ_y=50ms,c_m=0,c_a=0.2,τ_a=50s,shape_y=sig))
 ggplot_qual(y,t)
 ggplot_qual(a,t)
 ggplot_qual(m,t)
+
+y,a,m = adaptmi(spikes,AdaptMI(τ_y=10ms,c_m=5,c_a=0.2,τ_a=5s,shape_y=sig))
+ggplot_qual(y,t)
+ggplot_qual(a,t)
+ggplot_qual(m,t)
+
+
+################################################################################
+# old
 
 y,a,m = adaptmi(3spikes,AdaptMI(τ_y=5ms,c_m=0,c_a=1,shape_y=sig))
 ggplot_qual(y,t)

@@ -37,12 +37,16 @@ function (tc::OnlineTCAnalysis)(x)
     dt = Δt(tc) / tc.rate
     y = similar(x)
 
-    @showprogress for ii in CartesianRange(size(x,1,2))
-      x_t = vec(x[ii,:,:])
-      C_t .= C_t.*(1-dt) .+ (x_t .* x_t').*dt
-      y[ii,:,:] = C_t * x_t
+    function helper(C_t,x,dt)
+      @showprogress for ii in CartesianRange(size(x,1,2))
+        x_t = vec(x[ii,:,:])
+        C_t .= C_t.*(1-dt) .+ (x_t .* x_t').*dt
+        y[ii,:,:] = C_t * x_t
+      end
+      y
     end
-    y
+
+    helper(C_t,x,dt)
   elseif tc.method == :pca
     C = EigenSeries(eltype(x),size(x,1),prod(size(x,3,4)),tc.ncomponents)
     window_len = round(Int,tc.rate/Δt(tc))
@@ -69,7 +73,7 @@ function (tc::OnlineTCAnalysis)(x)
 
     dt = Δt(tc) / tc.rate
 
-    function helper(C_t,C,dt)
+    function helper(C_t,C,x,dt)
 
       @showprogress for t in indices(x,1)
         for r in indices(x,2)
@@ -82,7 +86,7 @@ function (tc::OnlineTCAnalysis)(x)
       C
     end
 
-    helper(C_t,C,dt)
+    helper(C_t,C,x,dt)
   end
 end
 
