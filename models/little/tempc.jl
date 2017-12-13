@@ -111,8 +111,8 @@ end
 fusion_ratio(tc::OnlineTCAnalysis,C::EigenSeries,x::AbstractVector) =
   fusion_ratio(tc.upstream(x),C,x)
 function fusion_signal(tc::OnlineTCAnalysis,C::EigenSeries,x)
-  var = sum(abs.(x).^2) / prod(size(x,1,2))
-  first.(eigvals.(C)) ./ var
+  cumvar = cumsum(sum(abs2.(x),[2,3,4]),1) ./ (size(x,2)*indices(x,1))
+  vec(first.(eigvals.(C)) ./ cumvar)
 end
 
 struct ABDist
