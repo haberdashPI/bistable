@@ -184,7 +184,7 @@ R"""
 end
 
 function rplot(tc::OnlineTCAnalysis,C::EigenSpace;n=ncomponents(C),
-               oddonly=false)
+               oddonly=false,plotphase=false)
   λ = abs.(eigvals(C))
   order = sortperm(λ,rev=true)
   λ = λ[order]
@@ -198,7 +198,7 @@ function rplot(tc::OnlineTCAnalysis,C::EigenSpace;n=ncomponents(C),
     "Lmb_$nstr = $(round(λ[n],3))"
   end
 
-  df = DataFrame(response = vec(abs.(u)),
+  df = DataFrame(response = !plotphase ? vec(abs.(u)) : vec(angle.(u)),
                  scale_index = at(1),
                  freq_bin = at(2),
                  component = title.(at(3)))
