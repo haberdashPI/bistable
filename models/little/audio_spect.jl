@@ -87,6 +87,7 @@ end
 
 frame_length(s::AuditorySpectrogram) = round(Int,s.len * 2^(4+s.octave_shift))
 Δt(as::AuditorySpectrogram) = s * frame_length(as) / as.fs
+Δf(as::AuditorySpectrogram) = 1 / 24
 
 (s::AuditorySpectrogram)(x::TimedSound.Sound{8000,T,1}) where T = s(Float64.(x))
 (s::AuditorySpectrogram)(x::TimedSound.Sound{R}) where R =
