@@ -1,4 +1,5 @@
 using Colors
+using MATLAB
 using PerceptualColourMaps
 using RecipesBase
 using DataFrames
@@ -29,6 +30,7 @@ function CorticalModel(aspect::AuditorySpectrogram;
                        rates=sort([-2.^(1:0.5:5); 2.^(1:0.5:5)]),
                        scales=2.^(-2:0.5:3),
                        bandonly=true)
+  mat"loadload;"
   CorticalModel(aspect,rates,scales,true)
 end
 
@@ -87,10 +89,9 @@ function scale_filter(scale,len,ts,kind)
 
   f2 = ((0:len-1)./len.*ts ./ 2 ./ abs(scale)).^2
   H = f2 .* exp.(1 .- f2)
-  _,maxi = findmax(H)
 
-  H = askind(H,len,maxi,kind)
-  H = [zeros(H); H]
+  H = askind(H,len,indmax(H),kind)
+  H = [H; zeros(H)] #?????
 end
 
 # create the temporal-rate filter (filter along temporal axis)
@@ -100,15 +101,15 @@ function rate_filter(rate,len,spect_len,kind)
   end
 
   t = (0:len-1)./spect_len .* abs(rate)
-  h = @. abs(rate) * t^3 * exp(-4t) * cos(2π*t)
+  h = @. abs(rate) * cos(2π*t) * t^3 * exp(-4t)
   h .-= mean(h)
 
   H0 = view(fft(pad(h,2len)),1:len)
   A = angle.(H0)
   H = abs.(H0)
 
-  _, maxi = findmax(H)
-  H ./= H[maxi]
+  maxH,maxi = findmax(H)
+  H ./= maxH
   HR = askind(H,len,maxi,kind) .* exp.(A*im)
 
   if rate >= 0
@@ -123,34 +124,38 @@ function rate_filter(rate,len,spect_len,kind)
   HR
 end
 
-(cm::CorticalModel)(s::AbstractVector) = cm(cm.aspect(s))
+(cm::CorticalModel)(s::AbstractVector,usematlab=true) =
+  cm(cm.aspect(s),usematlab)
 
 # TODO: use complex numbers to represent the output
 # but allow plotting to show absolute value and phase???
 
-function (cm::CorticalModel)(s::Matrix)
-  nexteven(x) = iseven(x) ? x : x+1
+function (cm::CorticalModel)(s::Matrix,usematlab=true)
+  if usematlab
+    paras = [cm.aspect.len, cm.aspect.decay_tc,
+             cm.aspect.nonlinear,cm.aspect.octave_shift]
+    if !all(indexin(-abs.(cm.rates),cm.rates) .> 0)
+      error("Missing negative rates. Cannot use matlab implementation.")
+    end
+    y = mat"aud2cor($s,$paras,$(unique(abs.(cm.rates))),$(cm.scales),'tmpxxx',0)"
+    return permutedims(y,[3,2,1,4])
+  end
 
   rates = cm.rates
   scales = cm.scales
-  N_t, N_f = nexteven.(size(s))
+  N_t, N_f = map(n -> nextprod([2,3,5],2n),size(s))
   N_r, N_s = length(rates), length(scales)
 
   # spatial-frequency represention of the spectrogram (i.e. 2D fft of s).
-
-  # implementation note: we transpose s because rfft halves the first dimension
-  # and we want frequency not time to be the halved dimension (since the rate
-  # filters, over time, need both negative and positive direction and that
-  # invovles manipulating negative frequencies)
-  S = fft(pad(s,nexteven.(size(s))))
-  S1 = fft(pad(s,nexteven(size(s,1)),size(s,2)),1)
+  S = fft(pad(s,(N_t,N_f)))
+  S1 = fft(pad(s,(N_t,size(s,2))),1)
   st_ifft = plan_ifft(S)
   t_ifft = plan_ifft(S1,1)
 
-  cr = zeros(Complex{eltype(s)}, N_t, N_r, N_s, N_f)
+  cr = zeros(Complex{eltype(s)}, size(s,1), N_r, N_s, size(s,2))
   rmin,rmax = extrema(rates)
   smin,smax = extrema(scales)
-  for (ri,rate) in enumerate(rates)
+  @showprogress for (ri,rate) in enumerate(rates)
 	  # rate filtering
 	  HR = rate_filter(rate, N_t>>1, 1000 / cm.aspect.len,
                      cm.bandonly ? :band :
@@ -158,8 +163,8 @@ function (cm::CorticalModel)(s::Matrix)
 
     for (si,scale) in enumerate(scales)
       if isnan(scale)
-        Z = t_ifft * (HR .* S1)
-        cr[:, ri, si, :] = view(Z,indices(s)...)
+        z = t_ifft * (HR .* S1)
+        cr[:, ri, si, :] = view(z,indices(s)...)
       else
 			  # scale filtering
 			  HS = scale_filter(scale, N_f>>1, spect_rate,
