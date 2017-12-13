@@ -54,7 +54,7 @@ function (tc::OnlineTCAnalysis)(x)
       x_ts = x[max(1,t-window_len):t,:,:,:]
       x_t = reshape(x_ts,prod(size(x_ts,1,2)),:)
 
-      # change to approximate: C_t = (1-dt)C_t + x*x'*dt ??
+      # TODO: change to approximate: C_t = (1-dt)C_t + x*x'*dt ??
       # (by weighting older samples)
       n = min(size(x_t,1),tc.ncomponents)
       sv, = svds(x_t,nsv=n)
