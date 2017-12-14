@@ -258,8 +258,10 @@ function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
   rindices = indexin(rates,cort.rates)
   sindices = indexin(scales,cort.scales)
 
-  @show rindices
-  @show sindices
+  if rates != cort.rates || scales != cort.scales
+    @show rindices
+    @show sindices
+  end
 
   y = y[:,rindices,sindices,:]
 

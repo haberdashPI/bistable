@@ -21,6 +21,7 @@ struct OnlineTCAnalysis <: TCAnalysis
 end
 
 (tc::OnlineTCAnalysis)(x::AbstractVector) = tc(tc.upstream(x))
+(tc::OnlineTCAnalysis)(x::AbstractMatrix) = tc(tc.upstream(x))
 
 TCAnalysis(upstream,ncomponents,rate=1s;method=:pca) =
   OnlineTCAnalysis(upstream,ncomponents,rate,method)

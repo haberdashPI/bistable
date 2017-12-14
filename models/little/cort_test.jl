@@ -18,7 +18,7 @@ sts = [0.1,1,6,12]
 # dist = ABDist(a_indices,b_indices,ap_indices)
 
 cort = CorticalModel(spect,scales=2.^(-1:0.5:4))
-dir = "../../plots/run_2012_12_13"
+dir = "../../plots/run_2017_12_13"
 
 function plot_resps(x,vars,varname)
   df = DataFrame(resp = vcat((real.(x[i])

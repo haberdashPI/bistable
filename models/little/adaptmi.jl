@@ -39,7 +39,7 @@ function adaptmi(x::AbstractArray{T},params=AdaptMI()) where T
   end
 end
 
-function noise!(x,τ_ε,c_ε,Δt=1ms)
+function noisey!(x,τ_ε,c_ε,Δt=1ms)
   ε_t = zeros(size(x,2))
   n = size(x,2)
   for t in 1:size(x,1)
@@ -48,7 +48,7 @@ function noise!(x,τ_ε,c_ε,Δt=1ms)
   end
   x
 end
-noise(x,τ_ε,c_ε) = noise!(copy(x),τ_ε,c_ε)
+noisey(x,τ_ε,c_ε) = noisey!(copy(x),τ_ε,c_ε)
 
 
 ########################################
@@ -71,7 +71,10 @@ end
 function set_timeslice!
 end
 
-# __approx(f,xs...) ≈ f(xs...)
+# __approx(f,x,xs...) ≈ f(x,xs...)
+
+# x can be an 'important' value, meaning it is used to determine how the
+# remaining values are approximated
 function __approx
 end
 
@@ -93,13 +96,28 @@ end
 # - there is no loss due to approximation
 
 __approx(f,args...) = f(args...)
+approx_similar(x) = similar(x)
 timeslice(y) = zeros(eltype(y),size(y)[2:end]...)
+approx_timeslice(y) = timeslice(y)
 nunits(y_t) = length(y_t)
 time_indices(y) = indices(y,1)
 function set_timeslice!(y,t,y_t)
   for ii in CartesianRange(size(y_t)); y[t,ii] = y_t[ii]; end
   y_t
 end
+
+########################################
+# complex number implementation
+# - we 'approximate' values by their mangitude
+#   so that m and a remain real, the resulting output
+#   can be multiplied by the phase of the original signal
+#   to find the final, complex output
+function __approx(f,x::Array{<:Complex},args...)
+  y = f(abs.(x),args...)
+  (y[1]*angle.(x),y[2:end]...)
+end
+approx_similar(x::Array{<:Complex{T}}) where T = similar(x,T)
+approx_timeslice(y::Array{<:Complex{T}}) where T = zeros(T,size(y)[2:end]...)
 
 ##############################
 # implementation for EigenSeries
@@ -128,31 +146,30 @@ function adaptmi(update,y,params)
   τ_m = params.τ_m; c_m = params.c_m; W_m = params.W_m
   Δt = params.Δt
 
-  a = similar(y) # a = adaptation
-  m = similar(y) # m = mutual inhibition
+  a = approx_similar(y) # a = adaptation
+  m = approx_similar(y) # m = mutual inhibition
 
-  y_t = timeslice(y)
-  a_t = timeslice(y)
-  m_t = timeslice(y)
+  yr_t = timeslice(y)
+  a_t = approx_timeslice(y)
+  m_t = approx_timeslice(y)
 
   dt_y = Δt / τ_y
   dt_a = Δt / τ_a
-
   dt_m = Δt / τ_m
 
   for t in time_indices(y)
-    y_t = update(y_t,t,dt_y)
+    y_t = update(yr_t,t,dt_y)
 
-    y_t,yp_t,a_t,m_t = @approx (y_t,a_t,m_t) begin
+    yr_t,a_t,m_t = @approx (y_t,a_t,m_t) begin
       y_t .-= (y_t.*c_a.*a_t .+ c_m.*m_t)
       yp_t = shape_y.(y_t)
       a_t .+= (yp_t .- a_t).*dt_a
       m_t .+= (W_m(yp_t) .- m_t).*dt_m
 
-      y_t,yp_t,a_t,m_t
+      y_t,a_t,m_t
     end
 
-    set_timeslice!(y,t,y_t)
+    set_timeslice!(y,t,yr_t)
     set_timeslice!(a,t,a_t)
     set_timeslice!(m,t,m_t)
   end
