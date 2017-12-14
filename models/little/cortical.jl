@@ -237,6 +237,23 @@ end
 
 rplot(cort::CorticalModel,y::AbstractVector) = rplot(cort,cort(y))
 
+function number_to_color(x::Array{<:Complex})
+  phase_map = cmap("C9")
+  norm(x) = x ./ maximum(x)
+  tocolor(x) = phase_map[floor(Int,x*(length(phase_map)-1)+1)]
+
+  phase_col = Lab.(tocolor.((angle.(x) .+ π)/2π))
+  weighted_color_mean.(norm(log.(1 .+ abs.(x))),
+                       phase_col,Lab(colorant"lightgray"))
+end
+
+function number_to_color(x::Array{<:Real})
+  colormap = cmap("L1")
+  tocolor(x) = colormap[floor(Int,x*(length(colormap)-1)+1)]
+
+  tocolor.((x .- minimum(x)) ./ (maximum(x) - minimum(x)))
+end
+
 function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
   rindices = indexin(rates,cort.rates)
   sindices = indexin(scales,cort.scales)
@@ -248,15 +265,8 @@ function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
 
   ixs = CartesianRange(size(y))
   at(ixs,i) = map(x -> x[i],ixs)
-  norm(x) = x ./ maximum(x)
 
-  phase_map = cmap("C9")
-  tocolor(x) = phase_map[floor(Int,x*(length(phase_map)-1)+1)]
-  phase_col = Lab.(tocolor.((angle.(y[:]) .+ π)/2π))
-  col = weighted_color_mean.(norm(log.(1 + abs.(y[:]))),
-                             phase_col,Lab(colorant"lightgray"))
-
-  df = DataFrame(r_color = "#".*hex.(col),
+  df = DataFrame(r_color = "#".*hex.(number_to_color(y[:])),
                  time = times(cort,y)[at(ixs,1)][:],
                  rate = rates[at(ixs,2)][:],
                  scale = scales[at(ixs,3)][:],

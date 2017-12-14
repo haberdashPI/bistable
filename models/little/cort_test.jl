@@ -18,24 +18,24 @@ sts = [0.1,1,6,12]
 # dist = ABDist(a_indices,b_indices,ap_indices)
 
 cort = CorticalModel(spect,scales=2.^(-1:0.5:4))
-dir = "../../run_2012_12_13"
+dir = "../../plots/run_2012_12_13"
 
 function plot_resps(x,vars,varname)
-  @show vars
   df = DataFrame(resp = vcat((real.(x[i])
                               for i in 1:length(x))...),
                  var = vcat((fill(vars[i],length(x[i]))
                              for i in eachindex(x))...),
-                 time = vcat((ustrip(eachindex(xi) * Δt(spect))
+                 time = vcat((ustrip.(eachindex(xi) * Δt(spect))
                               for xi in x)...))
 
-p = R"""
+R"""
   library(ggplot2)
 
   ggplot($df,aes(x=time,y=resp,group=factor(var),color=factor(var))) +
     geom_line() +
     scale_color_brewer(palette='Set1',name=$varname) +
-    coord_cartesian(ylim=c(1.1,0)) + ylab('lambda^2 / var(x)')
+    coord_cartesian(ylim=c(1.1,0)) + ylab('lambda / var(x)') +
+    xlab('time (s)')
 """
 end
 
@@ -50,7 +50,7 @@ Cs_async = [tempc(crs_async[i]) for i in eachindex(ab_async)];
 
 sig_async = [fusion_signal(tempc,Cs_async[i],crs_async[i])
              for i in eachindex(ab_async)]
-p[1] = plot_resps(sig_async,sts,"delta f (st)");
+p[1] = plot_resps(sig_async,sts,"delta f (st)")
 
 f_ab_async_d(delta) = @>(ab(delta,delta,1,10,500Hz,12),attenuate(10))
 deltas = [60ms, 80ms, 100ms, 120ms]
@@ -78,4 +78,19 @@ p = plot_grid($(p[1]) + ggtitle("Asynchronous, by delta f (delta t = 240 ms)"),
           $(p[3]) + ggtitle("Synchronous, by delta f (delta t = 240 ms)"),
           align = "h", ncol = 3)
 save_plot($(dir*"/eigenratio.pdf"),p,base_aspect_ratio=1.3,ncol=3,nrow=1)
+"""
+
+
+p[1] = rplot(tempc,Cs_async[4][round(Int,1s / Δt(spect))])
+p[2] = rplot(tempc,Cs_async[4][round(Int,3s / Δt(spect))])
+p[3] = rplot(tempc,Cs_async[4][round(Int,4s / Δt(spect))])
+
+R"""
+library(cowplot)
+
+p = plot_grid($(p[1]) + ggtitle("First component at 1 second"),
+          $(p[2]) + ggtitle("First component at 3 seconds"),
+          $(p[3]) + ggtitle("First component at 4 seconds"),
+          align = "h", ncol = 3)
+save_plot($(dir*"/components.pdf"),p,base_aspect_ratio=1.3,ncol=3,nrow=1)
 """
