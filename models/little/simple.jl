@@ -3,7 +3,7 @@ using Unitful: ustrip, s, ms
 using RCall
 using DataFrames
 include("units.jl")
-include("simple_model.jl")
+include("adaptmi.jl")
 Δt = 10ms
 
 R"""
