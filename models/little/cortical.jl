@@ -84,14 +84,13 @@ end
 # create the frequency-scale filter (filter along spectral axis)
 function scale_filter(scale,len,ts,kind)
   if isnan(scale)
-    ones(2len)
+    ones(len)
   end
 
   f2 = ((0:len-1)./len.*ts ./ 2 ./ abs(scale)).^2
   H = f2 .* exp.(1 .- f2)
 
-  H = askind(H,len,indmax(H),kind)
-  H = [H; zeros(H)] #?????
+  askind(H,len,indmax(H),kind)
 end
 
 # create the temporal-rate filter (filter along temporal axis)
@@ -101,7 +100,7 @@ function rate_filter(rate,len,spect_len,kind)
   end
 
   t = (0:len-1)./spect_len .* abs(rate)
-  h = @. abs(rate) * cos(2π*t) * t^3 * exp(-4t)
+  h = @. abs(rate) * sin(2π*t) * t^2 * exp(-3.5t)
   h .-= mean(h)
 
   H0 = view(fft(pad(h,2len)),1:len)
@@ -116,7 +115,6 @@ function rate_filter(rate,len,spect_len,kind)
     HR = pad(HR,2length(HR))
 	else
     HR = pad(HR,2length(HR))
-    HR[1] = 0
 		HR[2:end] .= conj.(reverse(HR[2:end]))
 		HR[len+1] = abs(HR[len+2])
 	end
@@ -143,23 +141,29 @@ function (cm::CorticalModel)(s::Matrix,usematlab=true)
 
   rates = cm.rates
   scales = cm.scales
-  N_t, N_f = map(n -> nextprod([2,3,5],2n),size(s))
+  N_t, N_f = map(n -> nextprod([2],n),size(s)) # TODO: change to [2,3,5]
   N_r, N_s = length(rates), length(scales)
 
   # spatial-frequency represention of the spectrogram (i.e. 2D fft of s).
-  S = fft(pad(s,(N_t,N_f)))
-  S1 = fft(pad(s,(N_t,size(s,2))),1)
-  st_ifft = plan_ifft(S)
-  t_ifft = plan_ifft(S1,1)
+  S1 = fft(pad(s,(N_t,2N_f)),2)
+  S = fft(pad(S1[:,1:N_f],(2N_t,N_f)),1)
+
+  t_ifft = plan_ifft(S,1)
+  f_ifft = plan_ifft(S1,2)
+
+  S1 = S1[:,1:N_f]
+  s1_ifft = plan_ifft(S1,1)
 
   cr = zeros(Complex{eltype(s)}, size(s,1), N_r, N_s, size(s,2))
   rmin,rmax = extrema(rates)
   smin,smax = extrema(scales)
-  @showprogress for (ri,rate) in enumerate(rates)
+  @showprogress "Cortical Simulation " for (ri,rate) in enumerate(rates)
 	  # rate filtering
-	  HR = rate_filter(rate, N_t>>1, 1000 / cm.aspect.len,
+	  HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
                      cm.bandonly ? :band :
                      rate == rmin ? :low : rate < rmax ? :band : :high)
+
+    z_t = (t_ifft * (HR.*S))[1:N_t,:]
 
     for (si,scale) in enumerate(scales)
       if isnan(scale)
@@ -167,13 +171,13 @@ function (cm::CorticalModel)(s::Matrix,usematlab=true)
         cr[:, ri, si, :] = view(z,indices(s)...)
       else
 			  # scale filtering
-			  HS = scale_filter(scale, N_f>>1, spect_rate,
+			  HS = scale_filter(scale, N_f, spect_rate,
                           cm.bandonly ? :band :
                           scale == smin ? :low : scale < smax ? :band : :high)
 
 			  # convolve current filter with spectrogram
-        Z = st_ifft*(HR.*HS' .* S)
-			  cr[:, ri, si, :] = view(Z,indices(s)...)
+        z = f_ifft*(pad(HS'.*z_t,N_t,2N_f))
+			  cr[:, ri, si, :] = view(z,indices(s)...)
       end
 		end
   end
@@ -243,15 +247,15 @@ function number_to_color(x::Array{<:Complex})
   tocolor(x) = phase_map[floor(Int,x*(length(phase_map)-1)+1)]
 
   phase_col = Lab.(tocolor.((angle.(x) .+ π)/2π))
-  weighted_color_mean.(norm(log.(1 .+ abs.(x))),
-                       phase_col,Lab(colorant"lightgray"))
+  RGB.(weighted_color_mean.(norm(log.(1 .+ abs.(x))),
+                            phase_col,Lab(colorant"lightgray")))
 end
 
 function number_to_color(x::Array{<:Real})
-  colormap = cmap("L1")
+  colormap = cmap("L3")
   tocolor(x) = colormap[floor(Int,x*(length(colormap)-1)+1)]
 
-  tocolor.((x .- minimum(x)) ./ (maximum(x) - minimum(x)))
+  RGB.(tocolor.((x .- minimum(x)) ./ (maximum(x) - minimum(x))))
 end
 
 function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
@@ -273,6 +277,8 @@ function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
                  rate = rates[at(ixs,2)][:],
                  scale = scales[at(ixs,3)][:],
                  freq_bin = at(ixs,4)[:])
+
+  @show head(df)
 
   fbreaks = 2.0.^(-3:2)
   fs = freqs(cort,y)
