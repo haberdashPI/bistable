@@ -220,3 +220,22 @@ R"""
 """
 
 end
+
+function plot_resps(x,vars,varname)
+  df = DataFrame(resp = vcat((real.(x[i])
+                              for i in 1:length(x))...),
+                 var = vcat((fill(vars[i],length(x[i]))
+                             for i in eachindex(x))...),
+                 time = vcat((ustrip.(eachindex(xi) * Δt(spect))
+                              for xi in x)...))
+
+R"""
+  library(ggplot2)
+
+  ggplot($df,aes(x=time,y=resp,group=factor(var),color=factor(var))) +
+    geom_line() +
+    scale_color_brewer(palette='Set1',name=$varname) +
+    # coord_cartesian(ylim=c(1.1,0)) + ylab('lambda / var(x)') +
+    xlab('time (s)')
+"""
+end
