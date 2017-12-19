@@ -123,6 +123,8 @@ function rate_filter(rate,len,spect_len,kind)
   HR
 end
 
+(cm::CorticalModel)(s::TimedSound.Sound,usematlab=true) =
+  cm(cm.aspect(s),usematlab)
 (cm::CorticalModel)(s::AbstractVector,usematlab=true) =
   cm(cm.aspect(s),usematlab)
 
