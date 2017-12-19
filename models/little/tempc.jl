@@ -30,25 +30,7 @@ TCAnalysis(upstream,ncomponents,rate=1s;method=:pca) =
 # set of eigenseries for each time scale
 Base.CartesianRange(x::Int) = CartesianRange((x,))
 function (tc::OnlineTCAnalysis)(x)
-  if tc.method == :split_rate
-    error("Not implemented")
-  elseif tc.method == :direct
-    n = prod(size(x,3,4))
-    C_t = fill(zero(x[1]),n,n)
-    dt = Δt(tc) / tc.rate
-    y = similar(x)
-
-    function helper(C_t,x,dt)
-      @showprogress for ii in CartesianRange(size(x,1,2))
-        x_t = vec(x[ii,:,:])
-        C_t .= C_t.*(1-dt) .+ (x_t .* x_t').*dt
-        y[ii,:,:] = C_t * x_t
-      end
-      y
-    end
-
-    helper(C_t,x,dt)
-  elseif tc.method == :pca
+  if tc.method == :pca
     C = EigenSeries(eltype(x),size(x,1),prod(size(x,3,4)),tc.ncomponents)
     window_len = round(Int,tc.rate/Δt(tc))
     @showprogress for t in indices(x,1)
@@ -69,24 +51,6 @@ function (tc::OnlineTCAnalysis)(x)
     end
 
     C
-  elseif tc.method == :ipca_rsplit
-    nr = length(rates(tc.upstream))
-    C_t = [EigenSpace(eltype(x),prod(size(x,3,4)),tc.ncomponents) for r in 1:nr]
-    C = [EigenSeries(size(x,1),C_t[r]) for r in 1:nr]
-    dt = Δt(tc) / tc.rate
-
-    function helper_(C_t,C,x,dt)
-      @showprogress for t in indices(x,1)
-        for r in indices(x,2)
-          # approximately: C_t = (1-dt)C_t + x*x'*dt
-          C_t[r] = update(C_t[r],x[t,r,:,:],dt)
-          C[r][t] = C_t[r]
-        end
-      end
-      C
-    end
-
-    helper_(C_t,C,x,dt)
   elseif tc.method == :ipca
     C_t = EigenSpace(eltype(x),prod(size(x,3,4)),tc.ncomponents)
     C = EigenSeries(size(x,1),C_t)
@@ -107,29 +71,47 @@ function (tc::OnlineTCAnalysis)(x)
     end
 
     helper__(C_t,C,x,dt)
+  elseif tc.method == :ipca_lr
+    C_t = EigenSpace(eltype(x),prod(size(x,3,4)),tc.ncomponents)
+    C = EigenSeries(size(x,1),C_t)
+
+    dt = Δt(tc) / tc.rate
+
+    function helper___(C_t,C,x,dt)
+
+      @showprogress for t in indices(x,1)
+        for r in indices(x,2)
+          # approximately: C_t = (1-dt)C_t + x*x'*dt
+          C_t = update_approx(C_t,x[t,r,:,:],dt)
+        end
+        C[t] = C_t
+      end
+
+      C
+    end
+
+    helper___(C_t,C,x,dt)
+  elseif tc.method == :ipca_rsplit
+    nr = length(rates(tc.upstream))
+    C_t = [EigenSpace(eltype(x),prod(size(x,3,4)),tc.ncomponents) for r in 1:nr]
+    C = [EigenSeries(size(x,1),C_t[r]) for r in 1:nr]
+    dt = Δt(tc) / tc.rate
+
+    function helper_(C_t,C,x,dt)
+      @showprogress for t in indices(x,1)
+        for r in indices(x,2)
+          # approximately: C_t = (1-dt)C_t + x*x'*dt
+          C_t[r] = update(C_t[r],x[t,r,:,:],dt)
+          C[r][t] = C_t[r]
+        end
+      end
+      C
+    end
+
+    helper_(C_t,C,x,dt)
+  else
+    error("No method named $(tc.method)")
   end
-end
-
-fusion_ratio(tc::OnlineTCAnalysis,C::EigenSeries,x::AbstractVector) =
-  fusion_ratio(tc.upstream(x),C,x)
-function fusion_signal(tc::OnlineTCAnalysis,C::EigenSeries,x)
-  cumvar = cumsum(sum(abs2.(x),[2,3,4]),1) ./ (size(x,2)*indices(x,1))
-  vec(first.(eigvals.(C)) ./ cumvar)
-end
-
-struct ABDist
-  atimes::Vector{Int}
-  btimes::Vector{Int}
-  aptimes::Vector{Int}
-end
-
-function fusion_signal(tc::OnlineTCAnalysis,C::EigenSeries,x,d::ABDist)
-  aresp = (C[a] * reshape(x[a,:,:,:],size(x,2),:)' for a in d.atimes)
-  bresp = (C[b] * reshape(x[b,:,:,:],size(x,2),:)' for b in d.btimes)
-  apresp = (C[ap] * reshape(x[ap,:,:,:],size(x,2),:)' for ap in d.aptimes)
-
-  [sum(abs.(a .- ap)) / sum(abs.(a .- b))
-   for (a,b,ap) in zip(aresp,bresp,apresp)]
 end
 
 fusion_signal(tc::OnlineTCAnalysis,C::EigenSeries,x::AbstractVector) =
