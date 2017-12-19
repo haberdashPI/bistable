@@ -246,22 +246,22 @@ end
 
 rplot(cort::CorticalModel,y::AbstractVector) = rplot(cort,cort(y))
 
-function number_to_color(x::Array{<:Complex})
-  phase_map = cmap("C9")
-  norm(x) = x ./ maximum(x)
-  tocolor(x) = phase_map[floor(Int,x*(length(phase_map)-1)+1)]
+# function number_to_color(x::Array{<:Complex})
+#   phase_map = cmap("C9")
+#   norm(x) = x ./ maximum(x)
+#   tocolor(x) = phase_map[floor(Int,x*(length(phase_map)-1)+1)]
 
-  phase_col = Lab.(tocolor.((angle.(x) .+ π)/2π))
-  RGB.(weighted_color_mean.(norm(log.(1 .+ abs.(x))),
-                            phase_col,Lab(colorant"lightgray")))
-end
+#   phase_col = Lab.(tocolor.((angle.(x) .+ π)/2π))
+#   RGB.(weighted_color_mean.(norm(log.(1 .+ abs.(x))),
+#                             phase_col,Lab(colorant"lightgray")))
+# end
 
-function number_to_color(x::Array{<:Real})
-  colormap = cmap("L3")
-  tocolor(x) = colormap[floor(Int,x*(length(colormap)-1)+1)]
+# function number_to_color(x::Array{<:Real})
+#   colormap = cmap("L3")
+#   tocolor(x) = colormap[floor(Int,x*(length(colormap)-1)+1)]
 
-  RGB.(tocolor.((x .- minimum(x)) ./ (maximum(x) - minimum(x))))
-end
+#   RGB.(tocolor.((x .- minimum(x)) ./ (maximum(x) - minimum(x))))
+# end
 
 function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
   rindices = indexin(rates,cort.rates)
@@ -277,13 +277,14 @@ function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
   ixs = CartesianRange(size(y))
   at(ixs,i) = map(x -> x[i],ixs)
 
-  df = DataFrame(r_color = "#".*hex.(number_to_color(y[:])),
+  colormap = "#".*hex.(RGB.(cmap("C1")))
+
+  df = DataFrame(r_phase = angle.(vec(y)),
+                 r_amp = abs.(vec(y)),
                  time = times(cort,y)[at(ixs,1)][:],
                  rate = rates[at(ixs,2)][:],
                  scale = scales[at(ixs,3)][:],
                  freq_bin = at(ixs,4)[:])
-
-  @show head(df)
 
   fbreaks = 2.0.^(-3:2)
   fs = freqs(cort,y)
@@ -306,12 +307,13 @@ R"""
   df1$rate_title = factor(ratestr(df1$rate),
                           levels=ratestr($(sort(rates))))
 
-  ggplot(df1,aes(x=time,y=freq_bin,fill=r_color)) +
+  ggplot(df1,aes(x=time,y=freq_bin,fill=r_phase,alpha=r_amp)) +
     geom_raster() +
     scale_y_continuous(breaks=$findices,labels=$fbreaks) +
     ylab('Frequency (kHz)') + xlab('Time (s)') +
     facet_grid(scale_title ~ rate_title) +
-    scale_fill_identity() # scale_fill_distiller(palette='RdBu')
+    scale_fill_gradientn(colors=$colormap) +
+    scale_alpha_continuous(range=c(0,1))
 
 """
 end

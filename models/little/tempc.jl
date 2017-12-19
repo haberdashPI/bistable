@@ -186,8 +186,7 @@ end
 
 
 
-function rplot(tc::OnlineTCAnalysis,C::EigenSpace;
-               n=ncomponents(C),oddonly=false,plotphase=false)
+function rplot(tc::OnlineTCAnalysis,C::EigenSpace;n=ncomponents(C),oddonly=false)
   λ = abs.(eigvals(C))
   order = sortperm(λ,rev=true)
   λ = λ[order]
@@ -201,7 +200,10 @@ function rplot(tc::OnlineTCAnalysis,C::EigenSpace;
     "Lmb_$nstr = $(round(λ[n],3))"
   end
 
-  df = DataFrame(response = "#".*hex.(number_to_color(u[:])),
+  colormap = "#".*hex.(RGB.(cmap("C1")))
+
+  df = DataFrame(r_phase = angle.(vec(u)),
+                 r_amp = abs.(vec(u)),
                  scale_index = at(1),
                  freq_bin = at(2),
                  component = title.(at(3)))
@@ -224,12 +226,13 @@ R"""
 
   library(ggplot2)
 
-  ggplot($df,aes(x=scale_index,y=freq_bin,fill=response)) +
+  ggplot($df,aes(x=scale_index,y=freq_bin,fill=r_phase,alpha=r_amp)) +
     geom_raster() + facet_wrap(~component) +
     scale_y_continuous(breaks=$findices,labels=$fbreaks) +
     scale_x_continuous(breaks=$sindices,labels=$sbreaks) +
     ylab('Frequency (kHz)') + xlab('Scale') +
-    scale_fill_identity()
+    scale_fill_gradientn(colors=$colormap) +
+    scale_alpha_continuous(range=c(0,1))
 
 """
 
