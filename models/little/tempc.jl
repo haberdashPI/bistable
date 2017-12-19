@@ -64,7 +64,8 @@ function (tc::OnlineTCAnalysis)(x)
 
       λ[1:n] = sv[:S].^2 ./ size(x_t,1)
       u[:,1:n] = sv[:V]
-      C[t] = EigenSpace(sv[:V],eltype(x).(sv[:S]).^2 / size(x_t,1))
+      var = sum(abs2.(x_t)) / size(x_t,1)
+      C[t] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
     end
 
     C
@@ -131,12 +132,12 @@ function fusion_signal(tc::OnlineTCAnalysis,C::EigenSeries,x,d::ABDist)
    for (a,b,ap) in zip(aresp,bresp,apresp)]
 end
 
-function fusion_signal(tc::OnlineTCAnalysis,y,x,d::ABDist)
-  aresp = (y[a,:,:,:] for a in d.atimes)
-  bresp = (y[b,:,:,:] for b in d.btimes)
-  apresp = (y[ap,:,:,:] for ap in d.aptimes)
-
-  [sum(abs.(a .- ap)) / sum(abs.(a .- b)) for (a,b,ap) in zip(aresp,bresp,apresp)]
+fusion_signal(tc::OnlineTCAnalysis,C::EigenSeries,x::AbstractVector) =
+  fusion_signal(tc.upstream(x),C,x)
+function fusion_signal(tc::OnlineTCAnalysis,C::EigenSeries,x)
+  vec(first.(eigvals.(C)) ./ var.(C))
+  # cumvar = cumsum(sum(abs2.(x),[2,3,4]),1) ./ (size(x,2)*indices(x,1))
+  # vec(first.(eigvals.(C)) ./ cumvar)
 end
 
 rplot(tc::OnlineTCAnalysis,x::TimedSound.Sound;kwds...) = rplot(tc,tc(x);kwds...)
