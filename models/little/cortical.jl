@@ -142,6 +142,8 @@ function (cm::CorticalModel)(s::Matrix,usematlab=true)
     return permutedims(y,[3,2,1,4])
   end
 
+  warn("Julia cortical implementation is not fully functional!!!")
+
   rates = cm.rates
   scales = cm.scales
   N_t, N_f = map(n -> nextprod([2],n),size(s)) # TODO: change to [2,3,5]
