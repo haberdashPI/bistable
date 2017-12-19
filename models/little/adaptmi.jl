@@ -157,7 +157,7 @@ function adaptmi(update,y,params)
   dt_a = Δt / τ_a
   dt_m = Δt / τ_m
 
-  for t in time_indices(y)
+  @showprogress for t in time_indices(y)
     y_t = update(yr_t,t,dt_y)
 
     yr_t,a_t,m_t = @approx (y_t,a_t,m_t) begin
