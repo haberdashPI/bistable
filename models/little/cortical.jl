@@ -1,9 +1,10 @@
+# TODO: figure out if the segfault comes from the combination of R and MATLAB
 using Colors
+using RCall
 using MATLAB
 using PerceptualColourMaps
 using RecipesBase
 using DataFrames
-using RCall
 include("audio_spect.jl")
 
 struct CorticalModel
