@@ -1,5 +1,6 @@
 using RCall
 using DataFrames
+using MATLAB
 using DSP
 using HDF5
 import Base: run
@@ -21,6 +22,8 @@ Base.show(io::IO,x::AuditorySpectrogram) =
 function AuditorySpectrogram(filename::String;
                              fs=ustrip(TimedSound.samplerate()),
                              len=10,decay_tc=8,nonlinear=-2,octave_shift=-1)
+  mat"loadload;"
+
   @assert fs == 8000 "The only sample rate supported is 8000 Hz"
   h5open(filename) do file
     r = read(file,"/real")
@@ -179,4 +182,12 @@ function (s::AuditorySpectrogram)(x::Vector{T}) where T
   end
 
   v5
+end
+
+function Base.inv(spect,y::AbstractMatrix;iterations=10)
+  paras = [spect.len, spect.decay_tc, spect.nonlinear, spect.octave_shift,
+           itr, 0, 0]
+  my = mxarray(Float64.(y))
+  guess = mat"aud2wavi($my,$paras)"
+  mat"aud2wav($my,$guess,$paras)"
 end
