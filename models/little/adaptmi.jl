@@ -114,7 +114,7 @@ end
 #   to find the final, complex output
 function __approx(f,x::Array{<:Complex},args...)
   y = f(abs.(x),args...)
-  (y[1]*angle.(x),y[2:end]...)
+  (y[1].*angle.(x),y[2:end]...)
 end
 approx_similar(x::Array{<:Complex{T}}) where T = similar(x,T)
 approx_timeslice(y::Array{<:Complex{T}}) where T = zeros(T,size(y)[2:end]...)
