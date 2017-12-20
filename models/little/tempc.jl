@@ -40,7 +40,7 @@ function (tc::OnlineTCAnalysis)(x)
 
       λ[1:n] = sv[:S].^2 ./ size(x_t,1)
       u[:,1:n] = sv[:V]
-      var = sum(abs2.(x_t)) / size(x_t,1)
+      var = mean(abs2.(x_t),1)
       C[t] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
     end
 
@@ -111,9 +111,7 @@ end
 fusion_signal(tc::OnlineTCAnalysis,C::EigenSeries,x::AbstractVector) =
   fusion_signal(tc.upstream(x),C,x)
 function fusion_signal(tc::OnlineTCAnalysis,C::EigenSeries,x)
-  vec(first.(eigvals.(C)) ./ var.(C))
-  # cumvar = cumsum(sum(abs2.(x),[2,3,4]),1) ./ (size(x,2)*indices(x,1))
-  # vec(first.(eigvals.(C)) ./ cumvar)
+  vec(first.(eigvals.(C)) ./ sum.(var.(C)))
 end
 
 rplot(tc::OnlineTCAnalysis,x::TimedSound.Sound;kwds...) = rplot(tc,tc(x);kwds...)
@@ -167,12 +165,17 @@ function rplot(tc::OnlineTCAnalysis,C::EigenSpace;n=ncomponents(C),oddonly=false
   λ = λ[order]
   u = eigvecs(C)[:,order]
   u = u[:,1:min(n,end)]
+  u = [u var(C)]
   u = reshape(u,length(scales(tc.upstream)),:,size(u,2))
   ii = CartesianRange(size(u))
   at(i) = vec(map(ii -> ii[i],ii))
   function title(n)
-    nstr = @sprintf("%02d",n)
-    "Lmb_$nstr = $(round(λ[n],3))"
+    if n <= length(λ)
+      nstr = @sprintf("%02d",n)
+      "Lmb_$nstr = $(round(λ[n],3))"
+    else
+      "Variance = $(sum(var(C)))"
+    end
   end
 
   colormap = "#".*hex.(RGB.(cmap("C1")))
