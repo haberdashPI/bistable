@@ -1,3 +1,4 @@
+# TODO: make eigenspace time unit aware and rename it
 abstract type EigenSpace{U,L} end
 
 struct SimpleEigenSpace{U,L} <: EigenSpace{U,L}
@@ -40,20 +41,23 @@ struct EigenSeries{U,L} <: AbstractArray{EigenSpace{U,L},1}
   u::Array{U,3}
   λ::Array{L,2}
   var::Array{L,1}
+  delta::Seconds{Float64}
 end
 ncomponents(x::EigenSeries) = size(x.u,3)
 
-EigenSeries(::Type{T},t,d,n) where T =
-  EigenSeries(Array{T}(t,d,n),Array{real(T)}(t,n),Array{real(T)}(t))
-EigenSeries(t,d,n) = EigenSeries(Float64,t,d,n)
+EigenSeries(::Type{T},t,d,n,delta) where T =
+  EigenSeries(Array{T}(t,d,n),Array{real(T)}(t,n),Array{real(T)}(t),delta)
+EigenSeries(t,d,n,delta) = EigenSeries(Float64,t,d,n,delta)
 EigenSeries(t,x::FullEigenSpace) =
   EigenSeries(similar(x.u,(t,size(x.u)...)),
               similar(x.λ,(t,size(x.λ)...)),
-              similar(x.λ,(t,)))
+              similar(x.λ,(t,)),
+              x.delta)
 EigenSeries(t,x::SimpleEigenSpace) =
   EigenSeries(similar(x.u,(t,length(x.u),1)),
               similar(x.λ,(t,1)),
-              similar(x.λ,(t,)))
+              similar(x.λ,(t,)),
+              x.delta)
 
 function Base.similar(x::EigenSeries,::Type{EigenSpace{U,L}},
                       dims::NTuple{N,Int}) where {U,L,N}
@@ -61,7 +65,8 @@ function Base.similar(x::EigenSeries,::Type{EigenSpace{U,L}},
   @assert length(dims) == 1 "EigenSeries can only have a dimensionality of 1."
   EigenSeries(similar(x.u,U,(dims[1],size(x.u,2),size(x.u,3))),
               similar(x.λ,L,(dims[1],size(x.λ,2))),
-              similar(x.var,L,(dims[1],)))
+              similar(x.var,L,(dims[1],)),
+              x.delta)
 end
 
 function Base.setindex!(x::EigenSeries,v::EigenSpace,i::Int)
@@ -72,6 +77,8 @@ function Base.setindex!(x::EigenSeries,v::EigenSpace,i::Int)
 end
 EigenSpace(x::EigenSeries) = EigenSpace(size(x.u,2),size(x.u,3))
 Base.getindex(x::EigenSeries,i::Int) = EigenSpace(x.u[i,:,:],x.λ[i,:],x.var[i])
+Base.getindex(x::EigenSeries,i::Quantity{N,TimeDim}) where N =
+  x[max(1,floor(Int,i / x.delta))]
 Base.size(x::EigenSeries) = (size(x.u,1),)
 Base.IndexStyle(::EigenSeries) = IndexLinear()
 

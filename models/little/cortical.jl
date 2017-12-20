@@ -1,6 +1,7 @@
 # TODO: figure out if the segfault comes from the combination of R and MATLAB
-using Colors
 using RCall
+sleep(0.25) # without this RCall can lead to a segmentation fault
+using Colors
 using MATLAB
 using PerceptualColourMaps
 using RecipesBase
@@ -136,17 +137,22 @@ function (cm::CorticalModel)(s::Matrix,usematlab=true)
     paras = [cm.aspect.len, cm.aspect.decay_tc,
              cm.aspect.nonlinear,cm.aspect.octave_shift]
     if !all(indexin(-abs.(cm.rates),cm.rates) .> 0)
-      error("Missing negative rates. Cannot use matlab implementation.")
+      error("Missing negative rates. Cannot use matlab implementation."*
+            " Set usematlab=false.")
+    end
+    if any(isnan.(cm.rates)) || any(isnan.(cm.scales))
+      error("NaN rate and/or scale not supproted by matlab implementation."*
+            " Set usematlab=false.")
     end
     y = mat"aud2cor($s,$paras,$(unique(abs.(cm.rates))),$(cm.scales),'tmpxxx',0)"
     return permutedims(y,[3,2,1,4])
   end
 
-  warn("Julia cortical implementation is not fully functional!!!")
+  warn("Julia cortical result differs from NSL toolbox result!!!")
 
   rates = cm.rates
   scales = cm.scales
-  N_t, N_f = map(n -> nextprod([2],n),size(s)) # TODO: change to [2,3,5]
+  N_t, N_f = map(n -> nextprod([2,3,5],n),size(s)) # TODO: change to [2,3,5]
   N_r, N_s = length(rates), length(scales)
 
   # spatial-frequency represention of the spectrogram (i.e. 2D fft of s).
@@ -162,25 +168,30 @@ function (cm::CorticalModel)(s::Matrix,usematlab=true)
   cr = zeros(Complex{eltype(s)}, size(s,1), N_r, N_s, size(s,2))
   rmin,rmax = extrema(rates)
   smin,smax = extrema(scales)
-  @showprogress "Cortical Simulation " for (ri,rate) in enumerate(rates)
-	  # rate filtering
-	  HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
-                     cm.bandonly ? :band :
-                     rate == rmin ? :low : rate < rmax ? :band : :high)
+  @showprogress "Cortical Simulation: " for (ri,rate) in enumerate(rates)
+    z_t = if isnan(rate)
+      # do not filter by rate
+      (t_ifft * S)[1:N_t,:]
+    else
+	    HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
+                       cm.bandonly ? :band :
+                       rate == rmin ? :low : rate < rmax ? :band : :high)
 
-    z_t = (t_ifft * (HR.*S))[1:N_t,:]
+      # apply the rate filter
+      (t_ifft * (HR.*S))[1:N_t,:]
+    end
 
     for (si,scale) in enumerate(scales)
       if isnan(scale)
+        # do not filter by scale
         z = t_ifft * (HR .* S1)
         cr[:, ri, si, :] = view(z,indices(s)...)
       else
-			  # scale filtering
 			  HS = scale_filter(scale, N_f, spect_rate,
                           cm.bandonly ? :band :
                           scale == smin ? :low : scale < smax ? :band : :high)
 
-			  # convolve current filter with spectrogram
+			  # apply the scale filter
         z = f_ifft*(pad(HS'.*z_t,N_t,2N_f))
 			  cr[:, ri, si, :] = view(z,indices(s)...)
       end

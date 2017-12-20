@@ -1,9 +1,3 @@
-# TODO: for updating via adaptation I think it should be possible to think in
-# terms of the updates happening to the PCA representation, and then show the
-# equivalence of that to the updates happening to the covariance matrix
-# (and/or, do we care if it is equivalent, perhaps this is the representation
-# we want to operate over)
-
 using Parameters
 using ProgressMeter
 include("cortical.jl")
@@ -31,9 +25,9 @@ TCAnalysis(upstream,ncomponents,rate=1s;method=:pca) =
 Base.CartesianRange(x::Int) = CartesianRange((x,))
 function (tc::OnlineTCAnalysis)(x)
   if tc.method == :pca
-    C = EigenSeries(eltype(x),size(x,1),prod(size(x,3,4)),tc.ncomponents)
+    C = EigenSeries(eltype(x),size(x,1),prod(size(x,3,4)),tc.ncomponents,Δt(tc))
     window_len = round(Int,tc.rate/Δt(tc))
-    @showprogress for t in indices(x,1)
+    @showprogress "Temporal Coherence Analysis: " for t in indices(x,1)
       x_ts = x[max(1,t-window_len):t,:,:,:]
       x_t = reshape(x_ts,prod(size(x_ts,1,2)),:)
 
@@ -53,13 +47,13 @@ function (tc::OnlineTCAnalysis)(x)
     C
   elseif tc.method == :ipca
     C_t = EigenSpace(eltype(x),prod(size(x,3,4)),tc.ncomponents)
-    C = EigenSeries(size(x,1),C_t)
+    C = EigenSeries(size(x,1),C_t,Δt(tc))
 
     dt = Δt(tc) / tc.rate
 
     function helper__(C_t,C,x,dt)
 
-      @showprogress for t in indices(x,1)
+      @showprogress "Temporal Coherence Analysis: " for t in indices(x,1)
         for r in indices(x,2)
           # approximately: C_t = (1-dt)C_t + x*x'*dt
           C_t = update(C_t,x[t,r,:,:],dt)
@@ -73,13 +67,13 @@ function (tc::OnlineTCAnalysis)(x)
     helper__(C_t,C,x,dt)
   elseif tc.method == :ipca_lr
     C_t = EigenSpace(eltype(x),prod(size(x,3,4)),tc.ncomponents)
-    C = EigenSeries(size(x,1),C_t)
+    C = EigenSeries(size(x,1),C_t,Δt(tc))
 
     dt = Δt(tc) / tc.rate
 
     function helper___(C_t,C,x,dt)
 
-      @showprogress for t in indices(x,1)
+      @showprogress "Temporal Coherence Analysis: " for t in indices(x,1)
         for r in indices(x,2)
           # approximately: C_t = (1-dt)C_t + x*x'*dt
           C_t = update_approx(C_t,x[t,r,:,:],dt)
@@ -94,11 +88,11 @@ function (tc::OnlineTCAnalysis)(x)
   elseif tc.method == :ipca_rsplit
     nr = length(rates(tc.upstream))
     C_t = [EigenSpace(eltype(x),prod(size(x,3,4)),tc.ncomponents) for r in 1:nr]
-    C = [EigenSeries(size(x,1),C_t[r]) for r in 1:nr]
+    C = [EigenSeries(size(x,1),C_t[r],Δt(tc)) for r in 1:nr]
     dt = Δt(tc) / tc.rate
 
     function helper_(C_t,C,x,dt)
-      @showprogress for t in indices(x,1)
+      @showprogress "Temporal Coherence Analysis: " for t in indices(x,1)
         for r in indices(x,2)
           # approximately: C_t = (1-dt)C_t + x*x'*dt
           C_t[r] = update(C_t[r],x[t,r,:,:],dt)
@@ -167,8 +161,6 @@ R"""
 """
 end
 
-
-
 function rplot(tc::OnlineTCAnalysis,C::EigenSpace;n=ncomponents(C),oddonly=false)
   λ = abs.(eigvals(C))
   order = sortperm(λ,rev=true)
@@ -191,19 +183,13 @@ function rplot(tc::OnlineTCAnalysis,C::EigenSpace;n=ncomponents(C),oddonly=false
                  freq_bin = at(2),
                  component = title.(at(3)))
 
-  fbreaks = 2.0.^(-3:2)
-  fs = freqs(tc.upstream,u[:,:,1])
-  findices = mapslices(abs.(1000.0.*fbreaks .- fs'),2) do row
-    _, i = findmin(row)
-    i
-  end
-
   if oddonly
     df = df[isodd.(df[:component]),:]
   end
 
   sindices = 1:2:length(scales(tc.upstream))
   sbreaks = scales(tc.upstream)[sindices]
+  fbreaks,findices = freq_ticks(tc.upstream.aspect,u[:,:,1])
 
 R"""
 
@@ -213,7 +199,7 @@ R"""
     geom_raster() + facet_wrap(~component) +
     scale_y_continuous(breaks=$findices,labels=$fbreaks) +
     scale_x_continuous(breaks=$sindices,labels=$sbreaks) +
-    ylab('Frequency (kHz)') + xlab('Scale') +
+    ylab('Frequency (Hz)') + xlab('Scale') +
     scale_fill_gradientn(colors=$colormap) +
     scale_alpha_continuous(range=c(0,1))
 
@@ -235,7 +221,7 @@ R"""
   ggplot($df,aes(x=time,y=resp,group=factor(var),color=factor(var))) +
     geom_line() +
     scale_color_brewer(palette='Set1',name=$varname) +
-    # coord_cartesian(ylim=c(1.1,0)) + ylab('lambda / var(x)') +
+    coord_cartesian(ylim=c(1.1,0)) + ylab('lambda / var(x)') +
     xlab('time (s)')
 """
 end
