@@ -49,8 +49,8 @@ function AuditorySpectrogram(filename::String;
 end
 
 all_freqs(as::AuditorySpectrogram) =
-  Hz*1000.*2.^((1:size(as.cochba,2)) ./ 24 .- 2.5 .+ as.octave_shift)
-freqs(as::AuditorySpectrogram) = freqs(as,1:size(as.cochba,2))
+  Hz*1000.*2.^((1:size(as.cochba,2)-1) ./ 24 .- 2.5 .+ as.octave_shift)
+freqs(as::AuditorySpectrogram) = freqs(as,1:size(as.cochba,2)-1)
 freqs(as::AuditorySpectrogram,data::AbstractMatrix) = freqs(as,indices(data,2))
 freqs(as::AuditorySpectrogram,ixs) =
   filter(f -> as.min_freq <= f <= as.max_freq,all_freqs(as))[ixs]
