@@ -127,8 +127,7 @@ R"""
 """
 end
 
-function rplot(tc::TCAnalysis,C::EigenSeries;n=ncomponents(C),
-               oddonly=false)
+function rplot(tc::TCAnalysis,C::EigenSeries;n=ncomponents(C))
   λ = C.λ
   λ = λ[:,sortperm(abs.(λ[max(1,end-10),:]),rev=true)]
   ii = CartesianRange(size(λ))
@@ -144,9 +143,6 @@ function rplot(tc::TCAnalysis,C::EigenSeries;n=ncomponents(C),
                  time = vec(ustrip(at(1) * Δt(spect))),
                  component = vec(at(2)))
 
-  if oddonly
-    df = df[isodd.(df[:component]),:]
-  end
   df = df[df[:component] .<= n,:]
 
 R"""
