@@ -3,27 +3,26 @@ using ProgressMeter
 include("cortical.jl")
 include("online_pca.jl")
 
-abstract type TCAnalysis end
-Δt(tc::TCAnalysis) = Δt(tc.upstream)
-times(tc::TCAnalysis,x) = times(tc.upstream,x)
-
-struct OnlineTCAnalysis <: TCAnalysis
+struct TCAnalysis
   upstream::CorticalModel
   ncomponents::Int
   rate::Seconds{Float64}
   method::Symbol
 end
 
-(tc::OnlineTCAnalysis)(x::AbstractVector) = tc(tc.upstream(x))
-(tc::OnlineTCAnalysis)(x::AbstractMatrix) = tc(tc.upstream(x))
+Δt(tc::TCAnalysis) = Δt(tc.upstream)
+times(tc::TCAnalysis,x) = times(tc.upstream,x)
+
+(tc::TCAnalysis)(x::AbstractVector) = tc(tc.upstream(x))
+(tc::TCAnalysis)(x::AbstractMatrix) = tc(tc.upstream(x))
 
 TCAnalysis(upstream,ncomponents,rate=1s;method=:pca) =
-  OnlineTCAnalysis(upstream,ncomponents,rate,method)
+  TCAnalysis(upstream,ncomponents,rate,method)
 
 # alternative: I could have a different
 # set of eigenseries for each time scale
 Base.CartesianRange(x::Int) = CartesianRange((x,))
-function (tc::OnlineTCAnalysis)(x)
+function (tc::TCAnalysis)(x)
   if tc.method == :pca
     C = EigenSeries(eltype(x),size(x,1),prod(size(x,3,4)),tc.ncomponents,Δt(tc))
     window_len = round(Int,tc.rate/Δt(tc))
@@ -108,15 +107,15 @@ function (tc::OnlineTCAnalysis)(x)
   end
 end
 
-fusion_signal(tc::OnlineTCAnalysis,C::EigenSeries,x::AbstractVector) =
+fusion_signal(tc::TCAnalysis,C::EigenSeries,x::AbstractVector) =
   fusion_signal(tc.upstream(x),C,x)
-function fusion_signal(tc::OnlineTCAnalysis,C::EigenSeries,x)
+function fusion_signal(tc::TCAnalysis,C::EigenSeries,x)
   vec(first.(eigvals.(C)) ./ sum.(var.(C)))
 end
 
-rplot(tc::OnlineTCAnalysis,x::TimedSound.Sound;kwds...) = rplot(tc,tc(x);kwds...)
+rplot(tc::TCAnalysis,x::TimedSound.Sound;kwds...) = rplot(tc,tc(x);kwds...)
 
-function rplot(tc::OnlineTCAnalysis,λ::Vector)
+function rplot(tc::TCAnalysis,λ::Vector)
   @assert all(imag.(λ) .== 0) "Can't plot complex eigenvalues"
   λ = real.(λ)
   df = DataFrame(value = sort(λ,rev=true),index = collect(eachindex(λ)))
@@ -128,7 +127,7 @@ R"""
 """
 end
 
-function rplot(tc::OnlineTCAnalysis,C::EigenSeries;n=ncomponents(C),
+function rplot(tc::TCAnalysis,C::EigenSeries;n=ncomponents(C),
                oddonly=false)
   λ = C.λ
   λ = λ[:,sortperm(abs.(λ[max(1,end-10),:]),rev=true)]
@@ -159,7 +158,7 @@ R"""
 """
 end
 
-function rplot(tc::OnlineTCAnalysis,C::EigenSpace;n=ncomponents(C),oddonly=false)
+function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C),oddonly=false)
   λ = abs.(eigvals(C))
   order = sortperm(λ,rev=true)
   λ = λ[order]
