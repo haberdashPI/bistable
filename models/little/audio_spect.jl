@@ -49,7 +49,8 @@ function AuditorySpectrogram(filename::String;
 end
 
 all_freqs(as::AuditorySpectrogram) =
-  Hz*1000.*2.^((1:size(as.cochba,2)-1) ./ 24 .- 2.5 .+ as.octave_shift)
+  440.0Hz * 2.0.^(((1:size(as.cochba,2)).-31)./24 .+ as.octave_shift)
+
 freqs(as::AuditorySpectrogram) = freqs(as,1:size(as.cochba,2)-1)
 freqs(as::AuditorySpectrogram,data::AbstractMatrix) = freqs(as,indices(data,2))
 freqs(as::AuditorySpectrogram,ixs) =
