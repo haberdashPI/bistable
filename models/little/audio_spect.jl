@@ -135,7 +135,7 @@ frame_length(s::AuditorySpectrogram) = round(Int,s.len * 2^(4+s.octave_shift))
 (s::AuditorySpectrogram)(x::TimedSound.Sound{R}) where R =
   error("sound must be 8kHz mono.")
 
-function (s::AuditorySpectrogram)(x::Vector{T}) where T
+function (s::AuditorySpectrogram)(x::Vector{T},internal_call=false) where T
   L, M = size(s.cochba)	# p_max = L - 2
   L_x = length(x)	# length of input
   frame_len	= frame_length(s)
@@ -152,6 +152,7 @@ function (s::AuditorySpectrogram)(x::Vector{T}) where T
     append!(x,fill(zero(T),N*frame_len - length(x)))
   end
   v5 = fill(zero(T),N, M-1)
+  y3_r = internal_call ? fill(zero(T),0,0) : fill(zero(T),N,M-1)
 
   #######################################
   # last channel (highest frequency)
@@ -199,6 +200,9 @@ function (s::AuditorySpectrogram)(x::Vector{T}) where T
 	  # masked by higher (frequency) spatial response
 	  y3   = y2 - y2_h
 	  y2_h = y2
+    if internal_call
+      y3_r[:,ch] = y3
+    end
 
 	  # spatial smoother ---> y3 (ignored)
 	  #y3s = y3 + y3_h
@@ -220,27 +224,109 @@ function (s::AuditorySpectrogram)(x::Vector{T}) where T
 	  end
   end
 
-  ixs = find(f -> s.min_freq <= f <= s.max_freq,all_freqs(s))
-  v5[:,ixs]
+  if internal_call
+    v5,y3_r
+  else
+    ixs = find(f -> s.min_freq <= f <= s.max_freq,all_freqs(s))
+    v5[:,ixs]
+  end
 end
 
-function Base.inv(spect::AuditorySpectrogram,y::AbstractMatrix;iterations=10,
+function inv_guess(spect::AuditorySpectrogram,y::AbstractMatrix)
+  f = ustrip(freqs(spect))
+  t = ustrip(times(spect,y))
+
+  x = cumsum(cos.(2π.*f'.*t) .* y,1)
+  x .-= mean(x)
+  x ./= std(x)
+
+  x
+end
+
+function adjust_x(spect::AuditorySpectrogram,x,ratios,y,y_hat,y3_hat)
+  map!(ratios,y_hat,y) do y_hat,y
+    if !iszero(y_hat); y_hat
+    elseif !iszero(y); 2
+    else; 1
+    end
+  end
+
+  x .= 0
+  for ch in 1:M-1
+	  p  = floor(Int,real(s.cochba[1, ch]))	# order of ARMA filter
+		ch_norm	= imag(COCHBA(1, M))
+	  B  = real(s.cochba[(0:p)+2, ch])	# moving average coefficients
+	  A  = imag(s.cochba[(0:p)+2, ch])	# autoregressive coefficients
+
+    if s.nonlinear == -2
+      y1 = y3_hat[:,ch].*ratios[:,ch]
+    else
+      y1 = y3_hat[:,ch]
+      posi = find(y1 .>= 0)
+      y1[posi] .*= ratios[posi,ch]
+
+      negi = find(y1 .< 0)
+      y1[negi] .*= maximum(y1[posi]) / -minimum(y1[negi])
+    end
+
+    x .+= reverse(filt(B,A,reverse(y1))) / ch_norm
+  end
+
+  x
+end
+
+function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;iterations=10,
                   usematlab=true)
-  paras = [spect.len, spect.decay_tc, spect.nonlinear, spect.octave_shift,
-           iterations, 0, 0]
-  my = mxarray(Float64.(y))
-  guess = mat"aud2wavi($my,$paras)"
-  mat"aud2wav($my,$guess,$paras)"
+  if usematlab
+    paras = [spect.len, spect.decay_tc, spect.nonlinear, spect.octave_shift,
+             iterations, 0, 0]
+    my = mxarray(Float64.(y))
+    guess = mat"aud2wavi($my,$paras)"
+    mat"aud2wav($my,$guess,$paras)"
+  else
+    M = size(as.cochba,2)
 
-  # for julia implementation
-  # 1. run spect forward with current guess
+    # expand y to include all frequencies
+    y = similar(y_in,size(y,1),M-1)
+    ixs = find(f -> spect.min_freq <= f <= spect.max_freq,all_freqs(s))
+    y[ixs] = y_in
 
-  # 2. for each channel, create new scaling values by comparing to target
-  #    spectrum, and apply them
+    # generate initial guess
+    x = inv_guess(spect,y)
 
-  # 3. apply any necessary hair cell modification
+    # iteration setup
+    ratios = similar(y)
+    target_mean = mean(y)
+    target_sum2 = sum(y.^2)
 
-  # 4. reverse filter and apply result to y_cum (the eventually output)
+    min_err = typemax(Float64)
+    min_x = x
 
-  # 5. rescale output and calculate error ('marked previous performance')
+    @showprogress "Inverting: " for iteration in 1:iterations
+      if fac == 0
+        x .-= mean(x)
+        x ./= std(x)
+      end
+
+      y_hat,y3_hat = spect(x,true)
+      x = adjust_x(x,ratios,y,y_hat,y3_hat)
+
+      y_hat .*= target_mean/mean(y_hat)
+      err = 100round(sum((y_hat .- y).^2) ./ target_sum2,4)
+
+      if err < min_err
+        min_x = x
+      elseif err-100 > min_x
+        # restart
+        x .= sign.(x) .+ rand(size(x))
+        x .-= mean(x)
+        x ./= std(x)
+      end
+
+      x .*= 1.01
+    end
+
+    info("Minimum error: $min_err%")
+    min_x
+  end
 end
