@@ -113,6 +113,35 @@ function fusion_signal(tc::TCAnalysis,C::EigenSeries,x)
   vec(first.(eigvals.(C)) ./ sum.(var.(C)))
 end
 
+mask(tc::TCAnalysis,C::EigenSpace,x;component=1) =
+    mask(tc,C,tc.upstream(x),component=component)
+function mask(tc::TCAnalysis,C::EigenSpace,x::Array{T,4};component=1) where T
+  m = eigvecs(C)[:,component]
+  y = similar(x,real(T))
+  for ii in CartesianRange(size(x,1,2))
+    y[ii,:,:] = real.(sqrt.(m.*vec(x[ii,:,:])))
+  end
+  y
+end
+
+mask(tc::TCAnalysis,C::EigenSpace,x,phase;component=1) =
+    mask(tc,C,tc.upstream(x),phase,component=component)
+function mask(tc::TCAnalysis,C::EigenSpace,x::Array{T,4},
+              phase;component=1) where T
+  m = real.(eigvecs(C)[:,component] .* exp(phase*im))
+  @show size(m)
+  @show size(x,3,4)
+  mr = reshape(m,size(x,3,4)...)
+  mr ./= maximum(abs.(mr))
+
+  y = similar(x)
+  for ii in CartesianRange(size(x,1,2))
+    y[ii,:,:] = (x[ii,:,:] .+ mr.*x[ii,:,:]) ./ 2
+  end
+  y
+end
+
+
 rplot(tc::TCAnalysis,x::TimedSound.Sound;kwds...) = rplot(tc,tc(x);kwds...)
 
 function rplot(tc::TCAnalysis,λ::Vector)
@@ -127,6 +156,8 @@ R"""
 """
 end
 
+# TODO: improve this plot by making it relative to variance (ala fusion signal)
+# and then make plot_resps a version of this using an array of eigenseries
 function rplot(tc::TCAnalysis,C::EigenSeries;n=ncomponents(C))
   λ = C.λ
   λ = λ[:,sortperm(abs.(λ[max(1,end-10),:]),rev=true)]

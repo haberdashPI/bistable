@@ -67,16 +67,18 @@ end
 
 # transforms a bandpass frequency response into either a high or low pass
 # response (or leaves it untouched)
-function askind(H,len,maxi,kind)
-  if kind == :low
+function askind(H,len,maxi,kind,nonorm)
+  if kind in [:low,:high]
     old_sum = sum(H)
-    H[1:maxi-1] = 1
-    H .= H ./ sum(H) .* old_sum
-    H
-  elseif kind == :high
-    old_sum = sum(H)
-    H[maxi+1:len] = 1
-    H .= H ./ sum(H) .* old_sum
+    if kind == :low
+      H[1:maxi-1] = 1
+    elseif kind == :high
+      H[maxi+1:len] = 1
+    end
+    if !nonorm
+      H .= H ./ sum(H) .* old_sum
+    end
+
     H
   else
     H
@@ -92,7 +94,7 @@ function scale_filter(scale,len,ts,kind)
   f2 = ((0:len-1)./len.*ts ./ 2 ./ abs(scale)).^2
   H = f2 .* exp.(1 .- f2)
 
-  askind(H,len,indmax(H),kind)
+  askind(H,len,indmax(H),kind,false)
 end
 
 # create the temporal-rate filter (filter along temporal axis)
@@ -111,7 +113,7 @@ function rate_filter(rate,len,spect_len,kind)
 
   maxH,maxi = findmax(H)
   H ./= maxH
-  HR = askind(H,len,maxi,kind) .* exp.(A*im)
+  HR = askind(H,len,maxi,kind,true) .* exp.(A*im)
 
   if rate >= 0
     HR = pad(HR,2length(HR))
@@ -124,16 +126,18 @@ function rate_filter(rate,len,spect_len,kind)
   HR
 end
 
-(cm::CorticalModel)(s::TimedSound.Sound,usematlab=true) =
-  cm(cm.aspect(s),usematlab)
-(cm::CorticalModel)(s::AbstractVector,usematlab=true) =
-  cm(cm.aspect(s),usematlab)
+(cm::CorticalModel)(s::TimedSound.Sound;usematlab=true) =
+  cm(cm.aspect(s),usematlab=usematlab)
+(cm::CorticalModel)(s::AbstractVector;usematlab=true) =
+  cm(cm.aspect(s),usematlab=usematlab)
 
 # TODO: use complex numbers to represent the output
 # but allow plotting to show absolute value and phase???
 
-function (cm::CorticalModel)(s::Matrix,usematlab=true)
+function (cm::CorticalModel)(s_in::Matrix;usematlab=true)
   if usematlab
+    s = similar(s_in,size(s_in,1),nchannels(cm.aspect))
+    s[:,channels_computed(cm.aspect)] = s_in
     paras = [cm.aspect.len, cm.aspect.decay_tc,
              cm.aspect.nonlinear,cm.aspect.octave_shift]
     if !all(indexin(-abs.(cm.rates),cm.rates) .> 0)
@@ -144,23 +148,39 @@ function (cm::CorticalModel)(s::Matrix,usematlab=true)
       error("NaN rate and/or scale not supproted by matlab implementation."*
             " Set usematlab=false.")
     end
-    y = mat"aud2cor($s,$paras,$(unique(abs.(cm.rates))),$(cm.scales),'tmpxxx',0)"
-    return permutedims(y,[3,2,1,4])
+    y = mat"[y,Y,a,b,c] = aud2cor($s,$paras,$(unique(abs.(cm.rates))),$(cm.scales),'tmpxxx',0)"
+    y = mat"y + 0"
+    Y = mat"Y + 0"
+    a = mat"a + 0"
+    b = mat"b + 0"
+    c = mat"c + 0"
+
+    y = permutedims(y,[3,2,1,4])
+    rs = Main.rates(cort)
+    order = sortperm([.-reverse(rs[rs .> 0]); reverse(rs[rs .> 0])])
+
+    return y[:,order,:,channels_computed(cm.aspect)] #,Y,a,b,c
   end
 
+  s = s_in
   warn("Julia cortical result differs from NSL toolbox result!!!")
 
   rates = cm.rates
   scales = cm.scales
-  N_t, N_f = map(n -> nextprod([2,3,5],n),size(s)) # TODO: change to [2,3,5]
+  N_t, N_f = map(n -> nextprod([2],n),size(s)) # TODO: change to [2,3,5]
   N_r, N_s = length(rates), length(scales)
 
   # spatial-frequency represention of the spectrogram (i.e. 2D fft of s).
   S1 = fft(pad(s,(N_t,2N_f)),2)
   S = fft(pad(S1[:,1:N_f],(2N_t,N_f)),1)
+  yt = s
+  # ybt = similar(S)
+  # HS_yt = fill(zero(eltype(s)),1)
+  # z1_yt = fill(zero(eltype(s)),1,1)
+  # z_yt = fill(zero(eltype(s)),1,1)
 
   t_ifft = plan_ifft(S,1)
-  f_ifft = plan_ifft(S1,2)
+  f_ifft = plan_ifft(Array{eltype(s)}(size(s,1),2N_f),2)
 
   S1 = S1[:,1:N_f]
   s1_ifft = plan_ifft(S1,1)
@@ -171,15 +191,21 @@ function (cm::CorticalModel)(s::Matrix,usematlab=true)
   @showprogress "Cortical Simulation: " for (ri,rate) in enumerate(rates)
     z_t = if isnan(rate)
       # do not filter by rate
-      (t_ifft * S)[1:N_t,:]
+      (t_ifft * S)[1:size(s,1),:]
     else
 	    HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
                        cm.bandonly ? :band :
                        rate == rmin ? :low : rate < rmax ? :band : :high)
 
       # apply the rate filter
-      (t_ifft * (HR.*S))[1:N_t,:]
+      (t_ifft * (HR.*S))[1:size(s,1),:]
     end
+
+    # if rate == 4
+    #   yt = z_t[1:N_t,:]
+    #   ybt = (HR.*S)
+    # end
+    # z_t = z_t[1:size(s,1),:]
 
     for (si,scale) in enumerate(scales)
       if isnan(scale)
@@ -192,68 +218,98 @@ function (cm::CorticalModel)(s::Matrix,usematlab=true)
                           scale == smin ? :low : scale < smax ? :band : :high)
 
 			  # apply the scale filter
-        z = f_ifft*(pad(HS'.*z_t,N_t,2N_f))
+        z = f_ifft*(pad(z_t.*HS',size(z_t,1),2N_f))
+
+        # if rate == 4 && scale == 2
+        #   yt = z_t.*HS'
+        #   HS_yt = HS
+        #   z1_yt = z_t
+        #   z_yt = z
+        # end
+
 			  cr[:, ri, si, :] = view(z,indices(s)...)
       end
 		end
   end
 
-  cr
+  cr #,yt,HS_yt,z1_yt,z_yt
 end
 
+function Base.inv(cm::CorticalModel,cr_in::Array{T,4};
+                  usematlab=true,norm=0.9) where T
+  if usematlab
+    cr = similar(cr_in,size(cr_in,1,2,3)...,nchannels(cm.aspect))
+    cr[:,:,:,channels_computed(cm.aspect)] = cr_in
 
-#========================================
-# TODO: code review/debug/test
-struct InvCorticalModel
-  cm::CorticalModel
-end
-Base.inv(cm::CorticalModel) = InvCorticalModel(cm)
-
-function (cmi::InvCorticalModel)(cr::Array{T,4}) where T
-  cm = cmi.cm
-  rates = cm.rates
-  scales = cm.scale
-  N_t, N_f = size(s)
-  N_r, N_s = length(rates), length(scales)
-
-  z = zeros(T,2N_t,2N_f)
-  z_cum = zeros(z) # ????
-  h_cum = zeros(z)
-  st_fft = plan_fft(spect)
-
-  for (ri,rate) in enumerate(rates)
-    if isnan(rate) break end
-	  # rate filtering
-	  HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
-                     cm.bandonly ? :band :
-                     rate == rmin ? :low : rate < rmax ? :band : :high)
-
-    for (si,scale) in enumerate(scales)
-      if isnan(rate) break end
-			# scale filtering
-			HS = scale_filter(scale, size(S,1), spect_rate,
-                        cm.bandonly ? :band :
-                        scale == smin ? :low : scale < smax ? :band : :high)
-
-      z[1:N_t,1:N_f] = cr[:,ri,si,:]
-
-      Z = st_fft * z
-      h = HR.*HS'
-      h_cum .+= h .* conj.(h)
-      z_cum .+= h .* Z
+    if !all(indexin(-abs.(cm.rates),cm.rates) .> 0)
+      error("Missing negative rates. Cannot use matlab implementation."*
+            " Set usematlab=false.")
     end
+    if any(isnan.(cm.rates)) || any(isnan.(cm.scales))
+      error("NaN rate and/or scale not supproted by matlab implementation."*
+            " Set usematlab=false.")
+    end
+    m_cr = permutedims(cr,[3,2,1,4])
+
+    # re-order by rates
+    rs = Main.rates(cort)
+    order = sortperm([.-reverse(rs[rs .> 0]); reverse(rs[rs .> 0])])
+    inv_order = sortperm(order)
+    m_cr = m_cr[:,inv_order,:,:]
+
+    cm(cr[:,1,1,:],usematlab=true) # this ensures 'tmpxxx' is right, hacky but it works
+    mat"s = cor2aud('tmpxxx',$m_cr);"
+    s = mat"s + 0"
+    s = 2.*max.(real.(s),0)
+    return s[:,channels_computed(cm.aspect)]
+  else
+    cr = cr_in
+
+    rates = cm.rates
+    scales = cm.scales
+    N_t, N_f = map(n -> nextprod([2,3,5],n),size(cr,1,4)) # TODO: change to [2,3,5]
+    N_r, N_s = size(cr,2,3)
+
+    z = zeros(T,2N_t,2N_f)
+    z_cum = zeros(z)
+    h_cum = zeros(real(T),size(z)...)
+    st_fft = plan_fft(z_cum)
+
+    rmin,rmax = extrema(rates)
+    smin,smax = extrema(scales)
+    @showprogress "Inverting Cortical Simulation: " for (ri,rate) in enumerate(rates)
+      if isnan(rate) continue end
+	    # rate filtering
+      HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
+                       cm.bandonly ? :band :
+                       rate == rmin ? :low : rate < rmax ? :band : :high)
+
+      for (si,scale) in enumerate(scales)
+        if isnan(rate) continue end
+			  # scale filtering
+			  HS = scale_filter(scale, N_f, spect_rate,
+                          cm.bandonly ? :band :
+                          scale == smin ? :low : scale < smax ? :band : :high)
+
+        z[indices(cr,1),indices(cr,4)] = cr[:,ri,si,:]
+
+        Z = st_fft * z
+        h = HR.*[HS; zeros(HS)]'
+        h_cum .+= abs2.(h)
+        z_cum .+= h .* Z
+      end
+    end
+
+    h_cum[:,1] .*= 2
+    old_sum = sum(h_cum)
+    h_cum .= norm.*h_cum + (1 .- norm).*maximum(h_cum)
+    h_cum .*= old_sum ./ sum(h_cum)
+    z_cum ./= h_cum
+
+    s = (st_fft \ z_cum)[indices(cr,1),indices(cr,4)]
+    2.*max.(real.(s),0)
   end
-
-  h_cum[:,1] .*= 2
-  old_sum = sum(h_cum)
-  h_cum .= cmi.norm.*h_cum + (1 .- cmi.norm).*maximum(h_cum)
-  h_cum .*= old_sum ./ sum(h_cum)
-
-  z_cum[1:2Nt,1:N_f] ./= h_cum[1:2n_t,1:N_f]
-
-  2(st_fft \ z_cum)
 end
-========================================#
 
 rplot(cort::CorticalModel,y::AbstractVector) = rplot(cort,cort(y))
 
@@ -292,17 +348,12 @@ function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
 
   df = DataFrame(r_phase = angle.(vec(y)),
                  r_amp = abs.(vec(y)),
-                 time = times(cort,y)[at(ixs,1)][:],
-                 rate = rates[at(ixs,2)][:],
-                 scale = scales[at(ixs,3)][:],
-                 freq_bin = at(ixs,4)[:])
+                 time = ustrip(vec(times(cort,y)[at(ixs,1)])),
+                 rate = vec(rates[at(ixs,2)]),
+                 scale = vec(scales[at(ixs,3)]),
+                 freq_bin = vec(at(ixs,4)))
 
-  fbreaks = 2.0.^(-3:2)
-  fs = freqs(cort,y)
-  findices = mapslices(abs.(1000.0.*fbreaks .- fs'),2) do row
-    _, i = findmin(row)
-    i
-  end
+  fbreaks,findices = freq_ticks(cort.aspect,y[:,1,1,:])
 
 R"""
 

@@ -18,26 +18,21 @@ struct AuditorySpectrogram
   max_freq::Hertz{Float64}
 end
 
+nchannels(as::AuditorySpectrogram) = size(as.cochba,2)-1
+channels_computed(s::AuditorySpectrogram) =
+  find(f -> s.min_freq <= f <= s.max_freq,all_freqs(s))
+
 Base.show(io::IO,x::AuditorySpectrogram) =
   write(io,"AuditorySpectrogram(len=$(x.len),decay_tc=$(x.decay_tc),"*
         "nonlinear=$(x.nonlinear),octave_shift=$(x.octave_shift))")
 
-base_min_freq(shift) = Hz*1000.*2.^(1 / 24 - 2.5)
-base_max_freq(shift) = Hz*1000.*2.^(128 / 24 - 2.5)
-
 function AuditorySpectrogram(filename::String;
                              fs=ustrip(TimedSound.samplerate()),
                              len=10,decay_tc=8,nonlinear=-2,octave_shift=-1,
-                             min_freq = base_min_freq(octave_shift),
-                             max_freq = base_max_freq(octave_shift))
+                             min_freq = -Inf*Hz,max_freq = Inf*Hz)
   mat"loadload;"
   min_freq = convert(Hertz{Float64},min_freq)
   max_freq = convert(Hertz{Float64},max_freq)
-
-  @assert(min_freq >= base_min_freq(octave_shift),
-          "$min_freq is lower than the minimum allowed ($(base_min_freq(octave_shift)))")
-  @assert(max_freq <= base_max_freq(octave_shift),
-          "$max_freq is higher than the maximum allowed ($(base_max_freq(octave_shift)))")
 
   @assert fs == 8000 "The only sample rate supported is 8000 Hz"
   h5open(filename) do file
@@ -49,9 +44,9 @@ function AuditorySpectrogram(filename::String;
 end
 
 all_freqs(as::AuditorySpectrogram) =
-  440.0Hz * 2.0.^(((1:size(as.cochba,2)).-31)./24 .+ as.octave_shift)
+  440.0Hz * 2.0.^(((1:nchannels(as)).-31)./24 .+ as.octave_shift)
 
-freqs(as::AuditorySpectrogram) = freqs(as,1:size(as.cochba,2)-1)
+freqs(as::AuditorySpectrogram) = freqs(as,1:nchannels(as))
 freqs(as::AuditorySpectrogram,data::AbstractMatrix) = freqs(as,indices(data,2))
 freqs(as::AuditorySpectrogram,ixs) =
   filter(f -> as.min_freq <= f <= as.max_freq,all_freqs(as))[ixs]
@@ -227,8 +222,7 @@ function (s::AuditorySpectrogram)(x::Vector{T},internal_call=false) where T
   if internal_call
     v5,y3_r
   else
-    ixs = find(f -> s.min_freq <= f <= s.max_freq,all_freqs(s))
-    v5[:,ixs]
+    v5[:,channels_computed(s)]
   end
 end
 
@@ -288,8 +282,7 @@ function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;iterations=10,
 
     # expand y to include all frequencies
     y = similar(y_in,size(y,1),M-1)
-    ixs = find(f -> spect.min_freq <= f <= spect.max_freq,all_freqs(s))
-    y[ixs] = y_in
+    y[channels_computed(spect)] = y_in
 
     # generate initial guess
     x = inv_guess(spect,y)
