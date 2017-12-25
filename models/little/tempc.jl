@@ -112,30 +112,18 @@ function fusion_signal(tc::TCAnalysis,C::EigenSeries)
   vec(first.(eigvals.(C)) ./ sum.(var.(C)))
 end
 
-mask(tc::TCAnalysis,C::EigenSpace,x;component=1) =
-    mask(tc,C,tc.upstream(x),component=component)
-function mask(tc::TCAnalysis,C::EigenSpace,x::Array{T,4};component=1) where T
-  m = eigvecs(C)[:,component]
-  y = similar(x,real(T))
-  for ii in CartesianRange(size(x,1,2))
-    y[ii,:,:] = real.(sqrt.(m.*vec(x[ii,:,:])))
-  end
-  y
-end
-
 mask(tc::TCAnalysis,C::EigenSpace,x,phase;component=1) =
     mask(tc,C,tc.upstream(x),phase,component=component)
 function mask(tc::TCAnalysis,C::EigenSpace,x::Array{T,4},
               phase;component=1) where T
   m = real.(eigvecs(C)[:,component] .* exp(phase*im))
-  @show size(m)
-  @show size(x,3,4)
   mr = reshape(m,size(x,3,4)...)
   mr ./= maximum(abs.(mr))
+  mr .= max.(0,mr)
 
   y = similar(x)
   for ii in CartesianRange(size(x,1,2))
-    y[ii,:,:] = (x[ii,:,:] .+ mr.*x[ii,:,:]) ./ 2
+    y[ii,:,:] = mr.*x[ii,:,:]
   end
   y
 end
