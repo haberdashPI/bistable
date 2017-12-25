@@ -57,6 +57,8 @@ Base.getindex(x::EigenSeries,i::Quantity{N,TimeDim}) where N =
   x[max(1,floor(Int,i / x.delta))]
 Base.size(x::EigenSeries) = (size(x.u,1),)
 Base.IndexStyle(::EigenSeries) = IndexLinear()
+Base.eigvals(x::EigenSeries) = x.λ
+Base.eigvecs(x::EigenSeries) = x.u
 
 update_constants(n::Int) = n/(n+1),1/(n+1)
 update_constants(f::Float64) = (1-f),f
