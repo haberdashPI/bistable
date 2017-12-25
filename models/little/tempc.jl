@@ -146,7 +146,7 @@ end
 # TODO: improve this plot by making it relative to variance (ala fusion signal)
 # and then make plot_resps a version of this using an array of eigenseries
 function rplot(tc::TCAnalysis,C::EigenSeries;n=ncomponents(C))
-  λ = C.λ
+  λ = eigvals(C)
   λ = λ[:,sortperm(abs.(λ[max(1,end-10),:]),rev=true)]
   ii = CartesianRange(size(λ))
   at(i) = map(ii -> ii[i],ii)
@@ -157,7 +157,7 @@ function rplot(tc::TCAnalysis,C::EigenSeries;n=ncomponents(C))
          "complex (using absolute value).")
   end
 
-  df = DataFrame(value = vec(abs.(λ)),
+  df = DataFrame(value = vec(abs.(λ) ./ sum.(var.(C))),
                  time = vec(ustrip(at(1) * Δt(spect))),
                  component = vec(at(2)))
 
@@ -184,20 +184,23 @@ function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C),oddonly=false)
   at(i) = vec(map(ii -> ii[i],ii))
   function title(n)
     if n <= length(λ)
-      nstr = @sprintf("%02d",n)
-      "Lmb_$nstr = $(round(λ[n],3))"
+      # nstr = @sprintf("%02d",n)
+      "lambda[$(n)] == $(round(λ[n],1))"
+      # "Lmb_$nstr = $(round(λ[n],3))"
     else
-      "Variance = $(sum(var(C)))"
+      "sigma^2 == $(round(sum(var(C)),1))"
+      # "Variance = $(sum(var(C)))"
     end
   end
 
-  colormap = "#".*hex.(RGB.(cmap("C1")))
+  colormap = "#".*hex.(RGB.(cmap("C6")))
 
-  df = DataFrame(r_phase = angle.(vec(u)),
+  df = DataFrame(r_phase = angle.(vec(u)) ,
                  r_amp = abs.(vec(u)),
                  scale_index = at(1),
                  freq_bin = at(2),
-                 component = title.(at(3)))
+                 component = at(3),
+                 component_title = title.(at(3)))
 
   if oddonly
     df = df[isodd.(df[:component]),:]
@@ -212,21 +215,27 @@ R"""
   library(ggplot2)
 
   ggplot($df,aes(x=scale_index,y=freq_bin,fill=r_phase,alpha=r_amp)) +
-    geom_raster() + facet_wrap(~component) +
+    geom_raster() + facet_wrap(~component_title,labeller=label_parsed) +
     scale_y_continuous(breaks=$findices,labels=$fbreaks) +
     scale_x_continuous(breaks=$sindices,labels=$sbreaks) +
-    ylab('Frequency (Hz)') + xlab('Scale') +
-    scale_fill_gradientn(colors=$colormap) +
-    scale_alpha_continuous(range=c(0,1))
+    ylab('Frequency (Hz)') + xlab('Scale (cycles/octave)') +
+
+    scale_fill_gradientn(colors=$colormap,limits=c(-pi-0.01,pi+0.01),
+                         breaks=c(-pi,0,pi),
+                         labels=c(expression(-pi),expression(0),
+                                  expression(+pi)),
+                         name = expression(phi))+
+    scale_alpha_continuous(range=c(0,1),name="Amplitude")
 
 """
 
 end
 
-function plot_resps(x,vars,varname)
-  df = DataFrame(resp = vcat((real.(x[i])
-                              for i in 1:length(x))...),
-                 var = vcat((fill(vars[i],length(x[i]))
+function rplot(tempc::TCAnalysis,C::Array{<:EigenSeries},
+               label=:index => 1:length(C))
+  x = [fusion_signal(tempc,Ci) for Ci in C]
+  df = DataFrame(resp = vcat((real.(xi) for xi in x)...),
+                 var = vcat((fill(label[2][i],length(x[i]))
                              for i in eachindex(x))...),
                  time = vcat((ustrip.(eachindex(xi) * Δt(spect))
                               for xi in x)...))
@@ -236,7 +245,7 @@ R"""
 
   ggplot($df,aes(x=time,y=resp,group=factor(var),color=factor(var))) +
     geom_line() +
-    scale_color_brewer(palette='Set1',name=$varname) +
+    scale_color_brewer(palette='Set1',name=$(string(label[1]))) +
     coord_cartesian(ylim=c(1.1,0)) + ylab('lambda / var(x)') +
     xlab('time (s)')
 """
