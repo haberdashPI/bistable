@@ -107,9 +107,8 @@ function (tc::TCAnalysis)(x)
   end
 end
 
-fusion_signal(tc::TCAnalysis,C::EigenSeries,x::AbstractVector) =
-  fusion_signal(tc.upstream(x),C,x)
-function fusion_signal(tc::TCAnalysis,C::EigenSeries,x)
+fusion_signal(tc::TCAnalysis,C::EigenSeries) = fusion_signal(tc.upstream(x),C)
+function fusion_signal(tc::TCAnalysis,C::EigenSeries)
   vec(first.(eigvals.(C)) ./ sum.(var.(C)))
 end
 
