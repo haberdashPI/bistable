@@ -148,18 +148,13 @@ function (cm::CorticalModel)(s_in::Matrix;usematlab=true)
       error("NaN rate and/or scale not supproted by matlab implementation."*
             " Set usematlab=false.")
     end
-    y = mat"[y,Y,a,b,c] = aud2cor($s,$paras,$(unique(abs.(cm.rates))),$(cm.scales),'tmpxxx',0)"
-    y = mat"y + 0"
-    Y = mat"Y + 0"
-    a = mat"a + 0"
-    b = mat"b + 0"
-    c = mat"c + 0"
+    y = mat"aud2cor($s,$paras,$(unique(abs.(cm.rates))),$(cm.scales),'tmpxxx',0)"
 
     y = permutedims(y,[3,2,1,4])
     rs = Main.rates(cort)
     order = sortperm([.-reverse(rs[rs .> 0]); reverse(rs[rs .> 0])])
 
-    return y[:,order,:,channels_computed(cm.aspect)] #,Y,a,b,c
+    return y[:,order,:,channels_computed(cm.aspect)]
   end
 
   s = s_in
@@ -167,17 +162,13 @@ function (cm::CorticalModel)(s_in::Matrix;usematlab=true)
 
   rates = cm.rates
   scales = cm.scales
-  N_t, N_f = map(n -> nextprod([2],n),size(s)) # TODO: change to [2,3,5]
+  N_t, N_f = map(n -> nextprod([2,3,5],n),size(s)) # TODO: change to [2,3,5]
   N_r, N_s = length(rates), length(scales)
 
   # spatial-frequency represention of the spectrogram (i.e. 2D fft of s).
   S1 = fft(pad(s,(N_t,2N_f)),2)
   S = fft(pad(S1[:,1:N_f],(2N_t,N_f)),1)
   yt = s
-  # ybt = similar(S)
-  # HS_yt = fill(zero(eltype(s)),1)
-  # z1_yt = fill(zero(eltype(s)),1,1)
-  # z_yt = fill(zero(eltype(s)),1,1)
 
   t_ifft = plan_ifft(S,1)
   f_ifft = plan_ifft(Array{eltype(s)}(size(s,1),2N_f),2)
@@ -201,12 +192,6 @@ function (cm::CorticalModel)(s_in::Matrix;usematlab=true)
       (t_ifft * (HR.*S))[1:size(s,1),:]
     end
 
-    # if rate == 4
-    #   yt = z_t[1:N_t,:]
-    #   ybt = (HR.*S)
-    # end
-    # z_t = z_t[1:size(s,1),:]
-
     for (si,scale) in enumerate(scales)
       if isnan(scale)
         # do not filter by scale
@@ -220,25 +205,18 @@ function (cm::CorticalModel)(s_in::Matrix;usematlab=true)
 			  # apply the scale filter
         z = f_ifft*(pad(z_t.*HS',size(z_t,1),2N_f))
 
-        # if rate == 4 && scale == 2
-        #   yt = z_t.*HS'
-        #   HS_yt = HS
-        #   z1_yt = z_t
-        #   z_yt = z
-        # end
-
 			  cr[:, ri, si, :] = view(z,indices(s)...)
       end
 		end
   end
 
-  cr #,yt,HS_yt,z1_yt,z_yt
+  cr
 end
 
 function Base.inv(cm::CorticalModel,cr_in::Array{T,4};
                   usematlab=true,norm=0.9) where T
   if usematlab
-    cr = similar(cr_in,size(cr_in,1,2,3)...,nchannels(cm.aspect))
+    cr = similar(cr_in,(size(cr_in,1,2,3)...,nchannels(cm.aspect)))
     cr[:,:,:,channels_computed(cm.aspect)] = cr_in
 
     if !all(indexin(-abs.(cm.rates),cm.rates) .> 0)
@@ -257,13 +235,16 @@ function Base.inv(cm::CorticalModel,cr_in::Array{T,4};
     inv_order = sortperm(order)
     m_cr = m_cr[:,inv_order,:,:]
 
-    cm(cr[:,1,1,:],usematlab=true) # this ensures 'tmpxxx' is right, hacky but it works
+    cm(cr[:,1,1,channels_computed(cm.aspect)],usematlab=true) # this ensures 'tmpxxx' is right, hacky but it works
     mat"s = cor2aud('tmpxxx',$m_cr);"
     s = mat"s + 0"
     s = 2.*max.(real.(s),0)
     return s[:,channels_computed(cm.aspect)]
   else
     cr = cr_in
+
+    warn("Julia implementation of inverse is very poor!")
+    # TODO: look at intermediate outcomes to troubleshoot the implementation
 
     rates = cm.rates
     scales = cm.scales
@@ -307,7 +288,7 @@ function Base.inv(cm::CorticalModel,cr_in::Array{T,4};
     z_cum ./= h_cum
 
     s = (st_fft \ z_cum)[indices(cr,1),indices(cr,4)]
-    2.*max.(real.(s),0)
+    max.(real.(2.*s),0)
   end
 end
 
