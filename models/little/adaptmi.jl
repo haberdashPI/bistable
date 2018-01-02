@@ -59,10 +59,6 @@ noisey(x,τ_ε,c_ε) = noisey!(copy(x),τ_ε,c_ε)
 function timeslice
 end
 
-# nunits(x_t) =  the number of units (dimensions) for a single time slice
-function nunits
-end
-
 # time_indices(x) = the number of time indices for x
 function time_indices
 end
