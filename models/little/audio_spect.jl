@@ -274,9 +274,8 @@ function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;iterations=10,
   if usematlab
     paras = [spect.len, spect.decay_tc, spect.nonlinear, spect.octave_shift,
              iterations, 0, 0]
-    my = mxarray(Float64.(y))
-    guess = mat"aud2wavi($my,$paras)"
-    mat"aud2wav($my,$guess,$paras)"
+    guess = mat"aud2wavi($y_in,$paras)"
+    mat"aud2wav($y_in,$guess,$paras)"
   else
     M = size(as.cochba,2)
 
