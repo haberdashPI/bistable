@@ -172,13 +172,13 @@ R"""
 """
 end
 
-function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C))
+function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C),showvar=true)
   λ = abs.(eigvals(C))
   order = sortperm(λ,rev=true)
   λ = λ[order]
   u = eigvecs(C)[:,order]
   u = u[:,1:min(n,end)]
-  u = [u var(C)]
+  if showvar; u = [u var(C)]; end
   u = reshape(u,length(scales(tc.upstream)),:,size(u,2))
   ii = CartesianRange(size(u))
   at(i) = vec(map(ii -> ii[i],ii))
