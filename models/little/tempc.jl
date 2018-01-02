@@ -172,7 +172,7 @@ R"""
 """
 end
 
-function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C),oddonly=false)
+function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C))
   λ = abs.(eigvals(C))
   order = sortperm(λ,rev=true)
   λ = λ[order]
@@ -201,10 +201,6 @@ function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C),oddonly=false)
                  freq_bin = at(2),
                  component = at(3),
                  component_title = title.(at(3)))
-
-  if oddonly
-    df = df[isodd.(df[:component]),:]
-  end
 
   sindices = 1:2:length(scales(tc.upstream))
   sbreaks = scales(tc.upstream)[sindices]
