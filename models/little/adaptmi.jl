@@ -20,6 +20,9 @@ sig(x) = 1/(1+exp(-10(x-0.5)))
   τ_m::Seconds{Float64} = 50ms
   W_m::I = inhibit_uniform
 
+  τ_σ::Seconds{Float64} = 10ms
+  c_σ::Float64 = 0.3
+
   Δt::Seconds{Float64} = 1ms
 end
 
@@ -39,24 +42,12 @@ function adaptmi(x::AbstractArray{T},params=AdaptMI()) where T
   end
 end
 
-function noisey!(x,τ_ε,c_ε,Δt=1ms)
-  ε_t = zeros(size(x,2))
-  n = size(x,2)
-  for t in 1:size(x,1)
-    ε_t .+= -ε_t.*(Δt/τ_ε) + randn(n).*(c_ε*sqrt(2Δt/τ_ε))
-    x[t,:] += ε_t
-  end
-  x
-end
-noisey(x,τ_ε,c_ε) = noisey!(copy(x),τ_ε,c_ε)
-
-
 ########################################
 # the generic interface a type must implement for adaptmi to work on it
 
-# timeslice(x) = a single empty time slice of the object x, where x
+# empty_timeslice(x) = a single empty time slice of the object x, where x
 # consists of multiple time slices
-function timeslice
+function empty_timeslice
 end
 
 # time_indices(x) = the number of time indices for x
@@ -67,11 +58,25 @@ end
 function set_timeslice!
 end
 
+# get_timeslice(y,t) is the t^th time slice of y
+function get_timeslice
+end
+
 # __approx(f,x,xs...) ≈ f(x,xs...)
 
 # x can be an 'important' value, meaning it is used to determine how the
 # remaining values are approximated
 function __approx
+end
+
+# get a timeslice in the same format used for values
+# within the function called by __approx
+function approx_empty_timeslice
+end
+
+# get a value with a similar format to data, but differing in that it has the
+# same format as used within the function called by __approx
+function approx_similar
 end
 
 # @approx (x1,x2) begin
@@ -93,10 +98,12 @@ end
 
 __approx(f,args...) = f(args...)
 approx_similar(x) = similar(x)
-timeslice(y) = zeros(eltype(y),size(y)[2:end]...)
-approx_timeslice(y) = timeslice(y)
-nunits(y_t) = length(y_t)
+empty_timeslice(y) = zeros(eltype(y),size(y)[2:end]...)
+approx_empty_timeslice(y) = empty_timeslice(y)
 time_indices(y) = indices(y,1)
+function get_timeslice(y,t)
+  y[t,collect(CartesianRange(size(y,2:end...)))]
+end
 function set_timeslice!(y,t,y_t)
   for ii in CartesianRange(size(y_t)); y[t,ii] = y_t[ii]; end
   y_t
@@ -110,24 +117,29 @@ end
 #   to find the final, complex output
 function __approx(f,x::Array{<:Complex},args...)
   y = f(abs.(x),args...)
+  # @show y
   withangle(angle.(x),y)
 end
 function withangle(angle,y::Tuple)
-  (y[1].*angle,y[2:end]...)
+  # @show angle
+  # @show y[1]
+  (y[1].*exp.(angle.*im),y[2:end]...)
 end
 withangle(angle,y) = y.*angle.(x)
-approx_similar(x::Array{<:Complex{T}}) where T = similar(x,T)
-approx_timeslice(y::Array{<:Complex{T}}) where T = zeros(T,size(y)[2:end]...)
+approx_similar(x::Array{<:Complex{T}}) where T =
+  similar(x,T)
+approx_empty_timeslice(y::Array{<:Complex{T}}) where T =
+  zeros(T,size(y)[2:end]...)
 
 ##############################
 # implementation for EigenSeries
 # - each time slice is an EigenSpace
 # - to approximate f(x,ys...)  we project all secondary eigenspaces ys onto the
 #   eigenspace x and then perform the operation over the resulting eigenvalues
-timeslice(y::EigenSeries) = EigenSpace(y)
-nunits(x::EigenSpace) = ncomponents(x)
+empty_timeslice(y::EigenSeries) = EigenSpace(y)
 time_indices(x::EigenSeries) = indices(x.u,1)
 set_timeslice!(x::EigenSeries,t,slice) = x[t] = slice
+get_timeslice(x::EigenSeries,t) = x[t]
 
 function __approx(f,x::EigenSpace,ys::EigenSpace...)
   λ = f(x.λ,(project(x,y).λ for y in ys)...)
@@ -149,9 +161,9 @@ function adaptmi(update,y,params)
   a = approx_similar(y) # a = adaptation
   m = approx_similar(y) # m = mutual inhibition
 
-  yr_t = timeslice(y)
-  a_t = approx_timeslice(y)
-  m_t = approx_timeslice(y)
+  yr_t = empty_timeslice(y)
+  a_t = approx_empty_timeslice(y)
+  m_t = approx_empty_timeslice(y)
 
   dt_y = Δt / τ_y
   dt_a = Δt / τ_a
@@ -166,12 +178,46 @@ function adaptmi(update,y,params)
       a_t .+= (yp_t .- a_t).*dt_a
       m_t .+= (W_m(yp_t) .- m_t).*dt_m
 
-      y_t,a_t,m_t
+      yp_t,a_t,m_t
     end
+
+    # growth = abs.(abs.(yr_t) .- abs.(y_t)) .> 1e-2
+    # if any(growth)
+    #   ii = find(growth)
+    #   @show abs.(yr_t[ii[1:5]]) .- abs.(y_t[ii[1:5]])
+    #   @show ii[1:5]
+    #   @show yr_t[ii[1:5]]
+    #   @show y_t[ii[1:5]]
+    #   @show a_t[ii[1:5]]
+    #   @show m_t[ii[1:5]]
+
+    #   error("Unexpected growth")
+    # end
 
     set_timeslice!(y,t,yr_t)
     set_timeslice!(a,t,a_t)
     set_timeslice!(m,t,m_t)
   end
   y,a,m
+end
+
+################################################################################
+# generic drifting noise function
+
+function drift(x,params=AdaptMI())
+  τ_σ, c_σ, Δt = params.τ_σ, params.c_σ, params.Δt
+
+  y = similar(x)
+  σ_t = approx_timeslice(x)
+  dims = size(σ_t)
+  for t in time_indices(x)
+    y_t = get_timeslice(x,t)
+    y_t,σ_t = @approx (y_t,σ_t) begin
+      σ_t .+= -σ_t.*(Δt/τ_σ) .+ randn(dims).*(c_σ*sqrt(2Δt/τ_σ))
+      y_t .+= σ_t
+    end
+
+    set_timeslice!(y,t,y_t)
+  end
+  x
 end
