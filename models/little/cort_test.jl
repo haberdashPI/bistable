@@ -98,7 +98,7 @@ R"""
 library(cowplot)
 p = plot_grid($(p[1]) + ggtitle("Favored Rate: 16Hz"),
           $(p[2]) + ggtitle("Favored Rate: 2Hz"),align="h",ncol=2)
-save_plot($(joinpath(dir,"maksed_rates.pdf")),p,
+save_plot($(joinpath(dir,"masked_rates.pdf")),p,
   base_aspect_ratio=1.4,ncol=2)
 """
 
@@ -117,7 +117,7 @@ cs05 = scale_weight(cr,0.5);
 C_s16 = tempc(cs16);
 C_s05 = tempc(cs05);
 
-p = rplot(tempc,[C,C_r16,C_r2],
+p = rplot(tempc,[C,C_s16,C_s05],
           "Favored Scale" => ["none","16 cyc/oct","0.5 cyc/oct"])
 R"""
 library(cowplot)
@@ -153,7 +153,7 @@ R"""
 library(cowplot)
 p = plot_grid($(p[1]) + ggtitle("Favored Scale: 16 cyc/oct"),
           $(p[2]) + ggtitle("Favored Scale: 0.5 cyc/oct"),align="h",ncol=2)
-save_plot($(joinpath(dir,"maksed_scales.pdf")),p,
+save_plot($(joinpath(dir,"masked_scales.pdf")),p,
   base_aspect_ratio=1.4,ncol=2)
 """
 
@@ -163,3 +163,28 @@ save_plot($(joinpath(dir,"maksed_scales.pdf")),p,
 # TODO: try examining the effects of the weighting across
 # different delta f's, is there a clear point of ambiguity
 # in separation that happens
+
+
+################################################################################
+# what if we empahsize 1 cyc/oct?
+function scale_weight(cr,center)
+  s_weights = exp.(.-(log.(scales(cort)) .- log.(center)).^2 ./ 0.5log(2))
+  cr .* reshape(s_weights,1,1,:,1)
+end
+
+cr = cort(spect(ab_f[3]),usematlab=true);
+cs16 = scale_weight(cr,16);
+cs1 = scale_weight(cr,1);
+
+C = tempc(cr);
+C_s16 = tempc(cs16);
+C_s1 = tempc(cs1);
+
+p = rplot(tempc,[C,C_s16,C_s1],
+          "Favored Scale" => ["none","16 cyc/oct","1 cyc/oct"])
+R"""
+library(cowplot)
+p = $p + ylab(expression(lambda[1] / sigma^2)) +
+  scale_y_continuous(breaks=c(0.0,0.25,0.5,0.75,1.0))
+save_plot($(joinpath(dir,"scales_6st.pdf")),p,base_aspect_ratio=1.5)
+"""

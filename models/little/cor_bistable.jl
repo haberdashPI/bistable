@@ -4,7 +4,7 @@ include("stim.jl")
 include("adaptmi.jl")
 setup_sound(sample_rate=8kHz)
 
-dir = "../../plots/run_2017_12_13"
+dir = "../../plots/run_2017_12_25"
 mkdir(dir)
 
 spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=10)
