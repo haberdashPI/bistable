@@ -44,13 +44,13 @@ end
   for (i,x) in enumerate(CartesianRange((N_r,N_s)))
     r,s = x.I
 
-    x = @views times(cm.aspect,data[:,1,1,:])
-    y = @views freqs(cm.aspect,data[:,1,1,:])
+    x = ustrip.(times(cm,data))
+    y = ustrip.(freqs(cm,data))
 
     @series begin
       seriestype := :heatmap
       subplot := i
-      (x,y,data[:,r,s,:]')
+      (x,y,abs.(data[:,r,s,:])')
     end
   end
 end
@@ -139,7 +139,8 @@ function (cm::CorticalModel)(s_in::Matrix;usematlab=true)
     s = similar(s_in,size(s_in,1),nchannels(cm.aspect))
     s[:,channels_computed(cm.aspect)] = s_in
     paras = [cm.aspect.len, cm.aspect.decay_tc,
-             cm.aspect.nonlinear,cm.aspect.octave_shift]
+             cm.aspect.nonlinear,cm.aspect.octave_shift,
+             0.0, 0.0, cm.bandonly ? 1.0 : 0.0]
     if !all(indexin(-abs.(cm.rates),cm.rates) .> 0)
       error("Missing negative rates. Cannot use matlab implementation."*
             " Set usematlab=false.")
@@ -325,7 +326,7 @@ function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
   ixs = CartesianRange(size(y))
   at(ixs,i) = map(x -> x[i],ixs)
 
-  colormap = "#".*hex.(RGB.(cmap("C1")))
+  colormap = "#".*hex.(RGB.(cmap("C6")))
 
   df = DataFrame(r_phase = angle.(vec(y)),
                  r_amp = abs.(vec(y)),
@@ -355,8 +356,12 @@ R"""
     scale_y_continuous(breaks=$findices,labels=$fbreaks) +
     ylab('Frequency (kHz)') + xlab('Time (s)') +
     facet_grid(scale_title ~ rate_title) +
-    scale_fill_gradientn(colors=$colormap) +
-    scale_alpha_continuous(range=c(0,1))
+    scale_fill_gradientn(colors=$colormap,limits=c(-pi-0.1,pi+0.01),
+                         breaks=c(-pi,0,pi),
+                         labels=c(expression(-pi),expression(0),
+                                  expression(+pi)),
+                                  name = expression(phi)) +
+    scale_alpha_continuous(range=c(0,1),name="Amplitude")
 
 """
 end
