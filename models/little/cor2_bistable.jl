@@ -5,6 +5,8 @@ include("stim.jl")
 include("adaptmi.jl")
 setup_sound(sample_rate=8kHz)
 
+R"library(ggplot2)"
+quartz() = R"quartz()"
 dir = "../../plots/run_2017_01_02"
 isdir(dir) || mkdir(dir)
 
@@ -27,7 +29,7 @@ function scale_weighting(cort)
   end
 end
 
-function plot_scales(cort,m)
+function plot_scales(cort,m,range)
   sm = m[:,1,:,1]
   iis = collect(CartesianRange(size(sm)))
   df = DataFrame(level = vec(sm),
@@ -38,10 +40,13 @@ R"""
   library(RColorBrewer)
   pal = brewer.pal(5,'Reds')[2:5]
   ggplot($df,aes(x=time,y=level,group=scale,
-                 color=factor(scale),linetype=factor(scale))) +
+                 color=factor(round(scale,1)),linetype=factor(round(scale,1)))) +
     geom_line(color='black',linetype='solid',size=1.2) + geom_line() +
-    scale_color_manual(values = rep(pal,each=3)[1:11]) +
-    scale_linetype_manual(values = rep(c("dotdash","longdash","solid"),4)[1:11])
+    scale_color_manual(values = rep(pal,each=3)[1:11],name="Scale") +
+    scale_linetype_manual(values =
+      rep(c("dotdash","longdash","solid"),4)[1:11],name="Scale") +
+    coord_cartesian(ylim=c($(first(range)),$(last(range))))
+
 """
 end
 
@@ -126,7 +131,48 @@ rplot(tempc,[C,Ca],"adapt/mi?" => ["no","yes"])
 # would lead to a single object parsing.  We would need more competition between
 # closely neighboring scales for that to work
 
-# okay, that seems to work in cort_test.jl
+# okay, that seems to mostly work in cort_test.jl
+# let's try a narrow field of inhibition
+function scale_weighting(cort,sigma)
+  s = log.(scales(cort))
+  W = @. 1 - exp(-(s - s')^2 / sigma)
+  W ./= sum(W,1)
+
+  function helper(x)
+    m = W*vec(mean(x,[1,3]))
+    ones(x) .* reshape(m,1,:,1)
+  end
+end
+
+params = AdaptMI(c_m=50,τ_m=200ms,W_m=scale_weighting(cort,0.1),
+                 c_a=3,τ_a=1s,shape_y = x -> 5max(0,x));
+
+cra = similar(cr);
+cra,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
+  cr[t,:,:,:]
+end);
+
+p = Array{Any}(2)
+p[1] = plot_scales(cort,mean(abs.(cr),[2,4]),(0,0.2))
+p[2] = plot_scales(cort,mean(abs.(cra),[2,4]),(0,0.2))
+
+R"""
+library(cowplot)
+p = plot_grid($(p[1]) + ggtitle("Without Adapt/MI"),
+              $(p[2]) + ggtitle("With Adapt/MI"),align="h",ncol=2)
+save_plot($(joinpath(dir,"adaptmi.png")),p,
+  base_aspect_ratio=1.4,ncol=2)
+"""
+
+plot_scales(cort,m)
+
+tempc = TCAnalysis(cort,1,1s,method=:pca)
+C = tempc(cr);
+Ca = tempc(cra);
+
+rplot(tempc,[C,Ca],"adapt/mi?" => ["no","yes"])
+
+rplot(tempc,Ca[3s])
 
 # 2. it's possible we need to empahsize the larger scales
 # in which case we need to rethink how to introduce MI

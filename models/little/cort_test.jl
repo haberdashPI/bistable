@@ -1,4 +1,4 @@
-include("units.jl")
+# include("units.jl")
 include("tempc.jl")
 include("stim.jl")
 setup_sound(sample_rate=8kHz)
@@ -11,7 +11,7 @@ sts = [0.1,1,6,12]
 
 cort = CorticalModel(spect,scales=2.^(-1:0.5:4),bandonly=false)
 dir = "../../plots/run_2017_12_24"
-mkdir(dir)
+isdir(dir) || mkdir(dir)
 
 f_ab(st) = @>(ab(120ms,120ms,1,10,500Hz,st),attenuate(10))
 ab_f = [f_ab(st) for st in sts]
@@ -25,13 +25,13 @@ R"""
 library(cowplot)
 p = $p + ylab(expression(lambda[1] / sigma^2)) +
   scale_y_continuous(breaks=c(0.0,0.25,0.5,0.75,1.0))
-save_plot($(joinpath(dir,"delta_f.pdf")),p,base_aspect_ratio=1.5)
+save_plot($(joinpath(dir,"delta_f.png")),p,base_aspect_ratio=1.5)
 """
 
 p = rplot(tempc,Cs[3][3s])
 R"""
 library(cowplot)
-save_plot($(joinpath(dir,"component_6st.pdf")),$p,base_aspect_ratio=1.2,ncol=2)
+save_plot($(joinpath(dir,"component_6st.png")),$p,base_aspect_ratio=1.2,ncol=2)
 """
 
 masked = mask(tempc,Cs[3][3s],crs[3],0);
@@ -39,7 +39,7 @@ sp = inv(cort,masked,usematlab=true)
 p = rplot(spect,sp)
 R"""
 library(cowplot)
-save_plot($(joinpath(dir,"masked_phase_0_6st.pdf")),$p,base_aspect_ratio=1.5)
+save_plot($(joinpath(dir,"masked_phase_0_6st.png")),$p,base_aspect_ratio=1.5)
 """
 
 masked = mask(tempc,Cs[3][3s],crs[3],π);
@@ -47,7 +47,7 @@ sp = inv(cort,masked,usematlab=true)
 p = rplot(spect,sp)
 R"""
 library(cowplot)
-save_plot($(joinpath(dir,"masked_phase_pi_6st.pdf")),$p,base_aspect_ratio=1.5)
+save_plot($(joinpath(dir,"masked_phase_pi_6st.png")),$p,base_aspect_ratio=1.5)
 """
 
 ################################################################################
@@ -71,19 +71,19 @@ R"""
 library(cowplot)
 p = $p + ylab(expression(lambda[1] / sigma^2)) +
   scale_y_continuous(breaks=c(0.0,0.25,0.5,0.75,1.0))
-save_plot($(joinpath(dir,"rates_6st.pdf")),p,base_aspect_ratio=1.5)
+save_plot($(joinpath(dir,"rates_6st.png")),p,base_aspect_ratio=1.5)
 """
 
 p = rplot(tempc,C_r16[3s])
 R"""
 library(cowplot)
-save_plot($(joinpath(dir,"component_6st_rate16.pdf")),$p,base_aspect_ratio=1.2,ncol=2)
+save_plot($(joinpath(dir,"component_6st_rate16.png")),$p,base_aspect_ratio=1.2,ncol=2)
 """
 
 p = rplot(tempc,C_r2[3s])
 R"""
 library(cowplot)
-save_plot($(joinpath(dir,"component_6st_rate2.pdf")),$p,base_aspect_ratio=1.2,ncol=2)
+save_plot($(joinpath(dir,"component_6st_rate2.png")),$p,base_aspect_ratio=1.2,ncol=2)
 """
 
 p = Array{Any}(2)
@@ -91,14 +91,14 @@ masked_r16 = mask(tempc,C_r16[3s],cr,0);
 sp = inv(cort,masked_r16,usematlab=true)
 p[1] = rplot(spect,sp)
 
-masked_r2 = mask(tempc,C_r2[3s],cr,0);
+masked_r2 = mask(tempc,C_r2[3s],cr,π);
 sp = inv(cort,masked_r2,usematlab=true)
 p[2] = rplot(spect,sp)
 R"""
 library(cowplot)
 p = plot_grid($(p[1]) + ggtitle("Favored Rate: 16Hz"),
           $(p[2]) + ggtitle("Favored Rate: 2Hz"),align="h",ncol=2)
-save_plot($(joinpath(dir,"masked_rates.pdf")),p,
+save_plot($(joinpath(dir,"masked_rates.png")),p,
   base_aspect_ratio=1.4,ncol=2)
 """
 
@@ -123,20 +123,20 @@ R"""
 library(cowplot)
 p = $p + ylab(expression(lambda[1] / sigma^2)) +
   scale_y_continuous(breaks=c(0.0,0.25,0.5,0.75,1.0))
-save_plot($(joinpath(dir,"scales_6st.pdf")),p,base_aspect_ratio=1.5)
+save_plot($(joinpath(dir,"scales_6st.png")),p,base_aspect_ratio=1.5)
 """
 
 
 p = rplot(tempc,C_s16[3s])
 R"""
 library(cowplot)
-save_plot($(joinpath(dir,"component_6st_scale16.pdf")),$p,base_aspect_ratio=1.2,ncol=2)
+save_plot($(joinpath(dir,"component_6st_scale16.png")),$p,base_aspect_ratio=1.2,ncol=2)
 """
 
 p = rplot(tempc,C_s05[3s])
 R"""
 library(cowplot)
-save_plot($(joinpath(dir,"component_6st_scale05.pdf")),$p,base_aspect_ratio=1.2,ncol=2)
+save_plot($(joinpath(dir,"component_6st_scale05.png")),$p,base_aspect_ratio=1.2,ncol=2)
 """
 
 
@@ -153,7 +153,7 @@ R"""
 library(cowplot)
 p = plot_grid($(p[1]) + ggtitle("Favored Scale: 16 cyc/oct"),
           $(p[2]) + ggtitle("Favored Scale: 0.5 cyc/oct"),align="h",ncol=2)
-save_plot($(joinpath(dir,"masked_scales.pdf")),p,
+save_plot($(joinpath(dir,"masked_scales.png")),p,
   base_aspect_ratio=1.4,ncol=2)
 """
 
@@ -186,5 +186,35 @@ R"""
 library(cowplot)
 p = $p + ylab(expression(lambda[1] / sigma^2)) +
   scale_y_continuous(breaks=c(0.0,0.25,0.5,0.75,1.0))
-save_plot($(joinpath(dir,"scales_6st.pdf")),p,base_aspect_ratio=1.5)
+save_plot($(joinpath(dir,"scales_6st.png")),p,base_aspect_ratio=1.5)
+"""
+
+p = Array{Any}(2)
+masked_s16 = mask(tempc,C_s16[3s],cr,0);
+sp = inv(cort,masked_s16,usematlab=true)
+p[1] = rplot(spect,sp)
+
+masked_s1 = mask(tempc,C_s1[3s],cr,0);
+sp = inv(cort,masked_s1,usematlab=true)
+p[2] = rplot(spect,sp)
+
+R"""
+library(cowplot)
+p = plot_grid($(p[1]) + ggtitle("Favored Scale: 16 cyc/oct"),
+          $(p[2]) + ggtitle("Favored Scale: 1 cyc/oct"),align="h",ncol=2)
+save_plot($(joinpath(dir,"masked_scales.png")),p,
+  base_aspect_ratio=1.4,ncol=2)
+"""
+
+
+p = rplot(tempc,C_s16[3s])
+R"""
+library(cowplot)
+save_plot($(joinpath(dir,"component_6st_scale16.png")),$p,base_aspect_ratio=1.2,ncol=2)
+"""
+
+p = rplot(tempc,C_s1[3s])
+R"""
+library(cowplot)
+save_plot($(joinpath(dir,"component_6st_scale1.png")),$p,base_aspect_ratio=1.2,ncol=2)
 """
