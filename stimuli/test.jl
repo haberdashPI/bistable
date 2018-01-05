@@ -1,33 +1,6 @@
 using TimedSound
-# include("../models/little/units.jl")
+include("../models/little/units.jl")
 include("warble.jl")
-
-A1_ = @> warble(0.5kHz           ,0.5,0.8,3,4,20s) sound attenuate(10) ramp(50ms)
-B1_ = @> warble(0.5kHz * 2^(1/12),0.5,0.8,3,4,20s) sound attenuate(10) ramp(50ms)
-x = @> mix(A1_,B1_) attenuate(15)
-
-@> mix(A1_,B1_) attenuate(15) play
-
-B1__ = @> fadeto(silence(75ms + 10ms),B1_,10ms)
-@> mix(A1_,B1__) attenuate(15) play
-
-
-A4_ = @> warble(0.5kHz           ,0.5,0.8,3,4,20s) sound attenuate(10) ramp(50ms)
-B4_ = @> warble(0.5kHz * 2^(3/12),0.5,0.8,3,4,20s) sound attenuate(10) ramp(50ms)
-xs = @> mix(A4_,B4_) attenuate(15)
-
-B4__ = @> fadeto(silence(125ms + 10ms),B4_,10ms)
-xa = @> mix(A4_[75ms .. ends],B4__[125ms .. ends]) attenuate(15)
-
-A4off_ = @> warble(0.5kHz           ,0.5,0.8,3,5,20s) sound attenuate(10) ramp(50ms)
-xo = @> mix(A4off_,B4__) attenuate(15)
-
-A4off__ = @> warble(0.5kHz           ,0.5,0.8,3,7,20s) sound attenuate(10) ramp(50ms)
-xoo = @> mix(A4off__,B4__) attenuate(15)
-
-Ad_ = @> warble(2kHz           ,0.5,0.8,1,10,20s) sound attenuate(10) ramp(50ms)
-xd = @> mix(Ad_,B4__) attenuate(15)
-
 
 # thoughts: these objects have no shapr boundaries
 # which may lead to more ambguity
@@ -65,54 +38,6 @@ xd = @> mix(Ad_,B4__) attenuate(15)
 # would limit the ability of the A and B to separate
 
 freq = 1kHz
-width = 1/12
-a = @> noise(100ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(50ms)
-freq = 1.5kHz
-width = 6/12
-b = @> noise(100ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(50ms)
-
-x = vcat(Iterators.repeated([a; b],100)...)
-
-
-freq = 1kHz
-width = 8/12
-a = @> noise(25ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
-a = [a; silence(75ms)]
-freq = 1.5kHz
-width = 2/12
-b = @> noise(25ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
-b = [b; silence(75ms)]
-
-x = vcat(Iterators.repeated([a; b],100)...)
-
-
-
-freq = 1kHz
-width = 8/12
-a = @> noise(25ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
-a = [a; silence(75ms)]
-freq = 1.5kHz
-width = 2/12
-b = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
-b = [b; silence(10ms)]
-
-x = vcat(Iterators.repeated([a; b],100)...)
-
-
-
-freq = 1kHz
-width = 12/12
-a = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
-a = [a; silence(30ms)]
-freq = 1.5kHz
-width = 1/12
-b = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
-b = [b; silence(30ms)]
-
-x = vcat(Iterators.repeated([a; b],100)...)
-
-
-freq = 1kHz
 width = 12/12
 a = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
 a = [a; silence(30ms)]
@@ -122,6 +47,7 @@ b = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms
 b = [b; silence(30ms)]
 
 x11 = vcat(Iterators.repeated([a; b],100)...)
+save("approach1_split.wav",x11)
 
 freq = 1kHz
 width = 8/12
@@ -133,7 +59,7 @@ b = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms
 b = [b; silence(30ms)]
 
 x4 = vcat(Iterators.repeated([a; b],100)...)
-
+save("approach1_bistable.wav",x4)
 
 freq = 1kHz
 width = 4/12
@@ -145,6 +71,7 @@ b = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms
 b = [b; silence(30ms)]
 
 x0 = vcat(Iterators.repeated([a; a],100)...)
+save("approach1_fuse.wav",x0)
 
 # prediction: more gradual modulations would reduce the bistability of the
 # effect, but not alter the ambiguity
@@ -161,33 +88,32 @@ end
 
 depth = 0.2
 a = wobble(1kHz,depth,4Hz,0,20s)
-b = wobble(2^(3/12)*1kHz,depth,4Hz,π,20s)
+b = wobble(2^(1/12)*1kHz,depth,4Hz,π,20s)
 
-@> mix(a,b) attenuate(15) play
-
-
-depth = 0.5
-a = wobble(1kHz,depth,4Hz,0,20s)
-b = wobble(2^(3/12)*1kHz,depth,4Hz,π,20s)
-
-@> mix(a,b) attenuate(15) play
-
-
+x = @> mix(a,b) attenuate(15)
+save("approach2_split.wav",x)
 
 depth = 1
 a = wobble(1kHz,depth,4Hz,0,20s)
-b = wobble(2^(3/12)*1kHz,depth,4Hz,π,20s)
+b = wobble(2^(2/12)*1kHz,depth,4Hz,π,20s)
 
-@> mix(a,b) attenuate(15) play
+x = @> mix(a,b) attenuate(15)
+save("approach2_bistable.wav",x)
+
 
 depth = 25
 a = wobble(1kHz,depth,4Hz,0,20s)
-b = wobble(2^(3/12)*1kHz,depth,4Hz,π,20s)
+b = wobble(2^(2/12)*1kHz,depth,4Hz,π,20s)
 
-@> mix(a,b) attenuate(15) play
+x = @> mix(a,b) attenuate(15)
+save("approach2_fuse.wav",x)
 
 # seems more like the above adjusts the point of bistability rather
 # than eliminating it
+
+# though maybe, with more listening, it seems like it might also
+# alter the sense I have of either: that is, I'm not
+# as certain about my responses.
 
 # what do these variations in dimensions buy us in understanding? what can we
 # learn from it about the model?
