@@ -190,3 +190,18 @@ plot_scales(cort,mean(abs.(cra),[2,4]))
 tempc = TCAnalysis(cort,1,1s,method=:pca)
 # C = tempc(cr);
 Ca = tempc(cra);
+
+rplot(tempc,Ca[4.5s])
+rplot(tempc,Ca[7s])
+
+p = Array{Any}(2)
+
+m4_5 = mask(tempc,Ca[4.5s],cr,0);
+sp4_5 = inv(cort,m4_5,usematlab=true)
+p[1] = rplot(spect,sp4_5)
+
+m7 = mask(tempc,Ca[7s],cr,0);
+sp7 = inv(cort,m7,usematlab=true)
+p[2] = rplot(spect,sp7)
+
+rplot(tempc,[Ca],"adapt/mi?" => ["yes"])
