@@ -165,33 +165,43 @@ function adaptmi(update,y,params)
   a_t = approx_empty_timeslice(y)
   m_t = approx_empty_timeslice(y)
 
-  dt_y = Δt / τ_y
-  dt_a = Δt / τ_a
-  dt_m = Δt / τ_m
+  dt_y = eltype(a_t)(Δt / τ_y)
+  dt_a = eltype(a_t)(Δt / τ_a)
+  dt_m = eltype(a_t)(Δt / τ_m)
+
+  @show Δt
+  @show τ_m
+  @show dt_m
 
   @showprogress "Adapt/Inhibit: " for t in time_indices(y)
     y_t = update(yr_t,t,dt_y)
 
+    mi = 1
     yr_t,a_t,m_t = @approx (y_t,a_t,m_t) begin
+      # if t == 40
+      #   mi = indmax(y_t)
+
+      #   @show y_t[mi]
+      #   @show a_t[mi]
+      #   @show m_t[mi]
+      #   @show (y_t.*c_a.*a_t .+ c_m.*m_t)[mi]
+      # end
+
       y_t .-= (y_t.*c_a.*a_t .+ c_m.*m_t)
       yp_t = shape_y.(y_t)
       a_t .+= (yp_t .- a_t).*dt_a
       m_t .+= (W_m(yp_t) .- m_t).*dt_m
 
+      # if t == 40
+      #   @show y_t[mi]
+      #   @show yp_t[mi]
+      # end
+
       yp_t,a_t,m_t
     end
 
-    # growth = abs.(abs.(yr_t) .- abs.(y_t)) .> 1e-2
-    # if any(growth)
-    #   ii = find(growth)
-    #   @show abs.(yr_t[ii[1:5]]) .- abs.(y_t[ii[1:5]])
-    #   @show ii[1:5]
-    #   @show yr_t[ii[1:5]]
-    #   @show y_t[ii[1:5]]
-    #   @show a_t[ii[1:5]]
-    #   @show m_t[ii[1:5]]
-
-    #   error("Unexpected growth")
+    # if t == 40
+    #   @show yr_t[mi]
     # end
 
     set_timeslice!(y,t,yr_t)
