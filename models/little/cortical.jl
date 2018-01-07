@@ -312,9 +312,15 @@ rplot(cort::CorticalModel,y::AbstractVector) = rplot(cort,cort(y))
 #   RGB.(tocolor.((x .- minimum(x)) ./ (maximum(x) - minimum(x))))
 # end
 
+function nearin(xin,xs)
+  _,inds = findmin(abs.(vec(xin) .- vec(xs)'),2)
+  cols = map(ii -> ii[2],CartesianRange((length(xin),length(xs))))
+  cols[inds[:,1]]
+end
+
 function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
-  rindices = indexin(rates,cort.rates)
-  sindices = indexin(scales,cort.scales)
+  rindices = nearin(rates,cort.rates)
+  sindices = nearin(scales,cort.scales)
 
   if rates != cort.rates || scales != cort.scales
     @show rindices
