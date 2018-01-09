@@ -8,96 +8,17 @@ setup_sound(sample_rate=8kHz)
 
 R"library(ggplot2)"
 quartz() = R"quartz()"
-dir = "../../plots/run_2017_01_02"
+dir = "../../plots/run_2017_01_09"
 isdir(dir) || mkdir(dir)
 
-spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=25)
+spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=25,
+                            min_freq = 250Hz,max_freq=1500Hz)
 cort = CorticalModel(spect)
 
 x = @> ab(120ms,120ms,1,10,500Hz,6) attenuate(10)
 
 sp = spect(x);
 cr = cort(sp);
-
-function plot_scales(cort,m,range=nothing)
-  sm = m[:,1,:,1]
-  iis = collect(CartesianRange(size(sm)))
-  df = DataFrame(level = vec(sm),
-                 time = vec(map(x -> ustrip(times(cort,m)[x[1]]),iis)),
-                 scale = vec(map(x -> ustrip(scales(cort)[x[2]]),iis)))
-
-  @show unique(df[:scale])
-R"""
-  library(RColorBrewer)
-  pal = brewer.pal(5,'Reds')[2:5]
-  p = ggplot($df,aes(x=time,y=level,group=scale,
-                 color=factor(round(scale,1)),linetype=factor(round(scale,1)))) +
-    geom_line(color='black',linetype='solid',size=1.2) + geom_line() +
-    scale_color_manual(values = rep(pal,each=3)[1:11],name="Scale") +
-    scale_linetype_manual(values =
-      rep(c("dotdash","longdash","solid"),4)[1:11],name="Scale")
-"""
-  if range != nothing
-R"""
-      p = p + coord_cartesian(ylim=c($(first(range)),$(last(range))))
-"""
-  end
-
-  R"p"
-end
-
-# none of the changes lead to fusing of the sound...
-# in fact in general, a point we can glean from this is
-# that in TC this particular signal is always separated...
-
-# I can see two directions from here:
-
-# 1. it's possible that emphasizing the farther end of the empahsized region
-# would lead to a single object parsing.  We would need more competition between
-# closely neighboring scales for that to work
-
-params = AdaptMI(c_m=5,τ_m=200ms,W_m=scale_weighting(cort,0.1),
-                 c_a=3,τ_a=1s,shape_y = x -> max(0,x));
-
-cra = similar(cr);
-cra,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
-  cr[t,:,:,:]
-end);
-
-plot_scales(cort,mean(abs.(m),[2,4]))
-
-p = [
-  plot_scales(cort,mean(abs.(cr),[2,4]))
-  plot_scales(cort,mean(abs.(cra),[2,4]))
-];
-
-rplot(spect,squeeze(maximum(abs.(cra),(2,4)),(2,4)))
-
-R"""
-library(cowplot)
-p = plot_grid($(p[1]) + ggtitle("Without Adapt/MI"),
-              $(p[2]) + ggtitle("With Adapt/MI"),align="h",ncol=2)
-# save_plot($(joinpath(dir,"adaptmi.png")),p,
-#   base_aspect_ratio=1.4,ncol=2)
-"""
-
-rplot(cort,m,scales=[0.5,2,4,8],rates=[-32,-8,-2,2,8,32])
-
-tempc = TCAnalysis(cort,1,1s,method=:pca)
-C = tempc(cr);
-Ca = tempc(cra);
-
-rplot(tempc,[C,Ca],"adapt/mi?" => ["no","yes"])
-
-rplot(tempc,Ca[3s])
-rplot(tempc,C[3s])
-
-# 2. it's possible we need to empahsize the larger scales
-# in which case we need to rethink how to introduce MI
-
-# another observation, there are different rates of loss, I think
-# this is because there is more dispertion of energy at the larger scales
-
 
 # GOAL: with MI only, make sure one of the scales wins out
 
@@ -112,14 +33,9 @@ cra,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
   cr[t,:,:,:]
 end);
 
-plot_scales(cort,mean(abs.(m),[2,4]))
-
-plot_scales(cort,mean(abs.(cr),[2,4]))
-plot_scales(cort,mean(abs.(cra),[2,4]))
- 
-rplot(cort,m[150:end,:,:,:],scales=[0.5,2,4,8],rates=[-32,-8,-2,2,8,32])
-rplot(cort,cr[150:end,:,:,:],scales=[0.5,2,4,8],rates=[-32,-8,-2,2,8,32])
-rplot(cort,cra[150:end,:,:,:],scales=[0.5,2,4,8],rates=[-32,-8,-2,2,8,32])
+plot_scales2(cort,mean(abs.(m),[2,4]))
+plot_scales2(cort,mean(abs.(cr),[2,4]))
+plot_scales2(cort,mean(abs.(cra),[2,4]))
 
 tempc = TCAnalysis(cort,1,1s,method=:pca)
 C = tempc(cr);
@@ -127,52 +43,40 @@ Ca = tempc(cra);
 
 rplot(tempc,Ca[3s])
 rplot(tempc,C[3s])
-
 rplot(tempc,[C,Ca],"adapt/mi?" => ["no","yes"])
 
-
 ### okay, now that that's happening, can adaptation give
-### us some osscilations???
+### us some oscilations???
 
 params = AdaptMI(c_m=20,τ_m=200ms,W_m=scale_weighting(cort,0.1),
                  c_a=8,τ_a=2s,shape_y = x -> max(0,x),
                  Δt = Δt(cort));
-
 
 cra = similar(cr);
 cra,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
   cr[t,:,:,:]
 end);
 
-plot_scales(cort,mean(abs.(m),[2,4]))
+plot_scales2(cort,mean(abs.(m),[2,4]))
 
-plot_scales(cort,mean(abs.(cr),[2,4]))
-plot_scales(cort,mean(abs.(cra),[2,4]))
- 
-rplot(cort,m[150:end,:,:,:],scales=[0.5,2,4,8],rates=[-32,-8,-2,2,8,32])
-rplot(cort,cr[150:end,:,:,:],scales=[0.5,2,4,8],rates=[-32,-8,-2,2,8,32])
-rplot(cort,cra[150:end,:,:,:],scales=[0.5,2,4,8],rates=[-32,-8,-2,2,8,32])
+plot_scales2(cort,mean(abs.(cr),[2,4]))
+plot_scales2(cort,mean(abs.(cra),[2,4]))
 
 tempc = TCAnalysis(cort,1,1s,method=:pca)
-C = tempc(cr);
+# C = tempc(cr);
 Ca = tempc(cra);
 
-rplot(tempc,Ca[3s])
-rplot(tempc,Ca[4.5s])
-rplot(tempc,C[3s])
+rplot(tempc,Ca[4s])
+rplot(tempc,Ca[2s])
 
 rplot(tempc,[C,Ca],"adapt/mi?" => ["no","yes"])
 
 # NOTE: ratios are clearly off at this point...
 
-
+########################################
 # let's try a longer run of that...
 
-
-xl = @> ab(120ms,120ms,1,100,500Hz,6) attenuate(10)
-spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=25,
-                            min_freq = 250Hz,max_freq=1500Hz)
-cort = CorticalModel(spect)
+xl = @> ab(120ms,120ms,1,50,500Hz,6) attenuate(10)
 
 params = AdaptMI(c_m=20,τ_m=200ms,W_m=scale_weighting(cort,0.1),
                  c_a=8,τ_a=2s,shape_y = x -> max(0,x),
@@ -185,23 +89,91 @@ cra,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
   cr[t,:,:,:]
 end);
 
-plot_scales(cort,mean(abs.(cra),[2,4]))
+plot_scales2(cort,mean(abs.(cra),[2,4]))
 
 tempc = TCAnalysis(cort,1,1s,method=:pca)
-# C = tempc(cr);
-Ca = tempc(cra);
 
-rplot(tempc,Ca[4.5s])
-rplot(tempc,Ca[7s])
+################################################################################
+# how are we going to weight the smaller scales?
+# through what justification? just hack it?
 
-p = Array{Any}(2)
+# somethink like pink noise...
+y = rand(192,62).*0.1.+0.9
+crn = cort(y)
 
-m4_5 = mask(tempc,Ca[4.5s],cr,0);
-sp4_5 = inv(cort,m4_5,usematlab=true)
-p[1] = rplot(spect,sp4_5)
+weights = mean(abs.(crn),[1,2,4])
+weights ./= sum(weights)
 
-m7 = mask(tempc,Ca[7s],cr,0);
-sp7 = inv(cort,m7,usematlab=true)
-p[2] = rplot(spect,sp7)
+# what happens if we weight by this?
 
-rplot(tempc,[Ca],"adapt/mi?" => ["yes"])
+# TODO...
+
+
+# xl = @> ab(120ms,120ms,1,100,500Hz,6) attenuate(10)
+# spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=25,
+#                             min_freq = 250Hz,max_freq=1500Hz)
+# cort = CorticalModel(spect)
+
+# params = AdaptMI(c_m=20,τ_m=200ms,W_m=scale_weighting(cort,0.1),
+#                  c_a=8,τ_a=2s,shape_y = x -> max(0,x),
+#                  Δt = Δt(cort));
+
+# cr = cort(xl);
+# cr ./= weights;
+
+# cra = similar(cr);
+# cra,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
+#   cr[t,:,:,:]
+# end);
+
+# plot_scales(cort,mean(abs.(cra[100:200,:,:,:]),[2,4]))
+# rplot(spect,squeeze(mean(abs.(cra[100:end,:,:,:]),[2,4]),(2,4)))
+# rplot(spect,squeeze(mean(abs.(cra[100:200,:,:,:]),[2,4]),(2,4)))
+
+
+# # things seem to drop too quickly in this case...
+# # let's try decreasing constants
+
+# params = AdaptMI(c_m=2,τ_m=250ms,W_m=scale_weighting(cort,0.5),
+#                  c_a=0.5,τ_a=2s,shape_y = x -> max(0,x),
+#                  c_σ = 1,τ_σ = 100ms,
+#                  Δt = Δt(cort));
+
+# cra = similar(cr);
+# cra25,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
+#   0.25cr[t,:,:,:]
+# end);
+
+# cra100,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
+#   cr[t,:,:,:]
+# end);
+
+# # rplot(spect,squeeze(mean(abs.(m),[2,4]),(2,4)))
+# # rplot(spect,squeeze(mean(abs.(a),[2,4]),(2,4)))
+# # rplot(spect,squeeze(mean(abs.(cra),[2,4]),(2,4)))
+# rplot(spect,squeeze(mean(abs.(cra25[100:400,:,:,:]),[2,4]),(2,4)))
+# quartz(); rplot(spect,squeeze(mean(abs.(cra100[100:400,:,:,:]),[2,4]),(2,4)))
+
+# rplot(spect,squeeze(mean(abs.(cra[100:end,:,:,:]),[2,4]),(2,4)))
+# rplot(spect,squeeze(mean(abs.(cra[100:200,:,:,:]),[2,4]),(2,4)))
+
+# # what if we introduce some noise?
+
+# cra = similar(cr);
+# crn = drift(cr,params);
+
+# # debugging noise function
+# rplot(spect,abs.(crn[:,18,7,:]))
+
+# cra,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
+#   3crn[t,:,:,:]
+# end);
+
+# rplot(spect,squeeze(mean(abs.(crn[100:200,:,:,:]),[2,4]),(2,4)))
+# rplot(spect,squeeze(mean(abs.(cra),[2,4]),(2,4)))
+# rplot(spect,squeeze(mean(abs.(cra[100:400,:,:,:]),[2,4]),(2,4)))
+# rplot(spect,squeeze(mean(abs.(cra[100:200,:,:,:]),[2,4]),(2,4)))
+
+
+# rplot(spect,squeeze(mean(abs.(m[100:400,:,:,:]),[2,4]),(2,4)))
+# rplot(spect,squeeze(mean(abs.(a[100:400,:,:,:]),[2,4]),(2,4)))
