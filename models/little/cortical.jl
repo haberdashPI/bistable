@@ -1,6 +1,7 @@
-# TODO: figure out if the segfault comes from the combination of R and MATLAB
 using RCall
-sleep(0.25) # without this RCall can lead to a segmentation fault
+# without this sleep, `using RCall` can lead to a segmentation fault
+# (interaction with MATLAB???)
+sleep(0.25)
 using Colors
 using MATLAB
 using PerceptualColourMaps
@@ -368,6 +369,62 @@ R"""
                                   expression(+pi)),
                                   name = expression(phi)) +
     scale_alpha_continuous(range=c(0,1),name="Amplitude")
+
+"""
+end
+
+function plot_scales(cort,m,range=nothing)
+  sm = m[:,1,:,1]
+  iis = collect(CartesianRange(size(sm)))
+  df = DataFrame(level = vec(sm),
+                 time = vec(map(x -> ustrip(times(cort,m)[x[1]]),iis)),
+                 scale = vec(map(x -> ustrip(scales(cort)[x[2]]),iis)))
+
+  @show unique(df[:scale])
+R"""
+  library(RColorBrewer)
+  pal = brewer.pal(5,'Reds')[2:5]
+  p = ggplot($df,aes(x=time,y=level,group=scale,
+                 color=factor(round(scale,1)),linetype=factor(round(scale,1)))) +
+    geom_line(color='black',linetype='solid',size=1.2) + geom_line() +
+    scale_color_manual(values = rep(pal,each=3)[1:11],name="Scale") +
+    scale_linetype_manual(values =
+      rep(c("dotdash","longdash","solid"),4)[1:11],name="Scale")
+"""
+  if range != nothing
+R"""
+      p = p + coord_cartesian(ylim=c($(first(range)),$(last(range))))
+"""
+  end
+
+  R"p"
+end
+
+function plot_scales2(cort,data,range=nothing)
+  data = data[:,1,:,1]
+  ixs = CartesianRange(size(data))
+  at(ixs,i) = map(x -> x[i],ixs)
+
+  df = DataFrame(response = vec(data),
+                 time = vec(ustrip(times(cort,data)[at(ixs,1)])),
+                 scale_bin = vec(at(ixs,2)))
+
+  sbreaks = 1:2:length(scales(cort))
+  slabs = string.(round(scales(cort)[sbreaks],1)).*" cyc/oct"
+
+  @show sc
+  @show unique(df[:scale_bin])
+R"""
+
+  library(ggplot2)
+
+  print($sc)
+
+  ggplot($df,aes(x=time,y=scale_bin,fill=response)) +
+    geom_raster() +
+    scale_y_continuous(labels=$slabs,breaks=$sbreaks) +
+    ylab('Frequency (Hz)') + xlab('Time (s)') +
+    scale_fill_distiller(palette='Reds',direction=1)
 
 """
 end
