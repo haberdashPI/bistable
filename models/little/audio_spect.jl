@@ -49,6 +49,8 @@ all_freqs(as::AuditorySpectrogram) =
 
 freqs(as::AuditorySpectrogram) = freqs(as,1:nchannels(as))
 freqs(as::AuditorySpectrogram,data::AbstractMatrix) = freqs(as,indices(data,2))
+freqs(as::AuditorySpectrogram,data::AbstractArray{T,4}) where T =
+    freqs(as,indices(data,2))
 freqs(as::AuditorySpectrogram,ixs) =
   filter(f -> as.min_freq <= f <= as.max_freq,all_freqs(as))[ixs]
 
