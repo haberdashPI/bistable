@@ -20,7 +20,7 @@ sig(x) = 1/(1+exp(-10(x-0.5)))
   τ_m::Seconds{Float64} = 50ms
   W_m::I = inhibit_uniform
 
-  τ_σ::Seconds{Float64} = 10ms
+  τ_σ::Seconds{Float64} = 100ms
   c_σ::Float64 = 0.3
 
   Δt::Seconds{Float64} = 1ms
@@ -102,7 +102,7 @@ empty_timeslice(y) = zeros(eltype(y),size(y)[2:end]...)
 approx_empty_timeslice(y) = empty_timeslice(y)
 time_indices(y) = indices(y,1)
 function get_timeslice(y,t)
-  y[t,collect(CartesianRange(size(y,2:end...)))]
+  y[t,collect(CartesianRange(size(y,2:ndims(y)...)))]
 end
 function set_timeslice!(y,t,y_t)
   for ii in CartesianRange(size(y_t)); y[t,ii] = y_t[ii]; end
@@ -117,7 +117,6 @@ end
 #   to find the final, complex output
 function __approx(f,x::Array{<:Complex},args...)
   y = f(abs.(x),args...)
-  # @show y
   withangle(angle.(x),y)
 end
 function withangle(angle,y::Tuple)
@@ -125,7 +124,9 @@ function withangle(angle,y::Tuple)
   # @show y[1]
   (y[1].*exp.(angle.*im),y[2:end]...)
 end
-withangle(angle,y) = y.*angle.(x)
+function withangle(angle,y)
+  y.*angle
+end
 approx_similar(x::Array{<:Complex{T}}) where T =
   similar(x,T)
 approx_empty_timeslice(y::Array{<:Complex{T}}) where T =
@@ -168,10 +169,6 @@ function adaptmi(update,y,params)
   dt_y = eltype(a_t)(Δt / τ_y)
   dt_a = eltype(a_t)(Δt / τ_a)
   dt_m = eltype(a_t)(Δt / τ_m)
-
-  @show Δt
-  @show τ_m
-  @show dt_m
 
   @showprogress "Adapt/Inhibit: " for t in time_indices(y)
     y_t = update(yr_t,t,dt_y)
@@ -218,16 +215,18 @@ function drift(x,params=AdaptMI())
   τ_σ, c_σ, Δt = params.τ_σ, params.c_σ, params.Δt
 
   y = similar(x)
-  σ_t = approx_timeslice(x)
+  σ_t = approx_empty_timeslice(x)
   dims = size(σ_t)
-  for t in time_indices(x)
+  @showprogress "Drift: " for t in time_indices(x)
     y_t = get_timeslice(x,t)
     y_t,σ_t = @approx (y_t,σ_t) begin
       σ_t .+= -σ_t.*(Δt/τ_σ) .+ randn(dims).*(c_σ*sqrt(2Δt/τ_σ))
       y_t .+= σ_t
+
+      y_t,σ_t
     end
 
     set_timeslice!(y,t,y_t)
   end
-  x
+  y
 end
