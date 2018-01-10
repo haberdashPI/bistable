@@ -6,7 +6,7 @@
 # scales (based on the sums in each scale, or something like that)
 function scale_weighting(cort,σ=1)
   s = log.(scales(cort))
-  W = @. 1 - exp(-(s - s')^2 / σ^2*log(2))
+  W = @. 1 - exp(-(s - s')^2 / (σ^2*log(2)))
   W ./= sum(W,2)
 
   @show W
