@@ -15,5 +15,8 @@ function scale_weighting(cort,σ=1)
     m = W*vec(sum(x,(1,3)))
     x./max.(1e-10,sum(x,(1,3))) .* reshape(m,1,:,1)
     # ones(x) .* reshape(m,1,:,1)
+    # TODO: can the above be expressed as a matrix multiplication?
+    # I don't think so... I need another abstraction to expression
+    # mutual-inhibition in the paper/grant
   end
 end

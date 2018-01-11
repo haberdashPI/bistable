@@ -400,7 +400,7 @@ R"""
   R"p"
 end
 
-function plot_scales2(cort,data,range=nothing)
+function plot_scales2(cort,data;name="response",range=nothing)
   data = data[:,1,:,1]
   ixs = CartesianRange(size(data))
   at(ixs,i) = map(x -> x[i],ixs)
@@ -410,21 +410,17 @@ function plot_scales2(cort,data,range=nothing)
                  scale_bin = vec(at(ixs,2)))
 
   sbreaks = 1:2:length(scales(cort))
-  slabs = string.(round(scales(cort)[sbreaks],1)).*" cyc/oct"
+  slabs = string.(round(scales(cort)[sbreaks],1))
 
-  @show sc
-  @show unique(df[:scale_bin])
 R"""
 
   library(ggplot2)
 
-  print($sc)
-
   ggplot($df,aes(x=time,y=scale_bin,fill=response)) +
     geom_raster() +
     scale_y_continuous(labels=$slabs,breaks=$sbreaks) +
-    ylab('Frequency (Hz)') + xlab('Time (s)') +
-    scale_fill_distiller(palette='Reds',direction=1)
+    ylab('Scale (cyc/oct)') + xlab('Time (s)') +
+    scale_fill_distiller(palette='Reds',direction=1,name=$name)
 
 """
 end
