@@ -110,15 +110,15 @@ function aba(tone_len,gap_len,repeats,freq,delta)
 end
 
 
-function ab(tone_len,spacing_len,offset_ratio,repeats,freq,delta)
+function ab(tone_len,spacing_len,offset_ratio,repeats,freq,delta,options...)
   @assert 0 <= offset_ratio <= 1
   space = silence(tone_len)
 
   a_freq=freq
   b_freq=freq*(2^(delta/12))
 
-  a = tone(a_freq,tone_len)
-  b = tone(b_freq,tone_len)
+  a = :without_a in options ? silence(tone_len) : tone(a_freq,tone_len)
+  b = :without_b in options ? silence(tone_len) : tone(b_freq,tone_len)
   ab = mix(a,[silence(offset_ratio*(tone_len+spacing_len));b])
   ab_len = 2(tone_len+spacing_len)
   ab = [ab; silence(ab_len - duration(ab))]
