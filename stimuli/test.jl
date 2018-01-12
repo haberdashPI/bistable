@@ -120,3 +120,9 @@ save("approach2_fuse.wav",x)
 
 # how does this work when we vary along multiple dimensions and approach
 # a point of bistability? can we learn something from that?
+
+# other dimensiona I might vary?
+# - direction of pitch shift (or pitch bend?)
+# - roughness of spectrum (smooth -> noisy)
+# - roughness of amplitude (smooth -> noisy)
+# - envelope of badwidth (no change -> narrow to wide)
