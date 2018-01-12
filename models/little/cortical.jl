@@ -7,6 +7,7 @@ using MATLAB
 using PerceptualColourMaps
 using RecipesBase
 using DataFrames
+# using PyPlot
 include("audio_spect.jl")
 
 struct CorticalModel
@@ -372,6 +373,29 @@ R"""
 
 """
 end
+
+# function pplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
+#   rindices = nearin(rates,cort.rates)
+#   sindices = nearin(scales,cort.scales)
+
+#   if rates != cort.rates || scales != cort.scales
+#     @show rindices
+#     @show sindices
+#   end
+
+#   y = y[:,rindices,sindices,:]
+
+#   ixs = CartesianRange(size(y))
+#   at(ixs,i) = map(x -> x[i],ixs)
+
+#   colormap = "#".*hex.(RGB.(cmap("C6")))
+
+#   fig, axs = subplots(nrows=length(rscales),ncols=length(rindices))
+#   for (ax,rindices,sindices) in axs
+#     # WIP...
+#     ax[:imshow](y[:,r])
+#   end
+# end
 
 function plot_scales(cort,m,range=nothing)
   sm = m[:,1,:,1]
