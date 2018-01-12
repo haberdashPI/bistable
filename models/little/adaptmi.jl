@@ -175,31 +175,13 @@ function adaptmi(update,y,params)
 
     mi = 1
     yr_t,a_t,m_t = @approx (y_t,a_t,m_t) begin
-      # if t == 40
-      #   mi = indmax(y_t)
-
-      #   @show y_t[mi]
-      #   @show a_t[mi]
-      #   @show m_t[mi]
-      #   @show (y_t.*c_a.*a_t .+ c_m.*m_t)[mi]
-      # end
-
       y_t .-= (y_t.*c_a.*a_t .+ c_m.*m_t)
       yp_t = shape_y.(y_t)
       a_t .+= (yp_t .- a_t).*dt_a
       m_t .+= (W_m(yp_t) .- m_t).*dt_m
 
-      # if t == 40
-      #   @show y_t[mi]
-      #   @show yp_t[mi]
-      # end
-
       yp_t,a_t,m_t
     end
-
-    # if t == 40
-    #   @show yr_t[mi]
-    # end
 
     set_timeslice!(y,t,yr_t)
     set_timeslice!(a,t,a_t)
