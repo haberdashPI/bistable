@@ -424,3 +424,37 @@ R"""
 
 """
 end
+
+
+function plot_scales2(cort,data::Array{<:Complex};name="response",range=nothing)
+  data = data[:,1,:,1]
+  ixs = CartesianRange(size(data))
+  at(ixs,i) = map(x -> x[i],ixs)
+
+  df = DataFrame(r_phase = angle.(vec(data)),
+                 r_amp = abs.(vec(data)),
+                 time = vec(ustrip(times(cort,data)[at(ixs,1)])),
+                 scale_bin = vec(at(ixs,2)))
+
+  colormap = "#".*hex.(RGB.(cmap("C6")))
+
+  sbreaks = 1:2:length(scales(cort))
+  slabs = string.(round(scales(cort)[sbreaks],1))
+
+R"""
+
+  library(ggplot2)
+
+  ggplot($df,aes(x=time,y=scale_bin,fill=r_phase,alpha=r_amp)) +
+    geom_raster() +
+    scale_y_continuous(labels=$slabs,breaks=$sbreaks) +
+    ylab('Scale (cyc/oct)') + xlab('Time (s)') +
+    scale_fill_gradientn(colors=$colormap,limits=c(-pi-0.1,pi+0.01),
+                         breaks=c(-pi,0,pi),
+                         labels=c(expression(-pi),expression(0),
+                                  expression(+pi)),
+                                  name = expression(phi)) +
+    scale_alpha_continuous(range=c(0,1),name="Amplitude")
+
+"""
+end
