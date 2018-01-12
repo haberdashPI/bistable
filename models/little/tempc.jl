@@ -4,43 +4,54 @@ include("cortical.jl")
 include("online_pca.jl")
 
 struct TCAnalysis
-  upstream::CorticalModel
+  cort::CorticalModel
   ncomponents::Int
-  rate::Seconds{Float64}
+  window::Seconds{Float64}
   method::Symbol
+  frame_len::Int
 end
 
-Δt(tc::TCAnalysis) = Δt(tc.upstream)
-times(tc::TCAnalysis,x) = times(tc.upstream,x)
+Δt(tc::TCAnalysis) = Δt(tc.cort)*tc.frame_len
+times(tc::TCAnalysis,x) = times(tc.cort,x)[1:tc.frame_len:end]
 
-(tc::TCAnalysis)(x::AbstractVector) = tc(tc.upstream(x))
-(tc::TCAnalysis)(x::AbstractMatrix) = tc(tc.upstream(x))
+(tc::TCAnalysis)(x::AbstractVector) = tc(tc.cort(x))
+(tc::TCAnalysis)(x::AbstractMatrix) = tc(tc.cort(x))
 
-TCAnalysis(upstream,ncomponents,rate=1s;method=:pca) =
-  TCAnalysis(upstream,ncomponents,rate,method)
+TCAnalysis(cort,ncomponents;window=1s,method=:pca,frame_len=10ms) =
+  TCAnalysis(cort,ncomponents,window,method,
+             max(1,floor(Int,frame_len/Δt(cort))))
+
+windowing(x,dim;length=nothing,step=nothing) =
+  (max(1,t-length):t for t in indices(x,dim)[1:step:end])
+
+windowlen(tc::TCAnalysis) = round(Int,tc.window/Δt(tc))
+nunits(tc::TCAnalysis,x) = prod(size(x,3,4))
+ncomponents(tc::TCAnalysis) = tc.ncomponents
 
 # alternative: I could have a different
 # set of eigenseries for each time scale
 Base.CartesianRange(x::Int) = CartesianRange((x,))
 function (tc::TCAnalysis)(x)
   if tc.method == :pca
-    C = EigenSeries(eltype(x),size(x,1),prod(size(x,3,4)),tc.ncomponents,Δt(tc))
-    window_len = round(Int,tc.rate/Δt(tc))
-    @showprogress "Temporal Coherence Analysis: " for t in indices(x,1)
-      x_ts = x[max(1,t-window_len):t,:,:,:]
-      x_t = reshape(x_ts,prod(size(x_ts,1,2)),:)
+    windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
+    C = EigenSeries(eltype(x),length(windows),nunits(tc,x),
+                    ncomponents(tc),Δt(tc))
 
-      # TODO: change to approximate: C_t = (1-dt)C_t + x*x'*dt ??
-      # (by weighting older samples)
-      n = min(size(x_t,1),tc.ncomponents)
+    @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
+      window = x[w_inds,:,:,:]
+      x_t = reshape(window,prod(size(window,1,2)),:)
+
+      n = min(size(x_t,1),ncomponents(tc))
       sv, = svds(x_t,nsv=n)
-      λ = zeros(eltype(x),tc.ncomponents)
-      u = zeros(eltype(x),size(x_t,2),tc.ncomponents)
+
+      λ = zeros(eltype(x),ncomponents(tc))
+      u = zeros(eltype(x),size(x_t,2),ncomponents(tc))
 
       λ[1:n] = sv[:S].^2 ./ size(x_t,1)
+
       u[:,1:n] = sv[:V]
       var = mean(abs2.(x_t),1)
-      C[t] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
+      C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
     end
 
     C
@@ -49,27 +60,62 @@ function (tc::TCAnalysis)(x)
   end
 end
 
-fusion_signal(tc::TCAnalysis,C::EigenSeries) = fusion_signal(tc.upstream(x),C)
+fusion_signal(tc::TCAnalysis,C::EigenSeries) = fusion_signal(tc.cort(x),C)
 function fusion_signal(tc::TCAnalysis,C::EigenSeries)
   vec(first.(eigvals.(C)) ./ sum.(var.(C)))
 end
 
-mask(tc::TCAnalysis,C::EigenSpace,x,phase;component=1) =
-    mask(tc,C,tc.upstream(x),phase,component=component)
-function mask(tc::TCAnalysis,C::EigenSpace,x::Array{T,4},
-              phase;component=1) where T
-  m = real.(eigvecs(C)[:,component] .* exp(phase*im))
-  mr = reshape(m,size(x,3,4)...)
-  mr ./= maximum(abs.(mr))
-  mr .= max.(0,mr)
+const phase_resolution = 128
+
+mask(tc::TCAnalysis,C,x;kwds...) = mask(tc,C,tc.cort(x);kwds...)
+function mask(tc::TCAnalysis,C::EigenSpace,x::Array{T,4};
+              phase=nothing,component=1) where T
+
+  M(phase) = max.(0,real.(eigvecs(C)[:,component] .* exp.(phase*im)))
+
+  # if there is no phase specified, choose the maximum energy mask
+  phase = if phase !== nothing; phase; else
+    phases = linspace(-π,π,phase_resolution+1)[1:end-1]
+    phases[indmax(sum.(M.(phases)))]
+  end
+
+  m = reshape(M(phase),size(x,3,4)...)
+  m ./= maximum(m)
 
   y = similar(x)
   for ii in CartesianRange(size(x,1,2))
-    y[ii,:,:] = mr.*x[ii,:,:]
+    y[ii,:,:] = m.*x[ii,:,:]
   end
   y
 end
 
+function mask(tc::TCAnalysis,C::EigenSeries,x::Array{T,4}) where T
+  y = zero(x)
+  norm = fill(0.0,size(y,1))
+
+  windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
+  @showprogress "Calculating Mask: " for (i,w_inds) in windows
+    window = x[w_inds,:,:,:]
+    m = mask(tc,C[i],window)
+    y[w_inds,:,:,:] .+= m
+    norm[w_inds] += 1
+  end
+
+  y ./= max.(1e-10,norm)
+end
+
+# in general, we have to solve the problem by
+# computing for each time point, over the same
+# window used to compute the component.
+
+# NOTE: that doesn't seem to really work all that well
+
+# a potentially simple hueristic for ABA stimuli:
+# compute energy at the maximum energy phase
+# and compare to the energy at max(phase) + π
+
+# make a plot of both these estimates
+# to see how they compare
 
 rplot(tc::TCAnalysis,x::TimedSound.Sound;kwds...) = rplot(tc,tc(x);kwds...)
 

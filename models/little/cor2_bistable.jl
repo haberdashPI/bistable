@@ -15,11 +15,31 @@ isdir(dir) || mkdir(dir)
 spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=25,
                             min_freq = 250Hz,max_freq=1500Hz)
 cort = CorticalModel(spect)
+tempc = TCAnalysis(cort,1,window=1s,method=:pca,frame_len=100ms)
 
-x = @> ab(120ms,120ms,1,10,500Hz,6) attenuate(10)
+x_a = @> ab(120ms,120ms,1,10,500Hz,6,:without_a) attenuate(20)
+x_b = @> ab(120ms,120ms,1,10,500Hz,6,:without_b) attenuate(20)
+x = mix(x_a,x_b)
 
 sp = spect(x);
 cr = cort(sp);
+C = tempc(cr);
+
+rplot(tempc,C[3s])
+
+m = mask(tempc,C,cr);
+masked = inv(cort,m,usematlab=true);
+p = rplot(spect,masked)
+
+
+
+scene_SNR(x,a,b) = 20 * abs(log10(sqrt(mean(a .* x)) / sqrt(mean(b .* x))))
+
+# IDEA: find the maimum amplitude element in the component and
+# use its phase, apply the mask at that time, and compute SNR
+# (also would be worth plotting the resulting spectrogram,
+#  changing the component as we go)
+
 
 # GOAL: with MI only, make sure one of the scales wins out
 
@@ -27,19 +47,17 @@ params = AdaptMI(c_m=20,τ_m=200ms,W_m=scale_weighting(cort,0.1),
                  c_a=0,τ_a=2s,shape_y = x -> max(0,x),
                  Δt = Δt(cort));
 
-
 cra = similar(cr);
 cra,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
   cr[t,:,:,:]
 end);
 
-p = plot_scales2(cort,mean(abs.(cra),[2,4]),name="mean |x|") 
+p = plot_scales2(cort,mean(abs.(cra),[2,4]),name="mean |x|")
 R"""
 p = $p + ggtitle("Mutual inhibition of scales")
 save_plot($(joinpath(dir,"mi_only.pdf")),p,base_aspect_ratio=1.3)
 """
 
-tempc = TCAnalysis(cort,1,1s,method=:pca)
 C = tempc(cr);
 Ca = tempc(cra);
 
@@ -70,7 +88,7 @@ cra,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
   cr[t,:,:,:]
 end);
 
-plot_scales2(cort,mean(abs.(cra),[2,4]),name="mean |x|") 
+plot_scales2(cort,mean(abs.(cra),[2,4]),name="mean |x|")
 
 ########################################
 # let's try a longer run of that...
@@ -88,7 +106,7 @@ cra,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
   cr[t,:,:,:]
 end);
 
-p = plot_scales2(cort,mean(abs.(cra),[2,4]),name="mean |x|") 
+p = plot_scales2(cort,mean(abs.(cra),[2,4]),name="mean |x|")
 R"""
 p = $p + ggtitle("MI & adaptation of scales")
 save_plot($(joinpath(dir,"mi_adapt.pdf")),p,base_aspect_ratio=1.3)
@@ -135,7 +153,7 @@ save_plot($(joinpath(dir,"mi_adapt_pc.pdf")),p,base_aspect_ratio=1.1,
 # somethink like pink noise...
 y = rand(192,62).*0.1.+0.9
 
-p = rplot(spect,y) 
+p = rplot(spect,y)
 R"""
 save_plot($(joinpath(dir,"noisy_spect.pdf")),
           $p + ggtitle("Noisy spectrogram"),
@@ -190,7 +208,7 @@ save_plot($(joinpath(dir,"mi_only_scale_weight_spect.pdf")),p,
 """
 
 ########################################
- 
+
 params = AdaptMI(c_m=20,τ_m=200ms,W_m=scale_weighting(cort,0.1),
                  c_a=8,τ_a=2s,shape_y = x -> max(0,x),
                  Δt = Δt(cort));

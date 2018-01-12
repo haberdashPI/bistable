@@ -141,13 +141,24 @@ save_plot($(joinpath(dir,"component_6st_scale05.png")),$p,base_aspect_ratio=1.2,
 
 
 p = Array{Any}(2)
-masked_s16 = mask(tempc,C_s16[3s],cr,0);
+masked_s16 = mask(tempc,C_s16[3s],cr,phase=0);
 sp = inv(cort,masked_s16,usematlab=true)
 p[1] = rplot(spect,sp)
 
-masked_s05 = mask(tempc,C_s05[3s],cr,0);
+masked_s05 = mask(tempc,C_s05[3s],cr,phase=0);
 sp = inv(cort,masked_s05,usematlab=true)
 p[2] = rplot(spect,sp)
+
+
+p = Array{Any}(2)
+masked_s16 = mask(tempc,C_s16[3s],cr);
+sp = inv(cort,masked_s16,usematlab=true)
+p[1] = rplot(spect,sp)
+
+masked_s05 = mask(tempc,C_s05[3s],cr);
+sp = inv(cort,masked_s05,usematlab=true)
+p[2] = rplot(spect,sp)
+
 
 R"""
 library(cowplot)
