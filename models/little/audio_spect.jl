@@ -47,7 +47,7 @@ end
 all_freqs(as::AuditorySpectrogram) =
   440.0Hz * 2.0.^(((1:nchannels(as)).-31)./24 .+ as.octave_shift)
 
-freqs(as::AuditorySpectrogram) = freqs(as,1:nchannels(as))
+freqs(as::AuditorySpectrogram) = freqs(as,1:length(channels_computed(as)))
 freqs(as::AuditorySpectrogram,data::AbstractMatrix) = freqs(as,indices(data,2))
 freqs(as::AuditorySpectrogram,data::AbstractArray{T,4}) where T =
     freqs(as,indices(data,2))
