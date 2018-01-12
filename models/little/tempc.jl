@@ -44,64 +44,6 @@ function (tc::TCAnalysis)(x)
     end
 
     C
-  elseif tc.method == :ipca
-    C_t = EigenSpace(eltype(x),prod(size(x,3,4)),tc.ncomponents)
-    C = EigenSeries(size(x,1),C_t,Δt(tc))
-
-    dt = Δt(tc) / tc.rate
-
-    function helper__(C_t,C,x,dt)
-
-      @showprogress "Temporal Coherence Analysis: " for t in indices(x,1)
-        for r in indices(x,2)
-          # approximately: C_t = (1-dt)C_t + x*x'*dt
-          C_t = update(C_t,x[t,r,:,:],dt)
-        end
-        C[t] = C_t
-      end
-
-      C
-    end
-
-    helper__(C_t,C,x,dt)
-  elseif tc.method == :ipca_lr
-    C_t = EigenSpace(eltype(x),prod(size(x,3,4)),tc.ncomponents)
-    C = EigenSeries(size(x,1),C_t,Δt(tc))
-
-    dt = Δt(tc) / tc.rate
-
-    function helper___(C_t,C,x,dt)
-
-      @showprogress "Temporal Coherence Analysis: " for t in indices(x,1)
-        for r in indices(x,2)
-          # approximately: C_t = (1-dt)C_t + x*x'*dt
-          C_t = update_approx(C_t,x[t,r,:,:],dt)
-        end
-        C[t] = C_t
-      end
-
-      C
-    end
-
-    helper___(C_t,C,x,dt)
-  elseif tc.method == :ipca_rsplit
-    nr = length(rates(tc.upstream))
-    C_t = [EigenSpace(eltype(x),prod(size(x,3,4)),tc.ncomponents) for r in 1:nr]
-    C = [EigenSeries(size(x,1),C_t[r],Δt(tc)) for r in 1:nr]
-    dt = Δt(tc) / tc.rate
-
-    function helper_(C_t,C,x,dt)
-      @showprogress "Temporal Coherence Analysis: " for t in indices(x,1)
-        for r in indices(x,2)
-          # approximately: C_t = (1-dt)C_t + x*x'*dt
-          C_t[r] = update(C_t[r],x[t,r,:,:],dt)
-          C[r][t] = C_t[r]
-        end
-      end
-      C
-    end
-
-    helper_(C_t,C,x,dt)
   else
     error("No method named $(tc.method)")
   end
