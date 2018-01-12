@@ -100,7 +100,7 @@ function rplot(tc::TCAnalysis,C::EigenSeries;n=ncomponents(C))
   end
 
   df = DataFrame(value = vec(abs.(λ) ./ sum.(var.(C))),
-                 time = vec(ustrip(at(1) * Δt(spect))),
+                 time = vec(ustrip(at(1) * Δt(tc))),
                  component = vec(at(2)))
 
   df = df[df[:component] .<= n,:]
@@ -121,7 +121,7 @@ function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C),showvar=true)
   u = eigvecs(C)[:,order]
   u = u[:,1:min(n,end)]
   if showvar; u = [u var(C)]; end
-  u = reshape(u,length(scales(tc.upstream)),:,size(u,2))
+  u = reshape(u,length(scales(tc.cort)),:,size(u,2))
   ii = CartesianRange(size(u))
   at(i) = vec(map(ii -> ii[i],ii))
   function title(n)
@@ -144,9 +144,9 @@ function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C),showvar=true)
                  component = at(3),
                  component_title = title.(at(3)))
 
-  sindices = 1:2:length(scales(tc.upstream))
-  sbreaks = scales(tc.upstream)[sindices]
-  fbreaks,findices = freq_ticks(tc.upstream.aspect,u[:,:,1])
+  sindices = 1:2:length(scales(tc.cort))
+  sbreaks = scales(tc.cort)[sindices]
+  fbreaks,findices = freq_ticks(tc.cort.aspect,u[:,:,1])
 
 R"""
 
@@ -175,7 +175,7 @@ function rplot(tempc::TCAnalysis,C::Array{<:EigenSeries},
   df = DataFrame(resp = vcat((real.(xi) for xi in x)...),
                  var = vcat((fill(label[2][i],length(x[i]))
                              for i in eachindex(x))...),
-                 time = vcat((ustrip.(eachindex(xi) * Δt(spect))
+                 time = vcat((ustrip.(eachindex(xi) * Δt(tempc))
                               for xi in x)...))
 
 R"""
