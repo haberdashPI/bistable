@@ -70,19 +70,21 @@ end
 # transforms a bandpass frequency response into either a high or low pass
 # response (or leaves it untouched)
 function askind(H,len,maxi,kind,nonorm)
-  if kind in [:low,:high]
+  if kind == :band
+    H
+  else
     old_sum = sum(H)
     if kind == :low
       H[1:maxi-1] = 1
     elseif kind == :high
       H[maxi+1:len] = 1
+    else
+      error("Unexpected filter kind '$kind'.")
     end
     if !nonorm
       H .= H ./ sum(H) .* old_sum
     end
 
-    H
-  else
     H
   end
 end
