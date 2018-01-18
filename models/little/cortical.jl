@@ -142,7 +142,7 @@ end
 # TODO: use complex numbers to represent the output
 # but allow plotting to show absolute value and phase???
 
-function (cm::CorticalModel)(s_in::Matrix;usematlab=false)
+function (cm::CorticalModel)(s_in::Matrix;usematlab=false,progressbar=true)
   if usematlab
     if !loadloaded[]
       loadloaded[] = true
@@ -193,7 +193,10 @@ function (cm::CorticalModel)(s_in::Matrix;usematlab=false)
   cr = zeros(Complex{eltype(s)}, size(s,1), N_r, N_s, size(s,2))
   rmin,rmax = extrema(abs.(rates))
   smin,smax = extrema(scales)
-  @showprogress "Cortical Simulation: " for (ri,rate) in enumerate(rates)
+  progress = Progress(length(rates)*length(scales),
+                      desc="Cortical Simulation: ",
+                      dt = progressbar ? 1.0 : Inf)
+  for (ri,rate) in enumerate(rates)
     z_t = if isnan(rate)
       # do not filter by rate
       (t_ifft * S)[1:size(s,1),:]
@@ -222,6 +225,8 @@ function (cm::CorticalModel)(s_in::Matrix;usematlab=false)
 
 			  cr[:, ri, si, :] = view(z,indices(s)...)
       end
+
+      next!(progress)
 		end
   end
 
@@ -229,7 +234,7 @@ function (cm::CorticalModel)(s_in::Matrix;usematlab=false)
 end
 
 function Base.inv(cm::CorticalModel,cr_in::Array{T,4};
-                  usematlab=false,norm=0.9) where T
+                  usematlab=false,norm=0.9,progressbar=true) where T
   if usematlab
     if !loadloaded[]
       loadloaded[] = true
@@ -275,8 +280,15 @@ function Base.inv(cm::CorticalModel,cr_in::Array{T,4};
 
     rmin,rmax = extrema(abs.(rates))
     smin,smax = extrema(scales)
-    @showprogress "Inverting Cortical Responses: " for (ri,rate) in enumerate(rates)
-      if isnan(rate) continue end
+    dt = progressbar ? 1.0 : Inf
+    progress = Progress(length(rates)*length(scales),
+                        desc="Cortical Inversion: ",
+                        dt = progressbar ? 1.0 : Inf)
+    for (ri,rate) in enumerate(rates)
+      if isnan(rate)
+        next!(progresse)
+        continue
+      end
 	    # rate filtering
       HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
                        cm.bandonly ? :band :
@@ -285,7 +297,10 @@ function Base.inv(cm::CorticalModel,cr_in::Array{T,4};
                        true)
 
       for (si,scale) in enumerate(scales)
-        if isnan(rate) continue end
+        if isnan(rate)
+          next!(progress)
+          continue
+        end
 			  # scale filtering
 			  HS = scale_filter(scale, N_f, spect_rate,
                           cm.bandonly ? :band :
@@ -297,6 +312,8 @@ function Base.inv(cm::CorticalModel,cr_in::Array{T,4};
         h = HR.*[HS; zeros(HS)]'
         h_cum .+= abs2.(h)
         z_cum .+= h .* Z
+
+        next!(progress)
       end
     end
 
