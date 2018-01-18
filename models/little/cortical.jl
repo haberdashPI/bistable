@@ -467,7 +467,7 @@ function plot_scales2(cort,data;name="response",range=nothing)
                  scale_bin = vec(at(ixs,2)))
 
   sbreaks = 1:2:length(scales(cort))
-  slabs = string.(round(scales(cort)[sbreaks],1))
+  slabs = string.(round(scales(cort)[sbreaks],2))
 
 R"""
 
@@ -496,7 +496,7 @@ function plot_scales2(cort,data::Array{<:Complex};name="response",range=nothing)
   colormap = "#".*hex.(RGB.(cmap("C6")))
 
   sbreaks = 1:2:length(scales(cort))
-  slabs = string.(round(scales(cort)[sbreaks],1))
+  slabs = string.(round(scales(cort)[sbreaks],2))
 
 R"""
 
