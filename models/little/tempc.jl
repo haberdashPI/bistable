@@ -12,7 +12,7 @@ struct TCAnalysis
 end
 
 Δt(tc::TCAnalysis) = Δt(tc.cort)*tc.frame_len
-times(tc::TCAnalysis,x) = times(tc.cort,x)[1:tc.frame_len:end]
+times(tc::TCAnalysis,x) = times(tc.cort,x)[min_window_size:tc.frame_len:end]
 
 (tc::TCAnalysis)(x::AbstractVector) = tc(tc.cort(x))
 (tc::TCAnalysis)(x::AbstractMatrix) = tc(tc.cort(x))
@@ -21,10 +21,11 @@ TCAnalysis(cort,ncomponents;window=1s,method=:pca,frame_len=10ms) =
   TCAnalysis(cort,ncomponents,window,method,
              max(1,floor(Int,frame_len/Δt(cort))))
 
+const min_window_size = 10
 windowing(x,dim;length=nothing,step=nothing) =
-  (max(1,t-length):t for t in indices(x,dim)[1:step:end])
+  (max(1,t-length):t for t in indices(x,dim)[min_window_size:step:end])
 
-windowlen(tc::TCAnalysis) = round(Int,tc.window/Δt(tc))
+windowlen(tc::TCAnalysis) = round(Int,tc.window/Δt(tc.cort))
 nunits(tc::TCAnalysis,x) = prod(size(x,3,4))
 ncomponents(tc::TCAnalysis) = tc.ncomponents
 
@@ -60,48 +61,111 @@ function (tc::TCAnalysis)(x)
   end
 end
 
-fusion_signal(tc::TCAnalysis,C::EigenSeries) = fusion_signal(tc.cort(x),C)
-function fusion_signal(tc::TCAnalysis,C::EigenSeries)
-  vec(first.(eigvals.(C)) ./ sum.(var.(C)))
-end
+# fusion_signal(tc::TCAnalysis,C::EigenSeries) = fusion_signal(tc.cort(x),C)
+# function fusion_signal(tc::TCAnalysis,C::EigenSeries)
+#   vec(first.(eigvals.(C)) ./ sum.(var.(C)))
+# end
 
 const phase_resolution = 128
 
 mask(tc::TCAnalysis,C,x;kwds...) = mask(tc,C,tc.cort(x);kwds...)
+"""
+    mask(tc,C,x;[phase=max_energy],[component=1])
+
+Filter the given scene by a given principle component to extract
+the object represented by that component from the scene.
+
+Principle components are complex-valued, and so a given phase of the component
+must be selected to find a real-valued mask. By default the maximum energy phase
+is selected (by max_energy). You can also select the minimum energy phase
+(min_energy), specifiy a specific phase value (e.g. π), or use a custom selector
+function. The selector takes two arguments, `mask` and `phase` and should return
+a utility function (higher is better), and will be used to find the maximum
+utility phase. The mask is a vector representing the scale and frequency
+responses in the same ordering as `vec(cr[1,1,:,:])` where `cr`
+is a set of cortical responses.
+
+# Arguments
+
+* tc - The settings for temporal coherence analysis.
+* C - the previosuly computed temporal coherence, as an EigenSeries,
+      (e.g. C = tc(scene))
+* x - the auditory scene
+* phase - the phase of the component, see above
+* component - the eigenvector of C to use (note that by default only the first
+    is computed).
+"""
 function mask(tc::TCAnalysis,C::EigenSpace,x::Array{T,4};
-              phase=nothing,component=1) where T
-
-  M(phase) = max.(0,real.(eigvecs(C)[:,component] .* exp.(phase*im)))
-
-  # if there is no phase specified, choose the maximum energy mask
-  phase = if phase !== nothing; phase; else
-    phases = linspace(-π,π,phase_resolution+1)[1:end-1]
-    phases[indmax(sum.(M.(phases)))]
-  end
-
-  m = reshape(M(phase),size(x,3,4)...)
+              phase=max_energy,component=1) where T
+  m,selected_phase = select_mask(C,x,phase,component)
+  m = reshape(m,size(x,3,4)...)
   m ./= maximum(m)
 
   y = similar(x)
   for ii in CartesianRange(size(x,1,2))
     y[ii,:,:] = m.*x[ii,:,:]
   end
-  y
+  y,selected_phase
 end
 
-function mask(tc::TCAnalysis,C::EigenSeries,x::Array{T,4}) where T
-  y = zero(x)
-  norm = fill(0.0,size(y,1))
+select_mask(C::EigenSpace,x,phase::Number,component) =
+  max.(0,real.(eigvecs(C)[:,component] .* exp.(phase*im))), phase
 
+function select_mask(C::EigenSpace{T},x,phase_selector,component) where T
+  phases = linspace(-π,π,phase_resolution+1)[1:end-1]
+  vals = [phase_selector(x,select_mask(C,x,p,component)...) for p in phases]
+  i = indmax(vals)
+  select_mask(C,x,phases[i],component)
+end
+
+max_energy(x,mask,phase) = sum(mask.^2)
+min_energy(x,mask,phase) = -sum(mask.^2)
+
+function max_filtering(x,mask,phase)
+  mask = reshape(m,size(x,3,4)...)
+  mask = mask ./ maximum(mask)
+  sum(CartesianRange(size(x,1,2))) do ii
+    sum(abs2.(mask.*x[ii,:,:]))
+  end
+end
+min_filtering(x,mask,phase) = -max_filtering(x,mask,phase)
+
+function __map_mask(fn::Function,tc::TCAnalysis,
+                    C::EigenSeries,x::Array{T},phase) where T
   windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
+  y = zeros(length(windows))
+  phases = zeros(y)
+
   @showprogress "Calculating Mask: " for (i,w_inds) in windows
     window = x[w_inds,:,:,:]
-    m = mask(tc,C[i],window)
-    y[w_inds,:,:,:] .+= m
-    norm[w_inds] += 1
+    m,phases[i] = mask(tc,C[i],window,phase=phase)
+    masked = inv(cort,m)
+
+    masked ./= maximum(abs.(masked))
+    window ./= maximum(abs.(window))
+    y[i] = fn(i,w_inds,masked,window)
   end
 
-  y ./= max.(1e-10,norm)
+  y,phases
+end
+
+function fusion_ratio(tc::TCAnalysis,C::EigenSeries,
+                      x::Array{T,4};phase=max_energy) where T
+
+  y,phases = __map_mask(tc,C,x,phase) do i,w_inds,masked,window
+    sqrt(mean(abs2.(masked))) / sqrt(mean(abs2.(window)))
+  end
+end
+
+function object_SNR(tc::TCAnalysis,C::EigenSeries,
+                    x::Array{T,4},target::Matrix;phase=max_energy) where T
+  y,phases = __map_mask(tc,C,x,phase) do i,w_inds,masked,window
+    target_win = target[w_inds,:,:,:]
+    target_win ./= maximum(abs.(target_win))
+
+    20 * log10(sqrt(mean(masked .* target_win)) /
+               sqrt(mean(abs.(masked.^2 .- masked.*target_win))))
+  end
 end
 
 # in general, we have to solve the problem by
@@ -191,7 +255,7 @@ function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C),showvar=true)
                  component_title = title.(at(3)))
 
   sindices = 1:2:length(scales(tc.cort))
-  sbreaks = scales(tc.cort)[sindices]
+  sbreaks = round(scales(tc.cort)[sindices],2)
   fbreaks,findices = freq_ticks(tc.cort.aspect,u[:,:,1])
 
 R"""
