@@ -30,7 +30,7 @@ times(cm::CorticalModel,data::Array{T,4}) where T =
 times(cm::CorticalModel,data::Array{T,2}) where T =
   @views times(cm.aspect,data)
 
-const loadloaded = fill(false,0)
+const loadloaded = fill(false)
 function CorticalModel(aspect::AuditorySpectrogram;
                        rates=sort([-2.^(1:0.5:5); 2.^(1:0.5:5)]),
                        scales=2.^(-2:0.5:3),
@@ -173,7 +173,6 @@ function (cm::CorticalModel)(s_in::Matrix;usematlab=false)
   end
 
   s = s_in
-  warn("Julia cortical result differs from NSL toolbox result!!!")
 
   rates = cm.rates
   scales = cm.scales
@@ -302,9 +301,9 @@ function Base.inv(cm::CorticalModel,cr_in::Array{T,4};
     end
 
     h_cum[:,1] .*= 2
-    old_sum = sum(h_cum)
+    old_sum = sum(h_cum[:,indices(cr,4)])
     h_cum .= norm.*h_cum + (1 .- norm).*maximum(h_cum)
-    h_cum .*= old_sum ./ sum(h_cum)
+    h_cum .*= old_sum ./ sum(h_cum[:,indices(cr,4)])
     z_cum ./= h_cum
 
     s = (st_fft \ z_cum)[indices(cr,1),indices(cr,4)]
