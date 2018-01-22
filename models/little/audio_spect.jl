@@ -275,11 +275,14 @@ end
 function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;iterations=10,
                   usematlab=true)
   if usematlab
+    y = similar(y_in,(size(y_in,1),nchannels(spect)))
+    y[:,channels_computed(spect)] = y_in
     paras = [spect.len, spect.decay_tc, spect.nonlinear, spect.octave_shift,
              iterations, 0, 0]
-    guess = mat"aud2wavi($y_in,$paras)"
-    mat"aud2wav($y_in,$guess,$paras)"
+    guess = mat"aud2wavi($y,$paras)"
+    mat"aud2wav($y,$guess,$paras)"
   else
+    y = y_in
     M = size(as.cochba,2)
 
     # expand y to include all frequencies
