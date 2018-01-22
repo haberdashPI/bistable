@@ -168,9 +168,62 @@ function object_SNR(tc::TCAnalysis,C::EigenSeries,
   end
 end
 
-# in general, we have to solve the problem by
-# computing for each time point, over the same
-# window used to compute the component.
+function mask2(tc::TCAnalysis,C::EigenSpace,x::Array{T,4};component=1) where T
+  m = eigvecs(C)[:,component]
+  m ./= maximum(abs.(m))
+  m = reshape(m,size(x,3,4)...)
+
+  y = similar(x)
+  for ii in CartesianRange(size(x,1,2))
+    y[ii,:,:] = m.*x[ii,:,:]
+  end
+  y
+end
+
+function __map_mask2(fn::Function,tc::TCAnalysis,
+                     C::EigenSeries,x::Array{T}) where T
+  windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
+  y = zeros(length(windows))
+
+  @showprogress "Calculating Mask: " for (i,w_inds) in windows
+    window = x[w_inds,:,:,:]
+    m = mask2(tc,C[i],window)
+    masked = inv(cort,m)
+
+    masked ./= maximum(abs.(masked))
+    window ./= maximum(abs.(window))
+    y[i] = fn(i,w_inds,masked,window)
+  end
+
+  y
+end
+
+# TODO: make this work with mask2
+# function fusion_ratio2(tc::TCAnalysis,C::EigenSeries,
+#                       x::Array{T,4};phase=max_energy) where T
+
+#   y,phases = __map_mask(tc,C,x,phase) do i,w_inds,masked,window
+#     sqrt(mean(abs2.(masked))) / sqrt(mean(abs2.(window)))
+#   end
+# end
+
+function object_SNR2(tc::TCAnalysis,C::EigenSeries,
+                    x::Array{T,4},target::Matrix) where T
+  y = __map_mask2(tc,C,x) do i,w_inds,masked,window
+    target_win = target[w_inds,:,:,:]
+    target_win ./= maximum(abs.(target_win))
+
+    20 * log10(sqrt(mean(masked .* target_win)) /
+               sqrt(mean(abs.(masked.^2 .- masked.*target_win))))
+  end
+end
+
+ab_match(tc,C,x,a,b) = ab_match(tc,C,x,tc.cort.aspect(a),tc.cort.aspect(b))
+function ab_match(tc::TCAnalysis,C::EigenSeries,x::Array{T,4},
+                  a::Matrix,b::Matrix) where T
+  y = __map_mask2(tc,C,x) do i,w_inds,masked,window
+    a_win = a[w_inds,:,:,:]
+    b_win = b[w_inds,:,:,:]
 
 # NOTE: that doesn't seem to really work all that well
 
