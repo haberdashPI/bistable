@@ -29,6 +29,7 @@ windowlen(tc::TCAnalysis) = round(Int,tc.window/Δt(tc.cort))
 nunits(tc::TCAnalysis,x) = prod(size(x,3,4))
 ncomponents(tc::TCAnalysis) = tc.ncomponents
 
+const n_phases = 8
 # alternative: I could have a different
 # set of eigenseries for each time scale
 Base.CartesianRange(x::Int) = CartesianRange((x,))
@@ -41,6 +42,37 @@ function (tc::TCAnalysis)(x)
     @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
       window = x[w_inds,:,:,:]
       x_t = reshape(window,prod(size(window,1,2)),:)
+
+      n = min(size(x_t,1),ncomponents(tc))
+      sv, = svds(x_t,nsv=n)
+
+      λ = zeros(eltype(x),ncomponents(tc))
+      u = zeros(eltype(x),size(x_t,2),ncomponents(tc))
+
+      λ[1:n] = sv[:S].^2 ./ size(x_t,1)
+
+      u[:,1:n] = sv[:V]
+      var = mean(abs2.(x_t),1)
+      C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
+    end
+
+    C
+  elseif tc.method == :real_pca
+    windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
+    C = EigenSeries(real(eltype(x)),length(windows),nunits(tc,x),
+                    ncomponents(tc),Δt(tc))
+
+    @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
+      window = x[w_inds,:,:,:]
+      xc_t = reshape(window,prod(size(window,1,2)),:)
+
+      # expand the representation, to have n_phase
+      # real filters
+      xp_t = Array{real(eltype(xc_t))}((size(xc_t,1),n_phases,size(xc_t,2)))
+      for (j,phase) in enumerate(linspace(-π,π,n_phases+1)[1:end-1])
+        xp_t[:,j,:] = real.(xc_t .* exp.(phase.*im))
+      end
+      x_t = reshape(xp_t,:,size(xc_t,2))
 
       n = min(size(x_t,1),ncomponents(tc))
       sv, = svds(x_t,nsv=n)
@@ -113,7 +145,10 @@ select_mask(C::EigenSpace,x,phase::Number,component) =
 
 function select_mask(C::EigenSpace{T},x,phase_selector,component) where T
   phases = linspace(-π,π,phase_resolution+1)[1:end-1]
-  vals = [phase_selector(x,select_mask(C,x,p,component)...) for p in phases]
+  vals = similar(phases)
+  @showprogress "evaluating phases: " for (i,p) in enumerate(phases)
+    vals[i] = phase_selector(x,select_mask(C,x,p,component)...)
+  end
   i = indmax(vals)
   select_mask(C,x,phases[i],component)
 end
@@ -122,7 +157,7 @@ max_energy(x,mask,phase) = sum(mask.^2)
 min_energy(x,mask,phase) = -sum(mask.^2)
 
 function max_filtering(x,mask,phase)
-  mask = reshape(m,size(x,3,4)...)
+  mask = reshape(mask,size(x,3,4)...)
   mask = mask ./ maximum(mask)
   sum(CartesianRange(size(x,1,2))) do ii
     sum(abs2.(mask.*x[ii,:,:]))
@@ -225,14 +260,22 @@ function ab_match(tc::TCAnalysis,C::EigenSeries,x::Array{T,4},
     a_win = a[w_inds,:,:,:]
     b_win = b[w_inds,:,:,:]
 
-# NOTE: that doesn't seem to really work all that well
+    20 * log10(sqrt(mean(masked .* a_win)) / sqrt(mean(masked .* b_win)))
+  end
+end
 
-# a potentially simple hueristic for ABA stimuli:
-# compute energy at the maximum energy phase
-# and compare to the energy at max(phase) + π
+function mean_spect(tc::TCAnalysis,C::EigenSeries,x::Array{T,4}) where T
+  y = fill(real(zero(x[1])),size(x,1,4))
+  norm = fill(zero(real(x[1])),size(x,1,4))
+  dummy = __map_mask2(tc,C,x) do i,w_inds,masked,window
+    y[w_inds,:] .+= masked
+    norm[w_inds,:] .+= 1.0
 
-# make a plot of both these estimates
-# to see how they compare
+    0.0
+  end
+
+  y ./ max.(1e-10,norm)
+end
 
 rplot(tc::TCAnalysis,x::TimedSound.Sound;kwds...) = rplot(tc,tc(x);kwds...)
 

@@ -97,24 +97,28 @@ save_plot($(joinpath(dir,"mi_adapt.pdf")),p,base_aspect_ratio=1.3)
 tempc = TCAnalysis(cort,1,window=1s,method=:pca,frame_len=10ms)
 Ca = tempc(cra)
 
-t1 = 5s
+## trying out the min filtering mask
+t1 = 4.8s
 rplot(tempc,Ca[t1])
-masked, = mask(tempc,Ca[3s],cr[1:400,:,:,:],phase=0);
+masked,phase = mask(tempc,Ca[t1],cr[1:400,:,:,:],phase=min_filtering);
 sp = inv(cort,masked)
 p1 = rplot(spect,sp)
 
 t2 = 10s
 rplot(tempc,Ca[t2])
-masked, = mask(tempc,Ca[4.5s],cr[1:400,:,:,:],phase=3π/4);
+masked, = mask(tempc,Ca[t2],cr[1:400,:,:,:],phase=min_filtering);
 sp = inv(cort,masked)
 p2 = rplot(spect,sp)
+
+# within this range of scales this apporach can always seperate the sounds
+# I could try to expand the range, or I could use a different masking approach...
 
 R"""
 p1 = $p1 + ggtitle($("Effect of MI & adaptation mask at $t1"))
 p2 = $p2 + ggtitle($("Effect of MI & adaptation mask at $t2"))
 p = plot_grid(p1,p2,ncol=2)
-save_plot($(joinpath(dir,"mi_adapt_spect.pdf")),p,base_aspect_ratio=1.3,
-          ncol=2)
+# save_plot($(joinpath(dir,"mi_adapt_spect.pdf")),p,base_aspect_ratio=1.3,
+          # ncol=2)
 """
 
 p1 = rplot(tempc,Ca[t1])
@@ -128,6 +132,38 @@ p = plot_grid(p1,p2,nrow=2)
 save_plot($(joinpath(dir,"mi_adapt_pc.pdf")),p,base_aspect_ratio=1.1,
           nrow=2,ncol=2)
 """
+
+########################################
+# let's try using the alternative mask
+
+
+## trying out the min filtering mask
+t1 = 4.8s
+rplot(tempc,Ca[t1])
+masked = mask2(tempc,Ca[t1],cr[1:400,:,:,:]);
+sp = inv(cort,masked)
+p1 = rplot(spect,sp)
+
+xl_a = @> ab(120ms,120ms,1,50,500Hz,6,:without_b) attenuate(20)
+xl_b = @> ab(120ms,120ms,1,50,500Hz,6,:without_a) attenuate(20)
+sp_a = spect(xl_a)[1:400,:]
+sp_b = spect(xl_b)[1:400,:]
+
+20 * log10(sqrt(mean(sp .* sp_a)) / sqrt(mean(sp .* sp_b)))
+
+20 * log10(sqrt(mean(sp .* target)) /
+         sqrt(mean(abs.(sp.^2 .- sp.*target))))
+au_sp = inv(spect,sp,iterations=25)
+
+t2 = 10s
+rplot(tempc,Ca[t2])
+masked = mask2(tempc,Ca[t2],cr[1:400,:,:,:]);
+sp = inv(cort,masked)
+p2 = rplot(spect,sp)
+
+# let's just look at the overal seperation
+
+spi = mean_spect(tempc,Ca,cr)
 
 ########################################
 # let's look at noise
@@ -171,4 +207,3 @@ R"""
 p = $p + ggtitle("MI & adaptation & noise (sd = 0.06) over scales")
 save_plot($(joinpath(dir,"mi_adapt_noise_06.pdf")),p,base_aspect_ratio=1.6)
 """
-

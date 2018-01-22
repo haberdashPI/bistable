@@ -9,7 +9,7 @@ setup_sound(sample_rate=8kHz)
 R"library(ggplot2)"
 R"library(cowplot)"
 quartz() = R"quartz()"
-dir = "../../plots/run_2017_01_17"
+dir = "../../plots/run_2017_01_18"
 isdir(dir) || mkdir(dir)
 
 spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=25,
@@ -22,14 +22,12 @@ x_b = @> ab(120ms,120ms,1,10,500Hz,6,:without_b) attenuate(20)
 x = @> ab(120ms,120ms,1,10,500Hz,6) attenuate(20)
 
 sp = spect(x);
-cr = cort(sp);
+cr = cort(sp,usematlab=true);
 C = tempc(cr);
 
-rplot(tempc,C[3s])
-
-f,phases = fusion_ratio(tempc,C,cr);
-snr_a, = object_SNR(tempc,C,cr,spect(x_a));
-snr_b, = object_SNR(tempc,C,cr,spect(x_b));
+# f,phases = fusion_ratio(tempc,C,cr);
+snr_a = object_SNR2(tempc,C,cr,spect(x_a));
+snr_b = object_SNR2(tempc,C,cr,spect(x_b));
 
 df = DataFrame(y = [snr_a;snr_b],
                time = repeat(ustrip(times(tempc,cr)),outer=2),
@@ -39,12 +37,29 @@ R"""
 library(cowplot)
 p = ggplot($df,aes(x=time,y,color=stim)) + geom_line() +
   scale_color_brewer(palette='Set1',name='Stimulus') +
-  coord_cartesian(ylim=c(-5,5)) +
+  # coord_cartesian(ylim=c(-5,5)) +
   xlab('Time (s)') + ylab('SNR (dB)') +
   ggtitle("SNR when using maximum energy phase mask.")
 
-save_plot($(joinpath(dir,"max_phase_SNR.pdf")),p,base_aspect_ratio=1.3)
+# save_plot($(joinpath(dir,"max_phase_SNR.pdf")),p,base_aspect_ratio=1.3)
 """
+
+sep = ab_match(tempc,C,cr,x_a,x_b)
+
+masked = mask2(tempc,C[21],cr);
+rplot(spect,inv(cort,masked))
+
+sp_masked = mean_spect(tempc,C,cr)
+
+rplot(spect,real.(sp_masked))
+
+aud_spm = inv(spect,real.(sp_masked))
+
+# TODO: examine why the SNR is so wacky
+# - is the measure inaccurate? what do the resulting
+#   spectrograms look like?
+# - try using selective scale adaptmi setup,
+# does this get less random?
 
 snr_a, = object_SNR(tempc,C,cr,spect(x_a),phase=min_energy);
 snr_b, = object_SNR(tempc,C,cr,spect(x_b),phase=min_energy);
@@ -79,7 +94,9 @@ p = ggplot($df,aes(x=time,y,color=stim)) + geom_line() +
 save_plot($(joinpath(dir,"fixed_phase_SNR.pdf")),p,base_aspect_ratio=1.3)
 """
 
-
+# THOUGHT: would it be faster to calculate
+# a series of real filters and compute
+# principle components from that?
 snr_a, = object_SNR(tempc,C,cr,spect(x_a),phase=max_filtering);
 snr_b, = object_SNR(tempc,C,cr,spect(x_b),phase=max_filtering);
 
@@ -89,12 +106,54 @@ df = DataFrame(y = [snr_a;snr_b],
 
 
 R"""
-ggplot($df,aes(x=time,y,color=stim)) + geom_line() +
+p = ggplot($df,aes(x=time,y,color=stim)) + geom_line() + geom_point() +
   scale_color_brewer(palette='Set1',name='Stimulus') +
   coord_cartesian(ylim=c(-10,10)) +
   xlab('Time (s)') + ylab('SNR (dB)') +
   ggtitle("SNR when using maximum unmasked energy.")
-"""
-max_e = max.(snr_a,snr_b)
 
-# thinking....
+save_plot($(joinpath(dir,"max_unmasked_energy_SNR.pdf")),p,base_aspect_ratio=1.3)
+"""
+
+
+# THOUGHT: would it be faster to calculate
+# a series of real filters and compute
+# principle components from that?
+snr_a, = object_SNR(tempc,C,cr,spect(x_a),phase=min_filtering);
+snr_b, = object_SNR(tempc,C,cr,spect(x_b),phase=min_filtering);
+alert()
+df = DataFrame(y = [snr_a;snr_b],
+               time = repeat(ustrip(times(tempc,cr)),outer=2),
+               stim = [fill("A",length(snr_a)); fill("B",length(snr_b))])
+
+
+R"""
+p = ggplot($df,aes(x=time,y,color=stim)) + geom_line() + geom_point() +
+  scale_color_brewer(palette='Set1',name='Stimulus') +
+  coord_cartesian(ylim=c(-10,10)) +
+  xlab('Time (s)') + ylab('SNR (dB)') +
+  ggtitle("SNR when using minimum unmasked energy.")
+
+save_plot($(joinpath(dir,"min_unmasked_energy_SNR.pdf")),p,base_aspect_ratio=1.3)
+"""
+
+## let's try the real-filter approach
+tempc = TCAnalysis(cort,4,window=2s,method=:real_pca,frame_len=500ms)
+C = tempc(cr);
+
+rplot(tempc,C[2])
+rplot(tempc,C[3])
+rplot(tempc,C[4])
+rplot(tempc,C[5])
+rplot(tempc,C[6])
+
+# okay, so, it looks like we get both interpretations, at about
+# equal strength. what if we...
+
+# - change the stimuli?
+
+# - alter the emphasis on a give scale?
+
+# - alternative implementaiton: is there a way to generate these figures
+#   using the complex component? (plot different phases of the compoent)
+#   that might make this faster to implement and easier (?) to explain
