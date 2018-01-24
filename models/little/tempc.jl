@@ -233,7 +233,22 @@ function __map_mask2(fn::Function,tc::TCAnalysis,
   y
 end
 
-# TODO: make this work with mask2
+function mask(tc::TCAnalysis,C::EigenSpace{<:Real},x::Array{T,4};
+              component=1) where T
+  @show component
+  m = eigvecs(C)[:,component]
+  m ./= maximum(abs.(m))
+  m .= max.(0,m)
+  mr = reshape(m,size(x,3,4)...)
+
+  y = similar(x)
+  for ii in CartesianRange(size(x,1,2))
+    y[ii,:,:] = mr.*x[ii,:,:]
+  end
+  y
+end
+
+# TODO: make this work with mask2 (if we end up using that approach)
 # function fusion_ratio2(tc::TCAnalysis,C::EigenSeries,
 #                       x::Array{T,4};phase=max_energy) where T
 
@@ -351,7 +366,7 @@ function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C),showvar=true)
                  component_title = title.(at(3)))
 
   sindices = 1:2:length(scales(tc.cort))
-  sbreaks = round(scales(tc.cort)[sindices],2)
+  sbreaks = round.(scales(tc.cort)[sindices],2)
   fbreaks,findices = freq_ticks(tc.cort.aspect,u[:,:,1])
 
 R"""
