@@ -29,7 +29,7 @@ windowlen(tc::TCAnalysis) = round(Int,tc.window/Δt(tc.cort))
 nunits(tc::TCAnalysis,x) = prod(size(x,3,4))
 ncomponents(tc::TCAnalysis) = tc.ncomponents
 
-const n_phases = 8
+const n_phases = 20
 # alternative: I could have a different
 # set of eigenseries for each time scale
 Base.CartesianRange(x::Int) = CartesianRange((x,))
@@ -235,7 +235,6 @@ end
 
 function mask(tc::TCAnalysis,C::EigenSpace{<:Real},x::Array{T,4};
               component=1) where T
-  @show component
   m = eigvecs(C)[:,component]
   m ./= maximum(abs.(m))
   m .= max.(0,m)
@@ -246,6 +245,47 @@ function mask(tc::TCAnalysis,C::EigenSpace{<:Real},x::Array{T,4};
     y[ii,:,:] = mr.*x[ii,:,:]
   end
   y
+end
+
+function __map_mask(fn::Function,tc::TCAnalysis,
+                    C::EigenSeries{<:Real},x::Array{T},
+                    component) where T
+  windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
+  y = zeros(length(windows))
+
+  @showprogress "Calculating Mask: " for (i,w_inds) in windows
+    window = x[w_inds,:,:,:]
+    m = mask(tc,C[i],window,component=component)
+    masked = inv(cort,m)
+
+    masked ./= maximum(abs.(masked))
+    window ./= maximum(abs.(window))
+    y[i] = fn(i,w_inds,masked,window)
+  end
+
+  y
+end
+
+function mean_spect(tc::TCAnalysis,C::EigenSeries{<:Real},x::Array{T,4};
+                    component=1) where T
+  y = fill(real(zero(x[1])),size(x,1,4))
+  norm = fill(zero(real(x[1])),size(x,1,4))
+  dummy = __map_mask(tc,C,x,component) do i,w_inds,masked,window
+    y[w_inds,:] .+= masked
+    norm[w_inds,:] .+= 1.0
+
+    0.0
+  end
+
+  y ./ max.(1e-10,norm)
+end
+
+function scene_object_ratio(tc::TCAnalysis,C::EigenSeries{<:Real},
+                            x::Array{T,4},sp::Matrix;component=1) where T
+  __map_mask(tc,C,x,component) do i,w_inds,masked,window
+    normed = sp[w_inds,:] ./ maximum(sp[w_inds,:])
+    mean(masked .* normed) / mean(normed.^2)
+  end
 end
 
 # TODO: make this work with mask2 (if we end up using that approach)
@@ -335,7 +375,8 @@ R"""
 """
 end
 
-function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C),showvar=true)
+function rplot(tc::TCAnalysis,C::EigenSpace;
+               n=ncomponents(C),showvar=true,λ_digits=:automatic)
   λ = abs.(eigvals(C))
   order = sortperm(λ,rev=true)
   λ = λ[order]
@@ -345,13 +386,15 @@ function rplot(tc::TCAnalysis,C::EigenSpace;n=ncomponents(C),showvar=true)
   u = reshape(u,length(scales(tc.cort)),:,size(u,2))
   ii = CartesianRange(size(u))
   at(i) = vec(map(ii -> ii[i],ii))
+  digits = λ_digits == :automatic ? -floor(Int,log10(λ[end]))+2 : λ_digits
+
   function title(n)
     if n <= length(λ)
       # nstr = @sprintf("%02d",n)
-      "lambda[$(n)] == $(round(λ[n],1))"
+      "lambda[$(n)] == $(round(λ[n],digits))"
       # "Lmb_$nstr = $(round(λ[n],3))"
     else
-      "sigma^2 == $(round(sum(var(C)),1))"
+      "sigma^2 == $(round(sum(var(C)),digits))"
       # "Variance = $(sum(var(C)))"
     end
   end

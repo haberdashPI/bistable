@@ -9,13 +9,13 @@ setup_sound(sample_rate=8kHz)
 R"library(ggplot2)"
 R"library(cowplot)"
 quartz() = R"quartz()"
-# dir = "../../plots/run_2017_01_18"
-# isdir(dir) || mkdir(dir)
+dir = "../../plots/run_2017_01_25"
+isdir(dir) || mkdir(dir)
 
-spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=25,
+spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=10,
                             min_freq = 250Hz,max_freq=1500Hz)
-cort = CorticalModel(spect)
-tempc = TCAnalysis(cort,1,window=2s,method=:pca,frame_len=100ms)
+cort = CorticalModel(spect,rates=sort([-2.^(-1:0.5:5); 2.^(-1:0.5:5)]))
+tempc = TCAnalysis(cort,4,window=600ms,method=:real_pca,frame_len=500ms)
 
 x_a = @> ab(120ms,120ms,1,10,500Hz,6,:without_a) attenuate(20)
 x_b = @> ab(120ms,120ms,1,10,500Hz,6,:without_b) attenuate(20)
@@ -25,202 +25,150 @@ sp = spect(x);
 cr = cort(sp);
 C = tempc(cr);
 
-# f,phases = fusion_ratio(tempc,C,cr);
-snr_a = object_SNR2(tempc,C,cr,spect(x_a));
-snr_b = object_SNR2(tempc,C,cr,spect(x_b));
+# how do the real-valued components work
+p1 = rplot(tempc,C[3s],λ_digits=3,showvar=false,n=3)
 
-df = DataFrame(y = [snr_a;snr_b],
-               time = repeat(ustrip(times(tempc,cr)),outer=2),
-               stim = [fill("A",length(snr_a)); fill("B",length(snr_b))])
+sp_C = mean_spect(tempc,C,cr,component=1)
+p2 = rplot(spect,sp_C)
 
-R"""
-library(cowplot)
-p = ggplot($df,aes(x=time,y,color=stim)) + geom_line() +
-  scale_color_brewer(palette='Set1',name='Stimulus') +
-  # coord_cartesian(ylim=c(-5,5)) +
-  xlab('Time (s)') + ylab('SNR (dB)') +
-  ggtitle("SNR when using maximum energy phase mask.")
+sp_C = mean_spect(tempc,C,cr,component=2)
+p3 = rplot(spect,sp_C)
 
-# save_plot($(joinpath(dir,"max_phase_SNR.pdf")),p,base_aspect_ratio=1.3)
-"""
-
-sep = ab_match(tempc,C,cr,x_a,x_b)
-
-masked = mask2(tempc,C[21],cr);
-rplot(spect,inv(cort,masked))
-
-sp_masked = mean_spect(tempc,C,cr)
-
-rplot(spect,real.(sp_masked))
-
-aud_spm = inv(spect,real.(sp_masked))
-
-# TODO: examine why the SNR is so wacky
-# - is the measure inaccurate? what do the resulting
-#   spectrograms look like?
-# - try using selective scale adaptmi setup,
-# does this get less random?
-
-snr_a, = object_SNR(tempc,C,cr,spect(x_a),phase=min_energy);
-snr_b, = object_SNR(tempc,C,cr,spect(x_b),phase=min_energy);
-
-df = DataFrame(y = [snr_a;snr_b],
-               time = repeat(ustrip(times(tempc,cr)),outer=2),
-               stim = [fill("A",length(snr_a)); fill("B",length(snr_b))])
-
-R"""
-p = ggplot($df,aes(x=time,y,color=stim)) + geom_line() +
-  scale_color_brewer(palette='Set1',name='Stimulus') +
-  coord_cartesian(ylim=c(-5,5)) +
-  xlab('Time (s)') + ylab('SNR (dB)') +
-  ggtitle("SNR when using minimum energy phase mask.")
-save_plot($(joinpath(dir,"min_phase_SNR.pdf")),p,base_aspect_ratio=1.3)
-"""
-
-
-snr_a, = object_SNR(tempc,C,cr,spect(x_a),phase=π);
-snr_b, = object_SNR(tempc,C,cr,spect(x_b),phase=π);
-
-df = DataFrame(y = [snr_a;snr_b],
-               time = repeat(ustrip(times(tempc,cr)),outer=2),
-               stim = [fill("A",length(snr_a)); fill("B",length(snr_b))])
-
-R"""
-p = ggplot($df,aes(x=time,y,color=stim)) + geom_line() +
-  scale_color_brewer(palette='Set1',name='Stimulus') +
-  coord_cartesian(ylim=c(-10,10)) +
-  xlab('Time (s)') + ylab('SNR (dB)') +
-  ggtitle("SNR when using phase 0 mask.")
-save_plot($(joinpath(dir,"fixed_phase_SNR.pdf")),p,base_aspect_ratio=1.3)
-"""
-
-# THOUGHT: would it be faster to calculate
-# a series of real filters and compute
-# principle components from that?
-snr_a, = object_SNR(tempc,C,cr,spect(x_a),phase=max_filtering);
-snr_b, = object_SNR(tempc,C,cr,spect(x_b),phase=max_filtering);
-
-df = DataFrame(y = [snr_a;snr_b],
-               time = repeat(ustrip(times(tempc,cr)),outer=2),
-               stim = [fill("A",length(snr_a)); fill("B",length(snr_b))])
+sp_C = mean_spect(tempc,C,cr,component=3)
+p4 = rplot(spect,sp_C)
 
 
 R"""
-p = ggplot($df,aes(x=time,y,color=stim)) + geom_line() + geom_point() +
-  scale_color_brewer(palette='Set1',name='Stimulus') +
-  coord_cartesian(ylim=c(-10,10)) +
-  xlab('Time (s)') + ylab('SNR (dB)') +
-  ggtitle("SNR when using maximum unmasked energy.")
-
-save_plot($(joinpath(dir,"max_unmasked_energy_SNR.pdf")),p,base_aspect_ratio=1.3)
+p = plot_grid($p1 + ggtitle(expression(paste(Delta*f==6," masks at 3 seconds"))),
+          $p2 + ggtitle("Windowed Masking (1st component)"),
+          $p3 + ggtitle("Windowed Masking (2nd component)"),
+          $p4 + ggtitle("Windowed Masking (3rd component)"),
+          nrow=4)
+save_plot($(joinpath(dir,"1_real_masks_df6.pdf")),p,
+  base_aspect_ratio=2,nrow=4)
 """
 
-
-# THOUGHT: would it be faster to calculate
-# a series of real filters and compute
-# principle components from that?
-snr_a, = object_SNR(tempc,C,cr,spect(x_a),phase=min_filtering);
-snr_b, = object_SNR(tempc,C,cr,spect(x_b),phase=min_filtering);
-alert()
-df = DataFrame(y = [snr_a;snr_b],
-               time = repeat(ustrip(times(tempc,cr)),outer=2),
-               stim = [fill("A",length(snr_a)); fill("B",length(snr_b))])
-
-
-R"""
-p = ggplot($df,aes(x=time,y,color=stim)) + geom_line() + geom_point() +
-  scale_color_brewer(palette='Set1',name='Stimulus') +
-  coord_cartesian(ylim=c(-10,10)) +
-  xlab('Time (s)') + ylab('SNR (dB)') +
-  ggtitle("SNR when using minimum unmasked energy.")
-
-save_plot($(joinpath(dir,"min_unmasked_energy_SNR.pdf")),p,base_aspect_ratio=1.3)
-"""
-
-## let's try the real-filter approach
-tempc = TCAnalysis(cort,4,window=1s,method=:real_pca,frame_len=500ms)
-C = tempc(cr);
-
-rplot(tempc,C[2])
-rplot(tempc,C[3])
-rplot(tempc,C[4])
-rplot(tempc,C[5])
-rplot(tempc,C[6])
-
-# can we succefully use this as a mask
-# nSOR = normalized scene to object ratio
-function nSOR(object,scene)
-  object = object ./ maximum(abs.(object))
-  scene = scene ./ maximum(abs.(scene))
-  -10log10(mean(object.^2) / mean(scene.^2))
-end
-
-m = mask(tempc,C[4],cr)
-masked = inv(cort,m);
-rplot(spect,masked)
-nSOR(masked,sp)
-
-m = mask(tempc,C[4],cr,component=2)
-masked = inv(cort,m)
-rplot(spect,masked)
-nSOR(masked,sp)
-
-rplot(spect,sp)
-
-# okay, so, it looks like we get both interpretations, at about
-# equal strength. what if we...
-
-# - make df larger?
+# how do they respond to varying Δf
 sp12 = @> ab(120ms,120ms,1,10,500Hz,12) attenuate(20) spect
 C12 = tempc(sp12)
-rplot(tempc,C12[4])
+p1 = rplot(tempc,C12[3s],n=3,showvar=false)
 
-m = mask(tempc,C12[4],sp12,component=1);
-masked = inv(cort,m)
-rplot(spect,masked)
-nSOR(masked,sp12)
+sp_C = mean_spect(tempc,C12,cort(sp12),component=1)
+p2 = rplot(spect,sp_C)
 
-m = mask(tempc,C12[4],sp12,component=3);
-masked = inv(cort,m)
-rplot(spect,masked)
-nSOR(masked,sp12)
+sp_C = mean_spect(tempc,C12,cort(sp12),component=2)
+p3 = rplot(spect,sp_C)
 
-# - make df smaller
-sp2 = @> ab(120ms,120ms,1,10,500Hz,1) attenuate(20) spect
-C2 = tempc(sp2)
-rplot(tempc,C2[5])
-
-m = mask(tempc,C2[5],sp2,component=1);
-masked = inv(cort,m)
-rplot(spect,masked)
-nSOR(masked,sp2)
-
-m = mask(tempc,C2[4],sp2,component=2);
-masked = inv(cort,m)
-rplot(spect,masked)
-nSOR(masked,sp2)
+sp_C = mean_spect(tempc,C12,cort(sp12),component=3)
+p4 = rplot(spect,sp_C)
 
 
-# - alter the emphasis on a give scale?
+R"""
+p = plot_grid($p1 + ggtitle(expression(paste(Delta*f==12," masks at 3 seconds"))),
+          $p2 + ggtitle("Windowed Masking (1st component)"),
+          $p3 + ggtitle("Windowed Masking (2nd component)"),
+          $p4 + ggtitle("Windowed Masking (3rd component)"),
+          nrow=4)
+save_plot($(joinpath(dir,"2_real_masks_df12.pdf")),p,
+  base_aspect_ratio=2,nrow=4)
+"""
+
+sp1 = @> ab(120ms,120ms,1,10,500Hz,1) attenuate(20) spect
+C1 = tempc(sp1)
+p1 = rplot(tempc,C1[3s],n=3,showvar=false)
+
+sp_C = mean_spect(tempc,C1,cort(sp1),component=1)
+p2 = rplot(spect,sp_C)
+
+sp_C = mean_spect(tempc,C1,cort(sp1),component=2)
+p3 = rplot(spect,sp_C)
+
+sp_C = mean_spect(tempc,C1,cort(sp1),component=3)
+p4 = rplot(spect,sp_C)
 
 
-# - alternative implementaiton: is there a way to generate these figures
-#   using the complex component? (plot different phases of the compoent)
-#   that might make this faster to implement and easier (?) to explain
-tempc = TCAnalysis(cort,4,window=2s,method=:pca,frame_len=500ms)
-C = tempc(cr);
-rplot(tempc,C[4])
+R"""
+p = plot_grid($p1 + ggtitle(expression(paste(Delta*f==1," masks at 3 seconds"))),
+          $p2 + ggtitle("Windowed Masking (1st component)"),
+          $p3 + ggtitle("Windowed Masking (2nd component)"),
+          $p4 + ggtitle("Windowed Masking (3rd component)"),
+          nrow=4)
+save_plot($(joinpath(dir,"3_real_masks_df1.pdf")),p,
+  base_aspect_ratio=2,nrow=4)
+"""
 
-pc = reshape(eigvecs(C[4])[:,1],length(scales(cort)),:)
-rplot(spect,real.(pc*exp(-π/4*im)))
-rplot(spect,real.(pc*exp((π + π/4)*im)))
+# how do they respond to varying Δd
+sp60 = @> ab(60ms,60ms,1,20,500Hz,6) attenuate(20) spect
+C60 = tempc(sp60)
+p1 = rplot(tempc,C60[3s],n=3,showvar=false)
 
-sum(abs.(real.(pc*exp((π + π/4)*im))))
+p2 = rplot(tempc,C[3s],λ_digits=3,showvar=false,n=3)
 
-phases = linspace(-π,π)
-mags = [sum(abs.(real.(pc*exp(ϕ*im)))) for ϕ in phases]
+sp240 = @> ab(240ms,240ms,1,5,500Hz,6) attenuate(20) spect
+C240 = tempc(sp240)
+p3 = rplot(tempc,C240[3s],n=3,showvar=false)
 
-rplot(spect,real.(pc*exp(phases[15]*im)))
-rplot(spect,real.(pc*exp(phases[38]*im)))
+R"""
+p = plot_grid($p1 + ggtitle(expression(paste(Delta*t==60,"ms masks at 3 seconds"))),
+              $p2 + ggtitle(expression(paste(Delta*t==120,"ms masks at 3 seconds"))),
+              $p3 + ggtitle(expression(paste(Delta*t==240,"ms masks at 3 seconds"))),
+          nrow=3)
+save_plot($(joinpath(dir,"4_real_masks_dt_all.pdf")),p,
+  base_aspect_ratio=2,nrow=3)
+"""
 
-# short answer... I don't think so
+# emphasize particular scales
+function scale_weight(cr,center)
+  s_weights = exp.(.-(log.(scales(cort)) .- log.(center)).^2 ./ 0.1log(2))
+  cr .* reshape(s_weights,1,1,:,1)
+end
+cs16 = scale_weight(cr,16);
+cs025 = scale_weight(cr,0.25);
+
+Cs16 = tempc(cs16)
+p1 = rplot(tempc,Cs16[3s],n=1,showvar=false)
+sp_Cs16 = mean_spect(tempc,Cs16,cr,component=1)
+p2 = rplot(spect,sp_Cs16)
+
+Cs025 = tempc(cs025)
+p3 = rplot(tempc,Cs025[3s],n=1,showvar=false)
+sp_Cs025 = mean_spect(tempc,Cs025,cr,component=1)
+p4 = rplot(spect,sp_Cs025)
+
+R"""
+p = plot_grid($p1 + ggtitle("Scale 16 cyc/oct Component"),
+              $p2 + ggtitle("Scale 16 cyc/oct windowed masking"),
+              $p3 + ggtitle("Scale 0.25 cyc/oct Component"),
+              $p4 + ggtitle("Scale 0.25 cyc/oct windowed masking"),
+              nrow=2,ncol=2)
+save_plot($(joinpath(dir,"5_real_masks_scale_weighting.pdf")),p,
+  base_aspect_ratio=1.6,nrow=2,ncol=2)
+"""
+
+function rate_weight(cr,center,σ=0.1)
+    r_weights = exp.(.-(log.(abs.(rates(cort))) .- log.(abs.(center))).^2 ./
+                     (σ^2*log(2)))
+  cr .* reshape(r_weights,1,:,1,1)
+end
+cr32 = rate_weight(cr,32);
+cr1 = rate_weight(cr,0.5);
+
+Cr32 = tempc(cr32)
+p1 = rplot(tempc,Cr32[3s],n=2,showvar=false)
+sp_Cr32 = mean_spect(tempc,Cr32,cr,component=2)
+p2 = rplot(spect,sp_Cr32)
+
+Cr1 = tempc(cr1)
+p3 = rplot(tempc,Cr1[3s],n=2,showvar=false)
+sp_Cr1 = mean_spect(tempc,Cr1,cr,component=2)
+p4 = rplot(spect,sp_Cr1)
+
+R"""
+p = plot_grid($p1 + ggtitle("Rate 32 Hz Components"),
+              $p2 + ggtitle("Rate 32 Hz windowed masking (component 2)"),
+              $p3 + ggtitle("Rate 0.5 Hz Components"),
+              $p4 + ggtitle("Rate 0.5 Hz windowed masking (component 2)"),
+              nrow=2,ncol=2)
+save_plot($(joinpath(dir,"6_real_masks_rate_weighting.pdf")),p,
+  base_aspect_ratio=1.6,nrow=2,ncol=2)
+"""
