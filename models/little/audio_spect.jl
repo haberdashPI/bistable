@@ -242,10 +242,7 @@ end
 
 function adjust_x(spect::AuditorySpectrogram,x,ratios,y,y_hat,y3_hat)
   map!(ratios,y_hat,y) do y_hat,y
-    if !iszero(y_hat); y_hat
-    elseif !iszero(y); 2
-    else; 1
-    end
+    !iszero(y_hat) ? y_hat : !iszero(y) ? 2 : 1
   end
 
   x .= 0
@@ -297,11 +294,11 @@ function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;iterations=10,
     target_mean = mean(y)
     target_sum2 = sum(y.^2)
 
-    min_err = typemax(Float64)
+    min_err = Inf
     min_x = x
 
     @showprogress "Inverting: " for iteration in 1:iterations
-      if fac == 0
+      if as.nonlinear == 0
         x .-= mean(x)
         x ./= std(x)
       end
@@ -314,6 +311,7 @@ function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;iterations=10,
 
       if err < min_err
         min_x = x
+        min_err = err
       elseif err-100 > min_x
         # restart
         x .= sign.(x) .+ rand(size(x))
