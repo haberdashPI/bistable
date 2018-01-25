@@ -354,13 +354,15 @@ function nearin(xin,xs)
 end
 
 function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
-  rindices = nearin(rates,cort.rates)
-  sindices = nearin(scales,cort.scales)
+  rindices = sort(unique(nearin(rates,cort.rates)))
+  sindices = sort(unique(nearin(scales,cort.scales)))
 
   if rates != cort.rates || scales != cort.scales
     @show rindices
     @show sindices
   end
+  rates = cort.rates[rindices]
+  scales = cort.scales[sindices]
 
   y = y[:,rindices,sindices,:]
 
