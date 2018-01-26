@@ -31,7 +31,7 @@ function AuditorySpectrogram(filename::String;
                              fs=ustrip(TimedSound.samplerate()),
                              len=10,decay_tc=8,nonlinear=-2,octave_shift=-1,
                              min_freq = -Inf*Hz,max_freq = Inf*Hz)
-  mat"loadload;"
+  # mat"loadload;"
   min_freq = convert(Hertz{Float64},min_freq)
   max_freq = convert(Hertz{Float64},max_freq)
 
@@ -272,6 +272,7 @@ end
 function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;iterations=10,
                   usematlab=true)
   if usematlab
+    mat"loadload;"
     y = similar(y_in,(size(y_in,1),nchannels(spect)))
     y[:,channels_computed(spect)] = y_in
     paras = [spect.len, spect.decay_tc, spect.nonlinear, spect.octave_shift,
