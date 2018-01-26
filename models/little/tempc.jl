@@ -399,10 +399,7 @@ function rplot(tc::TCAnalysis,C::EigenSpace;
     end
   end
 
-  colormap = "#".*hex.(RGB.(cmap("C6")))
-
-  df = DataFrame(r_phase = angle.(vec(u)) ,
-                 r_amp = abs.(vec(u)),
+  df = DataFrame(response = vec(u),
                  scale_index = at(1),
                  freq_bin = at(2),
                  component = at(3),
@@ -412,23 +409,16 @@ function rplot(tc::TCAnalysis,C::EigenSpace;
   sbreaks = round.(scales(tc.cort)[sindices],2)
   fbreaks,findices = freq_ticks(tc.cort.aspect,u[:,:,1])
 
+  p = raster_plot(df,value=:response,x=:scale_index,y=:freq_bin)
+
 R"""
 
   library(ggplot2)
 
-  ggplot($df,aes(x=scale_index,y=freq_bin,fill=r_phase,alpha=r_amp)) +
-    geom_raster() + facet_wrap(~component_title,labeller=label_parsed) +
+  $p + facet_wrap(~component_title,labeller=label_parsed) +
     scale_y_continuous(breaks=$findices,labels=$fbreaks) +
     scale_x_continuous(breaks=$sindices,labels=$sbreaks) +
-    ylab('Frequency (Hz)') + xlab('Scale (cycles/octave)') +
-
-    scale_fill_gradientn(colors=$colormap,limits=c(-pi-0.01,pi+0.01),
-                         breaks=c(-pi,0,pi),
-                         labels=c(expression(-pi),expression(0),
-                                  expression(+pi)),
-                         name = expression(phi))+
-    scale_alpha_continuous(range=c(0,1),name="Amplitude")
-
+    ylab('Frequency (Hz)') + xlab('Scale (cycles/octave)')
 """
 
 end

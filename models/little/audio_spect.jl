@@ -7,6 +7,9 @@ using HDF5
 import Base: run
 using TimedSound
 using RecipesBase
+using PerceptualColourMaps
+
+include("plots.jl")
 
 struct AuditorySpectrogram
   cochba::Matrix{Complex128}
@@ -65,7 +68,6 @@ times(as::AuditorySpectrogram,data::AbstractMatrix) =
 end
 
 function freq_ticks(as::AuditorySpectrogram,x)
-
   a = ustrip(as.min_freq)
   b = ustrip(as.max_freq)
   step = 0.25
@@ -96,15 +98,14 @@ function rplot(as::AuditorySpectrogram,data::Matrix)
                  time = vec(ustrip(times(as,data)[at(ixs,1)])),
                  freq_bin = vec(at(ixs,2)))
   fbreaks,findices = freq_ticks(as,data)
+  p = raster_plot(df,value=:response,x=:time,y=:freq_bin)
 R"""
 
   library(ggplot2)
 
-  ggplot($df,aes(x=time,y=freq_bin,fill=response)) +
-    geom_raster() +
+  $p +
     scale_y_continuous(breaks=$findices,labels=$fbreaks) +
-    ylab('Frequency (Hz)') + xlab('Time (s)') +
-    scale_fill_distiller(palette='Reds',direction=1)
+    ylab('Frequency (Hz)') + xlab('Time (s)')
 
 """
 end

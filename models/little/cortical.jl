@@ -330,23 +330,6 @@ end
 
 rplot(cort::CorticalModel,y::AbstractVector) = rplot(cort,cort(y))
 
-# function number_to_color(x::Array{<:Complex})
-#   phase_map = cmap("C9")
-#   norm(x) = x ./ maximum(x)
-#   tocolor(x) = phase_map[floor(Int,x*(length(phase_map)-1)+1)]
-
-#   phase_col = Lab.(tocolor.((angle.(x) .+ π)/2π))
-#   RGB.(weighted_color_mean.(norm(log.(1 .+ abs.(x))),
-#                             phase_col,Lab(colorant"lightgray")))
-# end
-
-# function number_to_color(x::Array{<:Real})
-#   colormap = cmap("L3")
-#   tocolor(x) = colormap[floor(Int,x*(length(colormap)-1)+1)]
-
-#   RGB.(tocolor.((x .- minimum(x)) ./ (maximum(x) - minimum(x))))
-# end
-
 function nearin(xin,xs)
   _,inds = findmin(abs.(vec(xin) .- vec(xs)'),2)
   cols = map(ii -> ii[2],CartesianRange((length(xin),length(xs))))
@@ -369,16 +352,14 @@ function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
   ixs = CartesianRange(size(y))
   at(ixs,i) = map(x -> x[i],ixs)
 
-  colormap = "#".*hex.(RGB.(cmap("C6")))
-
-  df = DataFrame(r_phase = angle.(vec(y)),
-                 r_amp = abs.(vec(y)),
+  df = DataFrame(response = vec(y),
                  time = ustrip(vec(times(cort,y)[at(ixs,1)])),
                  rate = vec(rates[at(ixs,2)]),
                  scale = vec(scales[at(ixs,3)]),
                  freq_bin = vec(at(ixs,4)))
 
   fbreaks,findices = freq_ticks(cort.aspect,y[:,1,1,:])
+  p = raster_plot(df,value=:response,x=:time,y=:freq_bin)
 
 R"""
 
@@ -386,51 +367,21 @@ R"""
 
   scalestr = function(x){sprintf("Scale: %3.2f/oct",x)}
   ratestr = function(x){sprintf("Rate: %5.2f Hz",x)}
-  clamp = function(x,a,b){ pmax(pmin(x,b),a) }
 
-  df1 = $df
-  df1$scale_title = factor(scalestr(df1$scale),
-                           levels=scalestr($(sort(scales))))
-  df1$rate_title = factor(ratestr(df1$rate),
-                          levels=ratestr($(sort(rates))))
+  ordered_scales = function(x){
+    factor(scalestr(x),levels=scalestr($(sort(scales))))
+  }
+  ordered_rates = function(x){
+    factor(ratestr(x),levels=ratestr($(sort(rates))))
+  }
 
-  ggplot(df1,aes(x=time,y=freq_bin,fill=r_phase,alpha=r_amp)) +
-    geom_raster() +
+  $p +
     scale_y_continuous(breaks=$findices,labels=$fbreaks) +
     ylab('Frequency (kHz)') + xlab('Time (s)') +
-    facet_grid(scale_title ~ rate_title) +
-    scale_fill_gradientn(colors=$colormap,limits=c(-pi-0.1,pi+0.01),
-                         breaks=c(-pi,0,pi),
-                         labels=c(expression(-pi),expression(0),
-                                  expression(+pi)),
-                                  name = expression(phi)) +
-    scale_alpha_continuous(range=c(0,1),name="Amplitude")
+    facet_grid(ordered_scales(scale) ~ ordered_rates(rate))
 
 """
 end
-
-# function pplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
-#   rindices = nearin(rates,cort.rates)
-#   sindices = nearin(scales,cort.scales)
-
-#   if rates != cort.rates || scales != cort.scales
-#     @show rindices
-#     @show sindices
-#   end
-
-#   y = y[:,rindices,sindices,:]
-
-#   ixs = CartesianRange(size(y))
-#   at(ixs,i) = map(x -> x[i],ixs)
-
-#   colormap = "#".*hex.(RGB.(cmap("C6")))
-
-#   fig, axs = subplots(nrows=length(rscales),ncols=length(rindices))
-#   for (ax,rindices,sindices) in axs
-#     # WIP...
-#     ax[:imshow](y[:,r])
-#   end
-# end
 
 function plot_scales(cort,m,range=nothing)
   sm = m[:,1,:,1]
@@ -469,17 +420,17 @@ function plot_scales2(cort,data;name="response",range=nothing)
                  scale_bin = vec(at(ixs,2)))
 
   sbreaks = 1:2:length(scales(cort))
-  slabs = string.(round(scales(cort)[sbreaks],2))
+  slabs = string.(round.(scales(cort)[sbreaks],2))
+
+  p = raster_plot(df,value=:response,x=:time,y=:scale_bin)
 
 R"""
 
   library(ggplot2)
 
-  ggplot($df,aes(x=time,y=scale_bin,fill=response)) +
-    geom_raster() +
+  $p +
     scale_y_continuous(labels=$slabs,breaks=$sbreaks) +
-    ylab('Scale (cyc/oct)') + xlab('Time (s)') +
-    scale_fill_distiller(palette='Reds',direction=1,name=$name)
+    ylab('Scale (cyc/oct)') + xlab('Time (s)')
 
 """
 end
@@ -490,30 +441,22 @@ function plot_scales2(cort,data::Array{<:Complex};name="response",range=nothing)
   ixs = CartesianRange(size(data))
   at(ixs,i) = map(x -> x[i],ixs)
 
-  df = DataFrame(r_phase = angle.(vec(data)),
-                 r_amp = abs.(vec(data)),
+  df = DataFrame(response = vec(data),
                  time = vec(ustrip(times(cort,data)[at(ixs,1)])),
                  scale_bin = vec(at(ixs,2)))
 
-  colormap = "#".*hex.(RGB.(cmap("C6")))
-
   sbreaks = 1:2:length(scales(cort))
   slabs = string.(round(scales(cort)[sbreaks],2))
+
+  p = raster_plot(df,value=:response,x=:time,y=:scale_bin)
 
 R"""
 
   library(ggplot2)
 
-  ggplot($df,aes(x=time,y=scale_bin,fill=r_phase,alpha=r_amp)) +
-    geom_raster() +
+  $p +
     scale_y_continuous(labels=$slabs,breaks=$sbreaks) +
-    ylab('Scale (cyc/oct)') + xlab('Time (s)') +
-    scale_fill_gradientn(colors=$colormap,limits=c(-pi-0.1,pi+0.01),
-                         breaks=c(-pi,0,pi),
-                         labels=c(expression(-pi),expression(0),
-                                  expression(+pi)),
-                                  name = expression(phi)) +
-    scale_alpha_continuous(range=c(0,1),name="Amplitude")
+    ylab('Scale (cyc/oct)') + xlab('Time (s)')
 
 """
 end
