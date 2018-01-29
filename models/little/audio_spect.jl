@@ -151,7 +151,7 @@ function (s::AuditorySpectrogram)(x::Vector{T},internal_call=false) where T
     append!(x,fill(zero(T),N*frame_len - length(x)))
   end
   v5 = fill(zero(T),N, M-1)
-  y3_r = internal_call ? fill(zero(T),0,0) : fill(zero(T),N,M-1)
+  y3_r = !internal_call ? fill(zero(T),0,0) : fill(zero(T),length(x),M-1)
 
   #######################################
   # last channel (highest frequency)
@@ -231,34 +231,41 @@ function (s::AuditorySpectrogram)(x::Vector{T},internal_call=false) where T
 end
 
 function inv_guess(spect::AuditorySpectrogram,y::AbstractMatrix)
-  f = ustrip(freqs(spect))
-  t = ustrip(times(spect,y))
+  # ?? the initial guess only uses the first 48 channels
+  f = ustrip(all_freqs(spect))[1:48]
+  steps = 1:frame_length(spect)*size(y,1)
+  indices = ceil.(Int,steps / frame_length(spect))
+  t = steps ./ spect.fs
 
-  x = cumsum(cos.(2π.*f'.*t) .* y,1)
+  x = sum(cos.(2π.*f'.*t) .* view(y,indices,1:48),2)
   x .-= mean(x)
   x ./= std(x)
 
-  x
+  squeeze(x,2)
 end
 
-function adjust_x(spect::AuditorySpectrogram,x,ratios,y,y_hat,y3_hat)
+function match_x(spect::AuditorySpectrogram,x,ratios,y,y_hat,y3_hat)
+  M = size(spect.cochba,2)
+  steps = 1:frame_length(spect)*size(y,1)
+  indices = ceil.(Int,steps / frame_length(spect))
+
   map!(ratios,y_hat,y) do y_hat,y
-    !iszero(y_hat) ? y_hat : !iszero(y) ? 2 : 1
+    !iszero(y_hat) ? y ./ y_hat : !iszero(y) ? 2 : 1
   end
 
   x .= 0
   for ch in 1:M-1
-	  p  = floor(Int,real(s.cochba[1, ch]))	# order of ARMA filter
-		ch_norm	= imag(COCHBA(1, M))
-	  B  = real(s.cochba[(0:p)+2, ch])	# moving average coefficients
-	  A  = imag(s.cochba[(0:p)+2, ch])	# autoregressive coefficients
+	  p = floor(Int,real(spect.cochba[1, ch]))	# order of ARMA filter
+		ch_norm	= imag(spect.cochba[1, M])
+	  B = real(spect.cochba[(0:p)+2, ch])	# moving average coefficients
+	  A = imag(spect.cochba[(0:p)+2, ch])	# autoregressive coefficients
 
-    if s.nonlinear == -2
-      y1 = y3_hat[:,ch].*ratios[:,ch]
+    if spect.nonlinear == -2
+      y1 = y3_hat[:,ch].*view(ratios,indices,ch)
     else
       y1 = y3_hat[:,ch]
       posi = find(y1 .>= 0)
-      y1[posi] .*= ratios[posi,ch]
+      y1[posi] .*= view(ratios,indices[posi],ch)
 
       negi = find(y1 .< 0)
       y1[negi] .*= maximum(y1[posi]) / -minimum(y1[negi])
@@ -270,9 +277,17 @@ function adjust_x(spect::AuditorySpectrogram,x,ratios,y,y_hat,y3_hat)
   x
 end
 
-function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;iterations=10,
-                  usematlab=true)
+function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;
+                  max_iterations=typemax(Int),max_error=0.05,usematlab=false)
+  @assert(max_iterations < typemax(Int) || max_error < Inf,
+          "No stopping criterion specified (max_iterations or max_error).")
+
   if usematlab
+    @assert(max_iterations < typemax(Int) && max_error == Inf,
+            "Matlab implementation can only use the number of iterations"*
+            " to limit computation time. Set `max_error=Inf` and "*
+            "`max_iterations` to a small integer.")
+
     mat"loadload;"
     y = similar(y_in,(size(y_in,1),nchannels(spect)))
     y[:,channels_computed(spect)] = y_in
@@ -282,11 +297,11 @@ function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;iterations=10,
     mat"aud2wav($y,$guess,$paras)"
   else
     y = y_in
-    M = size(as.cochba,2)
+    M = size(spect.cochba,2)
 
     # expand y to include all frequencies
     y = similar(y_in,size(y,1),M-1)
-    y[channels_computed(spect)] = y_in
+    y[:,channels_computed(spect)] = y_in
 
     # generate initial guess
     x = inv_guess(spect,y)
@@ -299,22 +314,32 @@ function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;iterations=10,
     min_err = Inf
     min_x = x
 
-    @showprogress "Inverting: " for iteration in 1:iterations
-      if as.nonlinear == 0
+    if max_iterations < typemax(Int)
+      prog = Progress(max_iterations,"Inverting Spectrogram: ")
+    else
+      prog = ProgressThresh(max_error,"Inverting Spectrogram: ")
+    end
+
+    for iteration in 1:max_iterations
+      if min_err < max_error
+        break
+      end
+
+      if spect.nonlinear == 0
         x .-= mean(x)
         x ./= std(x)
       end
 
       y_hat,y3_hat = spect(x,true)
-      x = adjust_x(x,ratios,y,y_hat,y3_hat)
+      x = match_x(spect,x,ratios,y,y_hat,y3_hat)
 
       y_hat .*= target_mean/mean(y_hat)
-      err = 100round(sum((y_hat .- y).^2) ./ target_sum2,4)
+      err = sum((y_hat .- y).^2) ./ target_sum2
 
       if err < min_err
         min_x = x
         min_err = err
-      elseif err-100 > min_x
+      elseif err-1 > min_err
         # restart
         x .= sign.(x) .+ rand(size(x))
         x .-= mean(x)
@@ -322,9 +347,15 @@ function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;iterations=10,
       end
 
       x .*= 1.01
+
+      if max_iterations < typemax(Int)
+        ProgressMeter.next!(prog;showvalues =
+                            [(:error,string(100round(min_err,4),"%"))])
+      else
+        ProgressMeter.update!(prog,min_err)
+      end
     end
 
-    info("Minimum error: $min_err%")
     min_x
   end
 end
