@@ -64,7 +64,10 @@ times(as::AuditorySpectrogram,data::AbstractMatrix) =
 @recipe function plot(as::AuditorySpectrogram,data::Matrix)
   @series begin
     seriestype := :heatmap
-    (times(as,data),freqs(as,data),data')
+    fillcolor --> :reds
+    xlabel --> "Time (s)"
+    ylabel --> "Frequency (Hz)"
+    (ustrip(times(as,data)),ustrip(freqs(as,data)),data')
   end
 end
 

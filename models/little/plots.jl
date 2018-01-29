@@ -1,3 +1,4 @@
+import PerceptualColourMaps: cmap
 import Colors: RGB
 R"library(ggplot2)"
 
