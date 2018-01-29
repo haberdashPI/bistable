@@ -13,7 +13,7 @@ cort = CorticalModel(spect,scales=2.^(-1:0.5:4),bandonly=false)
 dir = "../../plots/run_2017_12_24"
 isdir(dir) || mkdir(dir)
 
-f_ab(st) = @>(ab(120ms,120ms,1,10,500Hz,st),attenuate(10))
+f_ab(st) = @>(ab(120ms,120ms,1,10,500Hz,st),normpower,amplify(-10))
 ab_f = [f_ab(st) for st in sts]
 crs = [cort(spect(ab_f[i]),usematlab=true) for i in eachindex(ab_f)];
 

@@ -1,7 +1,7 @@
 using Unitful
-using TimedSound
+using Sounds
 
-setup_sound(sample_rate=8kHz)
+set_default_samplerate!(8kHz)
 
 function alter_ab(tone_len,ab_repeats,freq,delta)
   space = silence(tone_len,sample_rate=fs)

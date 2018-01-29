@@ -1,4 +1,4 @@
-using TimedSound
+using Sounds
 include("../models/little/units.jl")
 include("warble.jl")
 
@@ -78,10 +78,10 @@ save("approach1_fuse.wav",x0)
 
 sig(x) = 0.5+0.5tanh(x)
 wobble(freq,depth,dfreq,dphase,len) = audible(len) do t
-  f = ustrip(TimedSound.inHz(freq))
+  f = ustrip(Sounds.inHz(freq))
   carrier = @. sin(2π*f*t)
 
-  df = ustrip(TimedSound.inHz(dfreq))
+  df = ustrip(Sounds.inHz(dfreq))
   amp = @. sig(depth*sin(2π*df*t + dphase))
   carrier.*amp
 end
@@ -90,14 +90,14 @@ depth = 0.2
 a = wobble(1kHz,depth,4Hz,0,20s)
 b = wobble(2^(1/12)*1kHz,depth,4Hz,π,20s)
 
-x = @> mix(a,b) attenuate(15)
+x = @> mix(a,b) normpower amplify(-15)
 save("approach2_split.wav",x)
 
 depth = 1
 a = wobble(1kHz,depth,4Hz,0,20s)
 b = wobble(2^(2/12)*1kHz,depth,4Hz,π,20s)
 
-x = @> mix(a,b) attenuate(15)
+x = @> mix(a,b) normpower amplify(-15)
 save("approach2_bistable.wav",x)
 
 
@@ -105,7 +105,7 @@ depth = 25
 a = wobble(1kHz,depth,4Hz,0,20s)
 b = wobble(2^(2/12)*1kHz,depth,4Hz,π,20s)
 
-x = @> mix(a,b) attenuate(15)
+x = @> mix(a,b) normpower amplify(-15)
 save("approach2_fuse.wav",x)
 
 # seems more like the above adjusts the point of bistability rather

@@ -17,7 +17,7 @@ spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=25,
 cort = CorticalModel(spect,scales = 2.0.^linspace(-2,1,10))
 tempc = TCAnalysis(cort,1,window=1s,method=:pca,frame_len=10ms)
 
-x = @> ab(120ms,120ms,1,10,500Hz,6) attenuate(20)
+x = @> ab(120ms,120ms,1,10,500Hz,6) normpower amplify(-20)
 
 sp = spect(x);
 cr = cort(sp);
@@ -75,7 +75,7 @@ plot_scales2(cort,mean(abs.(cra),[2,4]),name="mean |x|")
 ########################################
 # let's try a longer run of that...
 
-xl = @> ab(120ms,120ms,1,50,500Hz,6) attenuate(10)
+xl = @> ab(120ms,120ms,1,50,500Hz,6) normpower amplify(-10)
 
 params = AdaptMI(c_m=20,τ_m=200ms,W_m=scale_weighting(cort,0.5),
                  c_a=8,τ_a=2s,shape_y = x -> max(0,x),
@@ -144,8 +144,8 @@ masked = mask2(tempc,Ca[t1],cr[1:400,:,:,:]);
 sp = inv(cort,masked)
 p1 = rplot(spect,sp)
 
-xl_a = @> ab(120ms,120ms,1,50,500Hz,6,:without_b) attenuate(20)
-xl_b = @> ab(120ms,120ms,1,50,500Hz,6,:without_a) attenuate(20)
+xl_a = @> ab(120ms,120ms,1,50,500Hz,6,:without_b) normpower amplify(-20)
+xl_b = @> ab(120ms,120ms,1,50,500Hz,6,:without_a) normpower amplify(-20)
 sp_a = spect(xl_a)[1:400,:]
 sp_b = spect(xl_b)[1:400,:]
 
@@ -168,7 +168,7 @@ spi = mean_spect(tempc,Ca,cr)
 ########################################
 # let's look at noise
 
-xl = @> ab(120ms,120ms,1,50,500Hz,6) attenuate(10)
+xl = @> ab(120ms,120ms,1,50,500Hz,6) normpower amplify(-10)
 
 params = AdaptMI(c_m=20,τ_m=200ms,W_m=scale_weighting(cort,0.5),
                  c_a=8,τ_a=2s,shape_y = x -> max(0,x),

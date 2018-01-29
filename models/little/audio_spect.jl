@@ -5,9 +5,10 @@ using MATLAB
 using DSP
 using HDF5
 import Base: run
-using TimedSound
+using Sounds
 using RecipesBase
-using PerceptualColourMaps
+
+import DSP.Filters.freqs
 
 include("plots.jl")
 
@@ -22,7 +23,7 @@ struct AuditorySpectrogram
   max_freq::Hertz{Float64}
 end
 
-nchannels(as::AuditorySpectrogram) = size(as.cochba,2)-1
+SampledSignals.nchannels(as::AuditorySpectrogram) = size(as.cochba,2)-1
 channels_computed(s::AuditorySpectrogram) =
   find(f -> s.min_freq <= f <= s.max_freq,all_freqs(s))
 
@@ -31,7 +32,7 @@ Base.show(io::IO,x::AuditorySpectrogram) =
         "nonlinear=$(x.nonlinear),octave_shift=$(x.octave_shift))")
 
 function AuditorySpectrogram(filename::String;
-                             fs=ustrip(TimedSound.samplerate()),
+                             fs=ustrip(samplerate()),
                              len=10,decay_tc=8,nonlinear=-2,octave_shift=-1,
                              min_freq = -Inf*Hz,max_freq = Inf*Hz)
   # mat"loadload;"
@@ -88,7 +89,7 @@ function freq_ticks(as::AuditorySpectrogram,x)
   fbreaks,findices
 end
 
-rplot(as::AuditorySpectrogram,data::TimedSound.Sound) = rplot(as,as(data))
+rplot(as::AuditorySpectrogram,data::Sound) = rplot(as,as(data))
 rplot(as::AuditorySpectrogram,data::AbstractVector) = rplot(as,as(data))
 function rplot(as::AuditorySpectrogram,data::Matrix)
   ixs = CartesianRange(size(data))
@@ -129,10 +130,7 @@ frame_length(s::AuditorySpectrogram) = round(Int,s.len * 2^(4+s.octave_shift))
 Δt(as::AuditorySpectrogram) = s * frame_length(as) / as.fs
 Δf(as::AuditorySpectrogram) = 1 / 24
 
-(s::AuditorySpectrogram)(x::TimedSound.Sound{8000,T}) where T =
-  s(Float64.(x[:,:left]))
-(s::AuditorySpectrogram)(x::TimedSound.Sound{R}) where R =
-  error("sound must be 8kHz mono.")
+(s::AuditorySpectrogram)(x::Sound) = s(Array(convert(Sound{s.fs,Float64,1},x)))
 
 function (s::AuditorySpectrogram)(x::Vector{T},internal_call=false) where T
   L, M = size(s.cochba)	# p_max = L - 2

@@ -332,7 +332,7 @@ function mean_spect(tc::TCAnalysis,C::EigenSeries,x::Array{T,4}) where T
   y ./ max.(1e-10,norm)
 end
 
-rplot(tc::TCAnalysis,x::TimedSound.Sound;kwds...) = rplot(tc,tc(x);kwds...)
+rplot(tc::TCAnalysis,x::Sound;kwds...) = rplot(tc,tc(x);kwds...)
 
 function rplot(tc::TCAnalysis,λ::Vector)
   @assert all(imag.(λ) .== 0) "Can't plot complex eigenvalues"
