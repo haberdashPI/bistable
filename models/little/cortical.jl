@@ -3,10 +3,13 @@ using RCall
 # (interaction with MATLAB???)
 sleep(0.25)
 using Colors
-using MATLAB
 using PerceptualColourMaps
 using RecipesBase
 using DataFrames
+
+const USING_MATLAB = false
+@static if USING_MATLAB using MATLAB end
+
 # using PyPlot
 include("audio_spect.jl")
 
@@ -144,32 +147,36 @@ end
 
 function (cm::CorticalModel)(s_in::Matrix;usematlab=false,progressbar=true)
   if usematlab
-    if !loadloaded[]
-      loadloaded[] = true
-      mat"loadload;"
-    end
-    s = similar(s_in,(size(s_in,1),nchannels(cm.aspect)))
-    s[:,channels_computed(cm.aspect)] = s_in
-    paras = [cm.aspect.len, cm.aspect.decay_tc,
-             cm.aspect.nonlinear,cm.aspect.octave_shift,
-             0.0, 0.0, cm.bandonly ? 1.0 : 0.0]
-    if !all(indexin(-abs.(cm.rates),cm.rates) .> 0)
-      error("Missing negative rates. Cannot use matlab implementation."*
-            " Set usematlab=false.")
-    end
-    if any(isnan.(cm.rates)) || any(isnan.(cm.scales))
-      error("NaN rate and/or scale not supproted by matlab implementation."*
-            " Set usematlab=false.")
-    end
-    orates = sort(unique(abs.(cm.rates)))
-    oscales = sort(unique(cm.scales))
-    y = mat"aud2cor($s,$paras,$orates,$oscales,'tmpxxx',0)"
+    @static if USING_MATLAB
+      if !loadloaded[]
+        loadloaded[] = true
+        mat"loadload;"
+      end
+      s = similar(s_in,(size(s_in,1),nchannels(cm.aspect)))
+      s[:,channels_computed(cm.aspect)] = s_in
+      paras = [cm.aspect.len, cm.aspect.decay_tc,
+               cm.aspect.nonlinear,cm.aspect.octave_shift,
+               0.0, 0.0, cm.bandonly ? 1.0 : 0.0]
+      if !all(indexin(-abs.(cm.rates),cm.rates) .> 0)
+        error("Missing negative rates. Cannot use matlab implementation."*
+              " Set usematlab=false.")
+      end
+      if any(isnan.(cm.rates)) || any(isnan.(cm.scales))
+        error("NaN rate and/or scale not supproted by matlab implementation."*
+              " Set usematlab=false.")
+      end
+      orates = sort(unique(abs.(cm.rates)))
+      oscales = sort(unique(cm.scales))
+      y = mat"aud2cor($s,$paras,$orates,$oscales,'tmpxxx',0)"
 
-    y = permutedims(y,[3,2,1,4])
-    rs = Main.rates(cort)
-    order = sortperm([.-rs[rs .> 0]; rs[rs .> 0]])
+      y = permutedims(y,[3,2,1,4])
+      rs = Main.rates(cort)
+      order = sortperm([.-rs[rs .> 0]; rs[rs .> 0]])
 
-    return y[:,order,:,channels_computed(cm.aspect)]
+      return y[:,order,:,channels_computed(cm.aspect)]
+    else
+      error("Matlab implementation not supported. Set `USING_MATLAB = true`.")
+    end
   end
 
   s = s_in
@@ -236,35 +243,39 @@ end
 function Base.inv(cm::CorticalModel,cr_in::Array{T,4};
                   usematlab=false,norm=0.9,progressbar=true) where T
   if usematlab
-    if !loadloaded[]
-      loadloaded[] = true
-      mat"loadload;"
+    @static if USING_MATLAB
+      if !loadloaded[]
+        loadloaded[] = true
+        mat"loadload;"
+      end
+
+      cr = similar(cr_in,(size(cr_in,1,2,3)...,nchannels(cm.aspect)))
+      cr[:,:,:,channels_computed(cm.aspect)] = cr_in
+
+      if !all(indexin(-abs.(cm.rates),cm.rates) .> 0)
+        error("Missing negative rates. Cannot use matlab implementation."*
+              " Set usematlab=false.")
+      end
+      if any(isnan.(cm.rates)) || any(isnan.(cm.scales))
+        error("NaN rate and/or scale not supproted by matlab implementation."*
+              " Set usematlab=false.")
+      end
+      m_cr = permutedims(cr,[3,2,1,4])
+
+      # re-order by rates
+      rs = Main.rates(cort)
+      order = sortperm([.-rs[rs .> 0]; rs[rs .> 0]])
+      inv_order = sortperm(order)
+      m_cr = m_cr[:,inv_order,:,:]
+
+      cm(cr[:,1,1,channels_computed(cm.aspect)],usematlab=true) # this ensures 'tmpxxx' is right, hacky but it works
+      mat"s = cor2aud('tmpxxx',$m_cr);"
+      s = mat"s + 0"
+      s = 2.*max.(real.(s),0)
+      return s[:,channels_computed(cm.aspect)]
+    else
+      error("Matlab implementation not supported. Set `USING_MATLAB = true`.")
     end
-
-    cr = similar(cr_in,(size(cr_in,1,2,3)...,nchannels(cm.aspect)))
-    cr[:,:,:,channels_computed(cm.aspect)] = cr_in
-
-    if !all(indexin(-abs.(cm.rates),cm.rates) .> 0)
-      error("Missing negative rates. Cannot use matlab implementation."*
-            " Set usematlab=false.")
-    end
-    if any(isnan.(cm.rates)) || any(isnan.(cm.scales))
-      error("NaN rate and/or scale not supproted by matlab implementation."*
-            " Set usematlab=false.")
-    end
-    m_cr = permutedims(cr,[3,2,1,4])
-
-    # re-order by rates
-    rs = Main.rates(cort)
-    order = sortperm([.-rs[rs .> 0]; rs[rs .> 0]])
-    inv_order = sortperm(order)
-    m_cr = m_cr[:,inv_order,:,:]
-
-    cm(cr[:,1,1,channels_computed(cm.aspect)],usematlab=true) # this ensures 'tmpxxx' is right, hacky but it works
-    mat"s = cor2aud('tmpxxx',$m_cr);"
-    s = mat"s + 0"
-    s = 2.*max.(real.(s),0)
-    return s[:,channels_computed(cm.aspect)]
   else
     cr = cr_in
 
