@@ -1,10 +1,10 @@
+using Revise
 using DataFrames
-include("units.jl")
-include("tempc.jl")
-include("stim.jl")
-include("adaptmi.jl")
-include("cortmi.jl")
-setup_sound(sample_rate=8kHz)
+include("units.jl"); Revise.track("units.jl")
+include("stim.jl"); Revise.track("stim.jl")
+include("tempc.jl"); Revise.track("tempc.jl")
+include("adaptmi.jl"); Revise.track("adaptmi.jl")
+include("cortmi.jl"); Revise.track("cortmi.jl")
 
 R"library(ggplot2)"
 R"library(cowplot)"
