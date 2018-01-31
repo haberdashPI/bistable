@@ -1,7 +1,6 @@
 using ProgressMeter
 using RCall
 using DataFrames
-using MATLAB
 using DSP
 using HDF5
 import Base: run
@@ -35,7 +34,6 @@ function AuditorySpectrogram(filename::String;
                              fs=ustrip(samplerate()),
                              len=10,decay_tc=8,nonlinear=-2,octave_shift=-1,
                              min_freq = -Inf*Hz,max_freq = Inf*Hz)
-  # mat"loadload;"
   min_freq = convert(Hertz{Float64},min_freq)
   max_freq = convert(Hertz{Float64},max_freq)
 
@@ -283,80 +281,65 @@ function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;
   @assert(max_iterations < typemax(Int) || max_error < Inf,
           "No stopping criterion specified (max_iterations or max_error).")
 
-  if usematlab
-    @assert(max_iterations < typemax(Int) && max_error == Inf,
-            "Matlab implementation can only use the number of iterations"*
-            " to limit computation time. Set `max_error=Inf` and "*
-            "`max_iterations` to a small integer.")
+  y = y_in
+  M = size(spect.cochba,2)
 
-    mat"loadload;"
-    y = similar(y_in,(size(y_in,1),nchannels(spect)))
-    y[:,channels_computed(spect)] = y_in
-    paras = [spect.len, spect.decay_tc, spect.nonlinear, spect.octave_shift,
-             iterations, 0, 0]
-    guess = mat"aud2wavi($y,$paras)"
-    mat"aud2wav($y,$guess,$paras)"
+  # expand y to include all frequencies
+  y = similar(y_in,size(y,1),M-1)
+  y[:,channels_computed(spect)] = y_in
+
+  # generate initial guess
+  x = inv_guess(spect,y)
+
+  # iteration setup
+  ratios = similar(y)
+  target_mean = mean(y)
+  target_sum2 = sum(y.^2)
+
+  min_err = Inf
+  min_x = x
+
+  if max_iterations < typemax(Int)
+    prog = Progress(max_iterations,"Inverting Spectrogram: ")
   else
-    y = y_in
-    M = size(spect.cochba,2)
+    prog = ProgressThresh(max_error,"Inverting Spectrogram: ")
+  end
 
-    # expand y to include all frequencies
-    y = similar(y_in,size(y,1),M-1)
-    y[:,channels_computed(spect)] = y_in
+  for iteration in 1:max_iterations
+    if min_err < max_error
+      break
+    end
 
-    # generate initial guess
-    x = inv_guess(spect,y)
+    if spect.nonlinear == 0
+      x .-= mean(x)
+      x ./= std(x)
+    end
 
-    # iteration setup
-    ratios = similar(y)
-    target_mean = mean(y)
-    target_sum2 = sum(y.^2)
+    y_hat,y3_hat = spect(x,true)
+    x = match_x(spect,x,ratios,y,y_hat,y3_hat)
 
-    min_err = Inf
-    min_x = x
+    y_hat .*= target_mean/mean(y_hat)
+    err = sum((y_hat .- y).^2) ./ target_sum2
+
+    if err < min_err
+      min_x = x
+      min_err = err
+    elseif err-1 > min_err
+      # restart
+      x .= sign.(x) .+ rand(size(x))
+      x .-= mean(x)
+      x ./= std(x)
+    end
+
+    x .*= 1.01
 
     if max_iterations < typemax(Int)
-      prog = Progress(max_iterations,"Inverting Spectrogram: ")
+      ProgressMeter.next!(prog;showvalues =
+                          [(:error,string(100round(min_err,4),"%"))])
     else
-      prog = ProgressThresh(max_error,"Inverting Spectrogram: ")
+      ProgressMeter.update!(prog,min_err)
     end
-
-    for iteration in 1:max_iterations
-      if min_err < max_error
-        break
-      end
-
-      if spect.nonlinear == 0
-        x .-= mean(x)
-        x ./= std(x)
-      end
-
-      y_hat,y3_hat = spect(x,true)
-      x = match_x(spect,x,ratios,y,y_hat,y3_hat)
-
-      y_hat .*= target_mean/mean(y_hat)
-      err = sum((y_hat .- y).^2) ./ target_sum2
-
-      if err < min_err
-        min_x = x
-        min_err = err
-      elseif err-1 > min_err
-        # restart
-        x .= sign.(x) .+ rand(size(x))
-        x .-= mean(x)
-        x ./= std(x)
-      end
-
-      x .*= 1.01
-
-      if max_iterations < typemax(Int)
-        ProgressMeter.next!(prog;showvalues =
-                            [(:error,string(100round(min_err,4),"%"))])
-      else
-        ProgressMeter.update!(prog,min_err)
-      end
-    end
-
-    min_x
   end
+
+  min_x
 end
