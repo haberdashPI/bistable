@@ -1,3 +1,12 @@
+can we combine an short-term acousting memory (something like the approach
+described in McDermott et al 2011 (PNAS)) within this model, could that take on the 
+role of 'attention'? A.k.a. enhancing a particular object representation. 
+
+NOTE: the TC model is really a version of some sort of *simple* WM, i.e. each
+component is an 'object' in this memory. Those components could be used
+to identify peaks and use that to build some ongoing template of the 
+principle object.
+
 Implementation questiosn for MI
 
 - do we determine inhibition as a function of overall input

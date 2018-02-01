@@ -1,21 +1,20 @@
 using DataFrames
-include("units.jl")
-include("stim.jl")
-include("tempc.jl")
-include("adaptmi.jl")
-include("cortmi.jl")
-setup_sound(sample_rate=8kHz)
+include("units.jl"); Revise.track("units.jl")
+include("stim.jl"); Revise.track("stim.jl")
+include("tempc.jl"); Revise.track("tempc.jl")
+include("adaptmi.jl"); Revise.track("adaptmi.jl")
+include("cortmi.jl"); Revise.track("cortmi.jl")
 
 R"library(ggplot2)"
 R"library(cowplot)"
 quartz() = R"quartz()"
-dir = "../../plots/run_2017_01_25"
+dir = "../../plots/run_2018_02_01"
 isdir(dir) || mkdir(dir)
 
 spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=10,
                             min_freq = 250Hz,max_freq=1500Hz)
 cort = CorticalModel(spect,rates=sort([-2.^(-1:0.5:5); 2.^(-1:0.5:5)]))
-tempc = TCAnalysis(cort,4,window=600ms,method=:real_pca,frame_len=500ms)
+tempc = TCAnalysis(cort,4,window=600ms,method=(:real_pca,8),frame_len=500ms)
 
 x_a = @> ab(120ms,120ms,1,10,500Hz,6,:without_a) normpower amplify(-20)
 x_b = @> ab(120ms,120ms,1,10,500Hz,6,:without_b) normpower amplify(-20)
@@ -122,27 +121,27 @@ function scale_weight(cr,center)
   s_weights = exp.(.-(log.(scales(cort)) .- log.(center)).^2 ./ 0.1log(2))
   cr .* reshape(s_weights,1,1,:,1)
 end
-cs16 = scale_weight(cr,16);
+cs1 = scale_weight(cr,1);
 cs025 = scale_weight(cr,0.25);
 
-Cs16 = tempc(cs16)
-p1 = rplot(tempc,Cs16[3s],n=1,showvar=false)
-sp_Cs16 = mean_spect(tempc,Cs16,cr,component=1)
-p2 = rplot(spect,sp_Cs16)
+Cs1 = tempc(cs1)
+p1 = rplot(tempc,Cs1[3s],n=2,showvar=false)
+sp_Cs1 = mean_spect(tempc,Cs1,cr,component=1)
+p2 = rplot(spect,sp_Cs1)
 
 Cs025 = tempc(cs025)
-p3 = rplot(tempc,Cs025[3s],n=1,showvar=false)
+p3 = rplot(tempc,Cs025[3s],n=2,showvar=false)
 sp_Cs025 = mean_spect(tempc,Cs025,cr,component=1)
 p4 = rplot(spect,sp_Cs025)
 
 R"""
-p = plot_grid($p1 + ggtitle("Scale 16 cyc/oct Component"),
-              $p2 + ggtitle("Scale 16 cyc/oct windowed masking"),
+p = plot_grid($p1 + ggtitle("Scale 1 cyc/oct Component"),
+              $p2 + ggtitle("Scale 1 cyc/oct windowed masking"),
               $p3 + ggtitle("Scale 0.25 cyc/oct Component"),
               $p4 + ggtitle("Scale 0.25 cyc/oct windowed masking"),
               nrow=2,ncol=2)
-save_plot($(joinpath(dir,"5_real_masks_scale_weighting.pdf")),p,
-  base_aspect_ratio=1.6,nrow=2,ncol=2)
+# save_plot($(joinpath(dir,"5_real_masks_scale_weighting.pdf")),p,
+  # base_aspect_ratio=1.6,nrow=2,ncol=2)
 """
 
 function rate_weight(cr,center,σ=0.1)

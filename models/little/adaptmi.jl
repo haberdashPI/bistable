@@ -10,11 +10,15 @@ sig(x) = 1/(1+exp(-10(x-0.5)))
 # a params object.  However, once julia v1.0 hits, I should be able to get
 # similar performance using just keyword arguments
 @with_kw struct AdaptMI{S,I}
+  α::Float64 = 1.0
   τ_y::Seconds{Float64} = 10ms
   shape_y::S = identity
 
   c_a::Float64 = 5
   τ_a::Seconds{Float64} = 1.5s
+
+  c_e::Float64 = 0
+  τ_e::Seconds{Float64} = 300ms
 
   c_m::Float64 = 10
   τ_m::Seconds{Float64} = 50ms
@@ -147,47 +151,54 @@ function __approx(f,x::EigenSpace,ys::EigenSpace...)
   eigenspaces(x,λ)
 end
 # transform eigenvalues into eigenspace
-eigenspaces(x,λ::Vector) = EigenSpace(x.u,λ)
+eigenspaces(x,λ::Vector) = EigenSpace(x.u,λ,x.var)
 # transform tuple of eigenvalues into tuple of eigenspaces
-eigenspaces(x,λs::Tuple) = map(λ -> EigenSpace(x.u,λ),λs)
+eigenspaces(x,λs::Tuple) = map(λ -> EigenSpace(x.u,λ,x.var),λs)
 
 ################################################################################
 # genertic adaptation and mutual-inhibition operation
 function adaptmi(update,y,params)
+  α = params.α
   τ_y = params.τ_y; shape_y = params.shape_y
   τ_a = params.τ_a; c_a = params.c_a
+  τ_e = params.τ_e; c_e = params.c_e
   τ_m = params.τ_m; c_m = params.c_m; W_m = params.W_m
   Δt = params.Δt
 
   a = approx_similar(y) # a = adaptation
+  e = approx_similar(y) # a = adaptation
   m = approx_similar(y) # m = mutual inhibition
 
   yr_t = empty_timeslice(y)
   a_t = approx_empty_timeslice(y)
+  e_t = approx_empty_timeslice(y)
   m_t = approx_empty_timeslice(y)
 
   dt_y = eltype(a_t)(Δt / τ_y)
   dt_a = eltype(a_t)(Δt / τ_a)
+  dt_e = eltype(e_t)(Δt / τ_e)
   dt_m = eltype(a_t)(Δt / τ_m)
 
   @showprogress "Adapt/Inhibit: " for t in time_indices(y)
     y_t = update(yr_t,t,dt_y)
 
-    mi = 1
-    yr_t,a_t,m_t = @approx (y_t,a_t,m_t) begin
-      y_t .-= (y_t.*c_a.*a_t .+ c_m.*m_t)
+    yr_t,a_t,e_t,m_t = @approx (y_t,a_t,e_t,m_t) begin
+      y_t .*= α
+      y_t .-= (y_t.*c_a.*a_t .- c_e.*e_t .+ c_m.*m_t)
       yp_t = shape_y.(y_t)
       a_t .+= (yp_t .- a_t).*dt_a
+      e_t .+= (yp_t .- e_t).*dt_e
       m_t .+= (W_m(yp_t) .- m_t).*dt_m
 
-      yp_t,a_t,m_t
+      yp_t,a_t,e_t,m_t
     end
 
     set_timeslice!(y,t,yr_t)
     set_timeslice!(a,t,a_t)
+    set_timeslice!(e,t,e_t)
     set_timeslice!(m,t,m_t)
   end
-  y,a,m
+  y,a,e,m
 end
 
 ################################################################################

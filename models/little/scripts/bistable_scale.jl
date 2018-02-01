@@ -1,4 +1,3 @@
-using Revise
 using DataFrames
 include("units.jl"); Revise.track("units.jl")
 include("stim.jl"); Revise.track("stim.jl")
@@ -9,13 +8,13 @@ include("cortmi.jl"); Revise.track("cortmi.jl")
 R"library(ggplot2)"
 R"library(cowplot)"
 quartz() = R"quartz()"
-dir = "../../plots/run_2017_01_18"
+dir = "../../plots/run_2018_02_01"
 isdir(dir) || mkdir(dir)
 
 spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=25,
                             min_freq = 250Hz,max_freq=1500Hz)
 cort = CorticalModel(spect,scales = 2.0.^linspace(-2,1,10))
-tempc = TCAnalysis(cort,1,window=1s,method=:pca,frame_len=10ms)
+tempc = TCAnalysis(cort,4,window=750ms,method=(:real_pca,8),frame_len=600ms)
 
 x = @> ab(120ms,120ms,1,10,500Hz,6) normpower amplify(-20)
 
@@ -37,7 +36,7 @@ end);
 p = plot_scales2(cort,mean(abs.(cra),[2,4]),name="mean |x|")
 R"""
 p = $p + ggtitle("Mutual inhibition of scales")
-save_plot($(joinpath(dir,"mi_only.pdf")),p,base_aspect_ratio=1.3)
+# save_plot($(joinpath(dir,"mi_only.pdf")),p,base_aspect_ratio=1.3)
 """
 
 C = tempc(cr);
@@ -46,17 +45,16 @@ Ca = tempc(cra);
 p = rplot(tempc,Ca[4s])
 R"""
 p = $p + ggtitle("Mutual-inhibition principle component (at 4 seconds)")
-save_plot($(joinpath(dir,"mi_only_pc.pdf")),p,base_aspect_ratio=1.1,ncol=2)
+# save_plot($(joinpath(dir,"mi_only_pc.pdf")),p,base_aspect_ratio=1.1,ncol=2)
 """
 
-masked, = mask(tempc,Ca[4s],cr,phase=-π/2);
-sp = inv(cort,masked,usematlab=false)
-p = rplot(spect,sp)
+sp_C = mean_spect(tempc,C,cr,component=1)
+sp_Ca = mean_spect(tempc,Ca,cr,component=1)
 
-R"""
-p = $p + ggtitle("Effect of mutual-inhibition mask (from 4 seconds)")
-save_plot($(joinpath(dir,"mi_spect.pdf")),p,base_aspect_ratio=1.3)
-"""
+# TODO: plot
+
+rplot(spect,sp_C)
+rplot(spect,sp_Ca)
 
 ### okay, now that that's happening, can adaptation give
 ### us some oscilations???
@@ -91,79 +89,61 @@ end);
 p = plot_scales2(cort,mean(abs.(cra[1:end,:,:,:]),[2,4]),name="mean |x|")
 R"""
 p = $p + ggtitle("MI & adaptation of scales")
-save_plot($(joinpath(dir,"mi_adapt.pdf")),p,base_aspect_ratio=1.3)
+# save_plot($(joinpath(dir,"mi_adapt.pdf")),p,base_aspect_ratio=1.3)
 """
 
-tempc = TCAnalysis(cort,1,window=1s,method=:pca,frame_len=10ms)
+# IDEA: the speed of this needs to slow down!
+
+tempc = TCAnalysis(cort,4,window=750ms,method=(:real_pca,8),frame_len=600ms)
 Ca = tempc(cra)
 
-## trying out the min filtering mask
-t1 = 4.8s
-rplot(tempc,Ca[t1])
-masked,phase = mask(tempc,Ca[t1],cr[1:400,:,:,:],phase=min_filtering);
-sp = inv(cort,masked)
-p1 = rplot(spect,sp)
-
-t2 = 10s
+## let's see how this works at the extremes
+t1 = 3.8s
+t2 = 9.5s
 rplot(tempc,Ca[t2])
-masked, = mask(tempc,Ca[t2],cr[1:400,:,:,:],phase=min_filtering);
-sp = inv(cort,masked)
-p2 = rplot(spect,sp)
 
-# within this range of scales this apporach can always seperate the sounds
-# I could try to expand the range, or I could use a different masking approach...
+sp1 = mean_spect(tempc,Ca,cr,component=1)
+
+p1 = plot_scales2(cort,mean(abs.(cra[1:end,:,:,:]),[2,4]),name="mean |x|")
+p2 = rplot(tempc,Ca[t1],n=2,showvar=false)
+p3 = rplot(tempc,Ca[t2],n=2,showvar=false)
+p4 = rplot(spect,sp1)
 
 R"""
-p1 = $p1 + ggtitle($("Effect of MI & adaptation mask at $t1"))
-p2 = $p2 + ggtitle($("Effect of MI & adaptation mask at $t2"))
-p = plot_grid(p1,p2,ncol=2)
-# save_plot($(joinpath(dir,"mi_adapt_spect.pdf")),p,base_aspect_ratio=1.3,
-          # ncol=2)
+p = plot_grid($p2 + ggtitle($("Components at $t1")),
+              $p3 + ggtitle($("Components at $t2")),
+              $p1 + ggtitle("Mean response for each scale"),
+              $p4 + ggtitle("Windowed Masking"),
+              nrow=4,ncol=1)
+
+save_plot($(joinpath(dir,"1_bistable_scales.pdf")),p,
+  base_aspect_ratio=2,nrow=4,ncol=1)
 """
 
-p1 = rplot(tempc,Ca[t1])
-p2 = rplot(tempc,Ca[t2])
+################################################################################
+# OLD STUFF
 
+# IDEA: plot an individual scale slice of a component across time to get
+# a sense of how it changes
+# scalev(tempc,Ci,scalei) =
+#   reshape(eigvecs(Ci)[:,1],length(scales(tempc.cort)),:)[scalei,:]
 
-R"""
-p1 = $p1 + ggtitle($("MI & adaptation mask at $t1"))
-p2 = $p2 + ggtitle($("MI & adaptation mask at $t2"))
-p = plot_grid(p1,p2,nrow=2)
-save_plot($(joinpath(dir,"mi_adapt_pc.pdf")),p,base_aspect_ratio=1.1,
-          nrow=2,ncol=2)
-"""
+# scale1_c1 = hcat(scalev.(tempc,Ca,1,8)...)'
+# rplot(spect,scale1_c1)
 
-########################################
-# let's try using the alternative mask
+# scale1_c2 = hcat(scalev.(tempc,Ca,2,8)...)'
+# quartz(); rplot(spect,scale1_c2)
 
+# next steps:
 
-## trying out the min filtering mask
-t1 = 4.8s
-rplot(tempc,Ca[t1])
-masked = mask2(tempc,Ca[t1],cr[1:400,:,:,:]);
-sp = inv(cort,masked)
-p1 = rplot(spect,sp)
+#=
+- look at bistable rates
+- look at bistable principal components
 
-xl_a = @> ab(120ms,120ms,1,50,500Hz,6,:without_b) normpower amplify(-20)
-xl_b = @> ab(120ms,120ms,1,50,500Hz,6,:without_a) normpower amplify(-20)
-sp_a = spect(xl_a)[1:400,:]
-sp_b = spect(xl_b)[1:400,:]
+- what about role of attention?
+- what about role of prediction/wm?
 
-20 * log10(sqrt(mean(sp .* sp_a)) / sqrt(mean(sp .* sp_b)))
-
-20 * log10(sqrt(mean(sp .* target)) /
-         sqrt(mean(abs.(sp.^2 .- sp.*target))))
-au_sp = inv(spect,sp,iterations=25)
-
-t2 = 10s
-rplot(tempc,Ca[t2])
-masked = mask2(tempc,Ca[t2],cr[1:400,:,:,:]);
-sp = inv(cort,masked)
-p2 = rplot(spect,sp)
-
-# let's just look at the overal seperation
-
-spi = mean_spect(tempc,Ca,cr)
+=#
 
 ########################################
 # let's look at noise

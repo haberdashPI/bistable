@@ -1,3 +1,4 @@
+using Match
 using Parameters
 using ProgressMeter
 include("cortical.jl")
@@ -7,7 +8,7 @@ struct TCAnalysis
   cort::CorticalModel
   ncomponents::Int
   window::Seconds{Float64}
-  method::Symbol
+  method::Any
   frame_len::Int
 end
 
@@ -29,67 +30,70 @@ windowlen(tc::TCAnalysis) = round(Int,tc.window/Δt(tc.cort))
 nunits(tc::TCAnalysis,x) = prod(size(x,3,4))
 ncomponents(tc::TCAnalysis) = tc.ncomponents
 
-const n_phases = 20
 # alternative: I could have a different
 # set of eigenseries for each time scale
 Base.CartesianRange(x::Int) = CartesianRange((x,))
 function (tc::TCAnalysis)(x)
-  if tc.method == :pca
-    windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
-    C = EigenSeries(eltype(x),length(windows),nunits(tc,x),
-                    ncomponents(tc),Δt(tc))
+  @match tc.method begin
+    :pca => begin
+      windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
+      C = EigenSeries(eltype(x),length(windows),nunits(tc,x),
+                      ncomponents(tc),Δt(tc))
 
-    @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
-      window = x[w_inds,:,:,:]
-      x_t = reshape(window,prod(size(window,1,2)),:)
+      @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
+        window = x[w_inds,:,:,:]
+        x_t = reshape(window,prod(size(window,1,2)),:)
 
-      n = min(size(x_t,1),ncomponents(tc))
-      sv, = svds(x_t,nsv=n)
+        n = min(size(x_t,1),ncomponents(tc))
+        sv, = svds(x_t,nsv=n)
 
-      λ = zeros(eltype(x),ncomponents(tc))
-      u = zeros(eltype(x),size(x_t,2),ncomponents(tc))
+        λ = zeros(eltype(x),ncomponents(tc))
+        u = zeros(eltype(x),size(x_t,2),ncomponents(tc))
 
-      λ[1:n] = sv[:S].^2 ./ size(x_t,1)
+        λ[1:n] = sv[:S].^2 ./ size(x_t,1)
 
-      u[:,1:n] = sv[:V]
-      var = mean(abs2.(x_t),1)
-      C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
-    end
-
-    C
-  elseif tc.method == :real_pca
-    windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
-    C = EigenSeries(real(eltype(x)),length(windows),nunits(tc,x),
-                    ncomponents(tc),Δt(tc))
-
-    @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
-      window = x[w_inds,:,:,:]
-      xc_t = reshape(window,prod(size(window,1,2)),:)
-
-      # expand the representation, to have n_phase
-      # real filters
-      xp_t = Array{real(eltype(xc_t))}((size(xc_t,1),n_phases,size(xc_t,2)))
-      for (j,phase) in enumerate(linspace(-π,π,n_phases+1)[1:end-1])
-        xp_t[:,j,:] = real.(xc_t .* exp.(phase.*im))
+        u[:,1:n] = sv[:V]
+        var = mean(abs2.(x_t),1)
+        C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
       end
-      x_t = reshape(xp_t,:,size(xc_t,2))
 
-      n = min(size(x_t,1),ncomponents(tc))
-      sv, = svds(x_t,nsv=n)
-
-      λ = zeros(eltype(x),ncomponents(tc))
-      u = zeros(eltype(x),size(x_t,2),ncomponents(tc))
-
-      λ[1:n] = sv[:S].^2 ./ size(x_t,1)
-
-      u[:,1:n] = sv[:V]
-      var = mean(abs2.(x_t),1)
-      C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
+      C
     end
+    (:real_pca,n_phases) => begin
+      windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
+      C = EigenSeries(real(eltype(x)),length(windows),nunits(tc,x),
+                      ncomponents(tc),Δt(tc))
 
-    C
-  else
-    error("No method named $(tc.method)")
+      @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
+        window = x[w_inds,:,:,:]
+        xc_t = reshape(window,prod(size(window,1,2)),:)
+
+        # expand the representation, to have n_phase
+        # real filters
+        xp_t = Array{real(eltype(xc_t))}((size(xc_t,1),n_phases,size(xc_t,2)))
+        for (j,phase) in enumerate(linspace(-π,π,n_phases+1)[1:end-1])
+          xp_t[:,j,:] = real.(xc_t .* exp.(phase.*im))
+        end
+        x_t = reshape(xp_t,:,size(xc_t,2))
+
+        n = min(size(x_t,1),ncomponents(tc))
+        sv, = svds(x_t,nsv=n)
+
+        λ = zeros(eltype(x),ncomponents(tc))
+        u = zeros(eltype(x),size(x_t,2),ncomponents(tc))
+
+        λ[1:n] = sv[:S].^2 ./ size(x_t,1)
+
+        u[:,1:n] = sv[:V]
+        var = squeeze(mean(abs2.(x_t),1),1)
+        C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
+      end
+
+      C
+    end
+    method => begin
+      error("No method named $(method)")
+    end
   end
 end
 
@@ -235,7 +239,11 @@ end
 
 function mask(tc::TCAnalysis,C::EigenSpace{<:Real},x::Array{T,4};
               component=1) where T
-  m = eigvecs(C)[:,component]
+  m = if component == :max
+    eigvecs(C)[:,indmax(eigvals(C))]
+  else
+    eigvecs(C)[:,component]
+  end
   m ./= maximum(abs.(m))
   m .= max.(0,m)
   mr = reshape(m,size(x,3,4)...)

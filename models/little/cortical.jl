@@ -433,7 +433,7 @@ function plot_scales2(cort,data;name="response",range=nothing)
   sbreaks = 1:2:length(scales(cort))
   slabs = string.(round.(scales(cort)[sbreaks],2))
 
-  p = raster_plot(df,value=:response,x=:time,y=:scale_bin)
+  p = raster_plot(df,value=:response,x=:time,y=:scale_bin,name=name)
 
 R"""
 

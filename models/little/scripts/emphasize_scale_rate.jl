@@ -1,55 +1,57 @@
 # include("units.jl")
 include("tempc.jl")
 include("stim.jl")
-setup_sound(sample_rate=8kHz)
 
 quartz() = R"quartz()"
 
 spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",
                             len=25,min_freq = 400.0Hz,max_freq = 2kHz)
-sts = [0.1,1,6,12]
+cort = CorticalModel(spect,scales = 2.0.^linspace(-2,1,10))
+tempc = TCAnalysis(cort,4,window=600ms,method=(:real_pca,8),frame_len=500ms)
 
-cort = CorticalModel(spect,scales=2.^(-1:0.5:4),bandonly=false)
-dir = "../../plots/run_2017_12_24"
+dir = "../../plots/run_2018_02_01"
 isdir(dir) || mkdir(dir)
 
-f_ab(st) = @>(ab(120ms,120ms,1,10,500Hz,st),normpower,amplify(-10))
-ab_f = [f_ab(st) for st in sts]
-crs = [cort(spect(ab_f[i]),usematlab=true) for i in eachindex(ab_f)];
+x = @> ab(120ms,120ms,1,10,500Hz,6) normpower amplify(-20)
+sp = spect(x);
+cr = cort(sp);
 
-tempc = TCAnalysis(cort,1,1s,method=:pca)
-Cs = [tempc(crs[i]) for i in eachindex(ab_f)];
+################################################################################
+# how does the scales go?
+function scale_weight(cr,center,sigma)
+  s_weights = exp.(.-(log.(scales(cort)) .- log.(center)).^2 ./ sigma^2*log(2))
+  cr .* reshape(s_weights,1,1,:,1)
+end
 
-p = rplot(tempc,Cs,"delta f (st)" => sts)
+cr = cort(spect(x));
+cs05 = scale_weight(cr,0.35,0.1);
+cs1 = scale_weight(cr,1.59,0.1);
+
+# C = tempc(cr);
+C_s05 = tempc(cs05);
+C_s1 = tempc(cs1);
+sp1 = mean_spect(tempc,C_s05,cr,component=1)
+sp2 = mean_spect(tempc,C_s1,cr,component=1)
+
+
+p1 = rplot(tempc,C_s05[3s],n=2,showvar=false)
+p2 = rplot(tempc,C_s1[3s],n=2,showvar=false)
+p3 = rplot(spect,sp1)
+p4 = rplot(spect,sp2)
+
 R"""
-library(cowplot)
-p = $p + ylab(expression(lambda[1] / sigma^2)) +
-  scale_y_continuous(breaks=c(0.0,0.25,0.5,0.75,1.0))
-save_plot($(joinpath(dir,"delta_f.png")),p,base_aspect_ratio=1.5)
+p = plot_grid($p1 + ggtitle("Artificially Emphasized 0.25 cyc/oct (at 3s)"),
+              $p2 + ggtitle("Artificially Emphasized 1.25 cyc/oct (at 3s)"),
+              $p3 + ggtitle("Windowed Masking (0.25 cyc/oct)"),
+              $p4 + ggtitle("Windowed Masking (1.25 cyc/oct)"),
+              nrow=4,ncol=1)
+
+save_plot($(joinpath(dir,"1_fake_scale_emphasis.pdf")),p,
+  base_aspect_ratio=1.3,nrow=4,ncol=2)
 """
 
-p = rplot(tempc,Cs[3][3s])
-R"""
-library(cowplot)
-save_plot($(joinpath(dir,"component_6st.png")),$p,base_aspect_ratio=1.2,ncol=2)
-"""
-
-masked = mask(tempc,Cs[3][3s],crs[3],0);
-sp = inv(cort,masked,usematlab=true)
-p = rplot(spect,sp)
-R"""
-library(cowplot)
-save_plot($(joinpath(dir,"masked_phase_0_6st.png")),$p,base_aspect_ratio=1.5)
-"""
-
-masked = mask(tempc,Cs[3][3s],crs[3],π);
-sp = inv(cort,masked,usematlab=true)
-p = rplot(spect,sp)
-R"""
-library(cowplot)
-save_plot($(joinpath(dir,"masked_phase_pi_6st.png")),$p,base_aspect_ratio=1.5)
-"""
-
+################################################################################
+# TODO: update below, if I use it
 ################################################################################
 # how does weighting the rates go?
 function rate_weight(cr,center)
@@ -100,132 +102,4 @@ p = plot_grid($(p[1]) + ggtitle("Favored Rate: 16Hz"),
           $(p[2]) + ggtitle("Favored Rate: 2Hz"),align="h",ncol=2)
 save_plot($(joinpath(dir,"masked_rates.png")),p,
   base_aspect_ratio=1.4,ncol=2)
-"""
-
-################################################################################
-# how does the scales go?
-function scale_weight(cr,center)
-  s_weights = exp.(.-(log.(scales(cort)) .- log.(center)).^2 ./ 0.5log(2))
-  cr .* reshape(s_weights,1,1,:,1)
-end
-
-cr = cort(spect(ab_f[3]),usematlab=true);
-cs16 = scale_weight(cr,16);
-cs05 = scale_weight(cr,0.5);
-
-# C = tempc(cr);
-C_s16 = tempc(cs16);
-C_s05 = tempc(cs05);
-
-p = rplot(tempc,[C,C_s16,C_s05],
-          "Favored Scale" => ["none","16 cyc/oct","0.5 cyc/oct"])
-R"""
-library(cowplot)
-p = $p + ylab(expression(lambda[1] / sigma^2)) +
-  scale_y_continuous(breaks=c(0.0,0.25,0.5,0.75,1.0))
-save_plot($(joinpath(dir,"scales_6st.png")),p,base_aspect_ratio=1.5)
-"""
-
-
-p = rplot(tempc,C_s16[3s])
-R"""
-library(cowplot)
-save_plot($(joinpath(dir,"component_6st_scale16.png")),$p,base_aspect_ratio=1.2,ncol=2)
-"""
-
-p = rplot(tempc,C_s05[3s])
-R"""
-library(cowplot)
-save_plot($(joinpath(dir,"component_6st_scale05.png")),$p,base_aspect_ratio=1.2,ncol=2)
-"""
-
-
-p = Array{Any}(2)
-masked_s16 = mask(tempc,C_s16[3s],cr,phase=0);
-sp = inv(cort,masked_s16,usematlab=true)
-p[1] = rplot(spect,sp)
-
-masked_s05 = mask(tempc,C_s05[3s],cr,phase=0);
-sp = inv(cort,masked_s05,usematlab=true)
-p[2] = rplot(spect,sp)
-
-
-p = Array{Any}(2)
-masked_s16 = mask(tempc,C_s16[3s],cr);
-sp = inv(cort,masked_s16,usematlab=true)
-p[1] = rplot(spect,sp)
-
-masked_s05 = mask(tempc,C_s05[3s],cr);
-sp = inv(cort,masked_s05,usematlab=true)
-p[2] = rplot(spect,sp)
-
-
-R"""
-library(cowplot)
-p = plot_grid($(p[1]) + ggtitle("Favored Scale: 16 cyc/oct"),
-          $(p[2]) + ggtitle("Favored Scale: 0.5 cyc/oct"),align="h",ncol=2)
-save_plot($(joinpath(dir,"masked_scales.png")),p,
-  base_aspect_ratio=1.4,ncol=2)
-"""
-
-# TODO: try examining these separation components when
-# applying adaptation and MI to the first layer
-
-# TODO: try examining the effects of the weighting across
-# different delta f's, is there a clear point of ambiguity
-# in separation that happens
-
-
-################################################################################
-# what if we empahsize 1 cyc/oct?
-function scale_weight(cr,center)
-  s_weights = exp.(.-(log.(scales(cort)) .- log.(center)).^2 ./ 0.5log(2))
-  cr .* reshape(s_weights,1,1,:,1)
-end
-
-cr = cort(spect(ab_f[3]),usematlab=true);
-cs16 = scale_weight(cr,16);
-cs1 = scale_weight(cr,1);
-
-C = tempc(cr);
-C_s16 = tempc(cs16);
-C_s1 = tempc(cs1);
-
-p = rplot(tempc,[C,C_s16,C_s1],
-          "Favored Scale" => ["none","16 cyc/oct","1 cyc/oct"])
-R"""
-library(cowplot)
-p = $p + ylab(expression(lambda[1] / sigma^2)) +
-  scale_y_continuous(breaks=c(0.0,0.25,0.5,0.75,1.0))
-save_plot($(joinpath(dir,"scales_6st.png")),p,base_aspect_ratio=1.5)
-"""
-
-p = Array{Any}(2)
-masked_s16 = mask(tempc,C_s16[3s],cr,0);
-sp = inv(cort,masked_s16,usematlab=true)
-p[1] = rplot(spect,sp)
-
-masked_s1 = mask(tempc,C_s1[3s],cr,0);
-sp = inv(cort,masked_s1,usematlab=true)
-p[2] = rplot(spect,sp)
-
-R"""
-library(cowplot)
-p = plot_grid($(p[1]) + ggtitle("Favored Scale: 16 cyc/oct"),
-          $(p[2]) + ggtitle("Favored Scale: 1 cyc/oct"),align="h",ncol=2)
-save_plot($(joinpath(dir,"masked_scales.png")),p,
-  base_aspect_ratio=1.4,ncol=2)
-"""
-
-
-p = rplot(tempc,C_s16[3s])
-R"""
-library(cowplot)
-save_plot($(joinpath(dir,"component_6st_scale16.png")),$p,base_aspect_ratio=1.2,ncol=2)
-"""
-
-p = rplot(tempc,C_s1[3s])
-R"""
-library(cowplot)
-save_plot($(joinpath(dir,"component_6st_scale1.png")),$p,base_aspect_ratio=1.2,ncol=2)
 """
