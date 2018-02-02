@@ -1,5 +1,7 @@
-# include("units.jl")
-include("tempc.jl")
+push!(LOAD_PATH,"packages")
+using AuditoryModel
+using AuditoryCoherence
+using RCall
 include("stim.jl")
 
 quartz() = R"quartz()"

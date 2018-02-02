@@ -1,7 +1,7 @@
+using ProgressMeter
 using Parameters
 using Unitful: s, ms, ustrip
 
-include("online_pca.jl")
 # question: should we somehow limit the unit response???
 # e.g. with:
 sig(x) = 1/(1+exp(-10(x-0.5)))

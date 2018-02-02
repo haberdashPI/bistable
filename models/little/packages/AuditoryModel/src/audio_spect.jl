@@ -3,13 +3,10 @@ using RCall
 using DataFrames
 using DSP
 using HDF5
-import Base: run
 using Sounds
 using RecipesBase
 
 import DSP.Filters.freqs
-
-include("plots.jl")
 
 struct AuditorySpectrogram
   cochba::Matrix{Complex128}
@@ -22,7 +19,7 @@ struct AuditorySpectrogram
   max_freq::Hertz{Float64}
 end
 
-SampledSignals.nchannels(as::AuditorySpectrogram) = size(as.cochba,2)-1
+Sounds.nchannels(as::AuditorySpectrogram) = size(as.cochba,2)-1
 channels_computed(s::AuditorySpectrogram) =
   find(f -> s.min_freq <= f <= s.max_freq,all_freqs(s))
 
@@ -30,15 +27,14 @@ Base.show(io::IO,x::AuditorySpectrogram) =
   write(io,"AuditorySpectrogram(len=$(x.len),decay_tc=$(x.decay_tc),"*
         "nonlinear=$(x.nonlinear),octave_shift=$(x.octave_shift))")
 
-function AuditorySpectrogram(filename::String;
-                             fs=ustrip(samplerate()),
+function AuditorySpectrogram(;fs=ustrip(samplerate()),
                              len=10,decay_tc=8,nonlinear=-2,octave_shift=-1,
                              min_freq = -Inf*Hz,max_freq = Inf*Hz)
   min_freq = convert(Hertz{Float64},min_freq)
   max_freq = convert(Hertz{Float64},max_freq)
 
   @assert fs == 8000 "The only sample rate supported is 8000 Hz"
-  h5open(filename) do file
+  h5open(joinpath(@__DIR__,"..","data","cochba.h5")) do file
     r = read(file,"/real")
     i = read(file,"/imag")
     AuditorySpectrogram(r + i*im,len,decay_tc,nonlinear,octave_shift,fs,

@@ -7,11 +7,7 @@ using PerceptualColourMaps
 using RecipesBase
 using DataFrames
 
-const USING_MATLAB = false
 @static if USING_MATLAB using MATLAB end
-
-# using PyPlot
-include("audio_spect.jl")
 
 struct CorticalModel
   aspect::AuditorySpectrogram

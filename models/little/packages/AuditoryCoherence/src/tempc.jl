@@ -1,10 +1,11 @@
+using Sounds
+using RCall
 using Match
 using Parameters
 using ProgressMeter
-include("cortical.jl")
-include("online_pca.jl")
+import AuditoryModel: raster_plot
 
-struct TCAnalysis
+struct CoherenceModel
   cort::CorticalModel
   ncomponents::Int
   window::Seconds{Float64}
@@ -12,28 +13,28 @@ struct TCAnalysis
   frame_len::Int
 end
 
-Δt(tc::TCAnalysis) = Δt(tc.cort)*tc.frame_len
-times(tc::TCAnalysis,x) = times(tc.cort,x)[min_window_size:tc.frame_len:end]
+Δt(tc::CoherenceModel) = Δt(tc.cort)*tc.frame_len
+times(tc::CoherenceModel,x) = times(tc.cort,x)[min_window_size:tc.frame_len:end]
 
-(tc::TCAnalysis)(x::AbstractVector) = tc(tc.cort(x))
-(tc::TCAnalysis)(x::AbstractMatrix) = tc(tc.cort(x))
+(tc::CoherenceModel)(x::AbstractVector) = tc(tc.cort(x))
+(tc::CoherenceModel)(x::AbstractMatrix) = tc(tc.cort(x))
 
-TCAnalysis(cort,ncomponents;window=1s,method=:pca,frame_len=10ms) =
-  TCAnalysis(cort,ncomponents,window,method,
+CoherenceModel(cort,ncomponents;window=1s,method=:pca,frame_len=10ms) =
+  CoherenceModel(cort,ncomponents,window,method,
              max(1,floor(Int,frame_len/Δt(cort))))
 
 const min_window_size = 10
 windowing(x,dim;length=nothing,step=nothing) =
   (max(1,t-length):t for t in indices(x,dim)[min_window_size:step:end])
 
-windowlen(tc::TCAnalysis) = round(Int,tc.window/Δt(tc.cort))
-nunits(tc::TCAnalysis,x) = prod(size(x,3,4))
-ncomponents(tc::TCAnalysis) = tc.ncomponents
+windowlen(tc::CoherenceModel) = round(Int,tc.window/Δt(tc.cort))
+nunits(tc::CoherenceModel,x) = prod(size(x,3,4))
+ncomponents(tc::CoherenceModel) = tc.ncomponents
 
 # alternative: I could have a different
 # set of eigenseries for each time scale
 Base.CartesianRange(x::Int) = CartesianRange((x,))
-function (tc::TCAnalysis)(x)
+function (tc::CoherenceModel)(x)
   @match tc.method begin
     :pca => begin
       windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
@@ -97,14 +98,14 @@ function (tc::TCAnalysis)(x)
   end
 end
 
-# fusion_signal(tc::TCAnalysis,C::EigenSeries) = fusion_signal(tc.cort(x),C)
-# function fusion_signal(tc::TCAnalysis,C::EigenSeries)
+# fusion_signal(tc::CoherenceModel,C::EigenSeries) = fusion_signal(tc.cort(x),C)
+# function fusion_signal(tc::CoherenceModel,C::EigenSeries)
 #   vec(first.(eigvals.(C)) ./ sum.(var.(C)))
 # end
 
 const phase_resolution = 128
 
-mask(tc::TCAnalysis,C,x;kwds...) = mask(tc,C,tc.cort(x);kwds...)
+mask(tc::CoherenceModel,C,x;kwds...) = mask(tc,C,tc.cort(x);kwds...)
 """
     mask(tc,C,x;[phase=max_energy],[component=1])
 
@@ -131,7 +132,7 @@ is a set of cortical responses.
 * component - the eigenvector of C to use (note that by default only the first
     is computed).
 """
-function mask(tc::TCAnalysis,C::EigenSpace,x::Array{T,4};
+function mask(tc::CoherenceModel,C::EigenSpace,x::Array{T,4};
               phase=max_energy,component=1) where T
   m,selected_phase = select_mask(C,x,phase,component)
   m = reshape(m,size(x,3,4)...)
@@ -169,7 +170,7 @@ function max_filtering(x,mask,phase)
 end
 min_filtering(x,mask,phase) = -max_filtering(x,mask,phase)
 
-function __map_mask(fn::Function,tc::TCAnalysis,
+function __map_mask(fn::Function,tc::CoherenceModel,
                     C::EigenSeries,x::Array{T},phase) where T
   windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
   y = zeros(length(windows))
@@ -188,7 +189,7 @@ function __map_mask(fn::Function,tc::TCAnalysis,
   y,phases
 end
 
-function fusion_ratio(tc::TCAnalysis,C::EigenSeries,
+function fusion_ratio(tc::CoherenceModel,C::EigenSeries,
                       x::Array{T,4};phase=max_energy) where T
 
   y,phases = __map_mask(tc,C,x,phase) do i,w_inds,masked,window
@@ -196,7 +197,7 @@ function fusion_ratio(tc::TCAnalysis,C::EigenSeries,
   end
 end
 
-function object_SNR(tc::TCAnalysis,C::EigenSeries,
+function object_SNR(tc::CoherenceModel,C::EigenSeries,
                     x::Array{T,4},target::Matrix;phase=max_energy) where T
   y,phases = __map_mask(tc,C,x,phase) do i,w_inds,masked,window
     target_win = target[w_inds,:,:,:]
@@ -207,7 +208,7 @@ function object_SNR(tc::TCAnalysis,C::EigenSeries,
   end
 end
 
-function mask2(tc::TCAnalysis,C::EigenSpace,x::Array{T,4};component=1) where T
+function mask2(tc::CoherenceModel,C::EigenSpace,x::Array{T,4};component=1) where T
   m = eigvecs(C)[:,component]
   m ./= maximum(abs.(m))
   m = reshape(m,size(x,3,4)...)
@@ -219,7 +220,7 @@ function mask2(tc::TCAnalysis,C::EigenSpace,x::Array{T,4};component=1) where T
   y
 end
 
-function __map_mask2(fn::Function,tc::TCAnalysis,
+function __map_mask2(fn::Function,tc::CoherenceModel,
                      C::EigenSeries,x::Array{T}) where T
   windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
   y = zeros(length(windows))
@@ -237,7 +238,7 @@ function __map_mask2(fn::Function,tc::TCAnalysis,
   y
 end
 
-function mask(tc::TCAnalysis,C::EigenSpace{<:Real},x::Array{T,4};
+function mask(tc::CoherenceModel,C::EigenSpace{<:Real},x::Array{T,4};
               component=1) where T
   m = if component == :max
     eigvecs(C)[:,indmax(eigvals(C))]
@@ -255,7 +256,7 @@ function mask(tc::TCAnalysis,C::EigenSpace{<:Real},x::Array{T,4};
   y
 end
 
-function __map_mask(fn::Function,tc::TCAnalysis,
+function __map_mask(fn::Function,tc::CoherenceModel,
                     C::EigenSeries{<:Real},x::Array{T},
                     component) where T
   windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
@@ -274,7 +275,7 @@ function __map_mask(fn::Function,tc::TCAnalysis,
   y
 end
 
-function mean_spect(tc::TCAnalysis,C::EigenSeries{<:Real},x::Array{T,4};
+function mean_spect(tc::CoherenceModel,C::EigenSeries{<:Real},x::Array{T,4};
                     component=1) where T
   y = fill(real(zero(x[1])),size(x,1,4))
   norm = fill(zero(real(x[1])),size(x,1,4))
@@ -288,7 +289,7 @@ function mean_spect(tc::TCAnalysis,C::EigenSeries{<:Real},x::Array{T,4};
   y ./ max.(1e-10,norm)
 end
 
-function scene_object_ratio(tc::TCAnalysis,C::EigenSeries{<:Real},
+function scene_object_ratio(tc::CoherenceModel,C::EigenSeries{<:Real},
                             x::Array{T,4},sp::Matrix;component=1) where T
   __map_mask(tc,C,x,component) do i,w_inds,masked,window
     normed = sp[w_inds,:] ./ maximum(sp[w_inds,:])
@@ -297,7 +298,7 @@ function scene_object_ratio(tc::TCAnalysis,C::EigenSeries{<:Real},
 end
 
 # TODO: make this work with mask2 (if we end up using that approach)
-# function fusion_ratio2(tc::TCAnalysis,C::EigenSeries,
+# function fusion_ratio2(tc::CoherenceModel,C::EigenSeries,
 #                       x::Array{T,4};phase=max_energy) where T
 
 #   y,phases = __map_mask(tc,C,x,phase) do i,w_inds,masked,window
@@ -305,7 +306,7 @@ end
 #   end
 # end
 
-function object_SNR2(tc::TCAnalysis,C::EigenSeries,
+function object_SNR2(tc::CoherenceModel,C::EigenSeries,
                     x::Array{T,4},target::Matrix) where T
   y = __map_mask2(tc,C,x) do i,w_inds,masked,window
     target_win = target[w_inds,:,:,:]
@@ -317,7 +318,7 @@ function object_SNR2(tc::TCAnalysis,C::EigenSeries,
 end
 
 ab_match(tc,C,x,a,b) = ab_match(tc,C,x,tc.cort.aspect(a),tc.cort.aspect(b))
-function ab_match(tc::TCAnalysis,C::EigenSeries,x::Array{T,4},
+function ab_match(tc::CoherenceModel,C::EigenSeries,x::Array{T,4},
                   a::Matrix,b::Matrix) where T
   y = __map_mask2(tc,C,x) do i,w_inds,masked,window
     a_win = a[w_inds,:,:,:]
@@ -327,7 +328,7 @@ function ab_match(tc::TCAnalysis,C::EigenSeries,x::Array{T,4},
   end
 end
 
-function mean_spect(tc::TCAnalysis,C::EigenSeries,x::Array{T,4}) where T
+function mean_spect(tc::CoherenceModel,C::EigenSeries,x::Array{T,4}) where T
   y = fill(real(zero(x[1])),size(x,1,4))
   norm = fill(zero(real(x[1])),size(x,1,4))
   dummy = __map_mask2(tc,C,x) do i,w_inds,masked,window
@@ -340,9 +341,9 @@ function mean_spect(tc::TCAnalysis,C::EigenSeries,x::Array{T,4}) where T
   y ./ max.(1e-10,norm)
 end
 
-rplot(tc::TCAnalysis,x::Sound;kwds...) = rplot(tc,tc(x);kwds...)
+rplot(tc::CoherenceModel,x::Sound;kwds...) = rplot(tc,tc(x);kwds...)
 
-function rplot(tc::TCAnalysis,λ::Vector)
+function rplot(tc::CoherenceModel,λ::Vector)
   @assert all(imag.(λ) .== 0) "Can't plot complex eigenvalues"
   λ = real.(λ)
   df = DataFrame(value = sort(λ,rev=true),index = collect(eachindex(λ)))
@@ -356,7 +357,7 @@ end
 
 # TODO: improve this plot by making it relative to variance (ala fusion signal)
 # and then make plot_resps a version of this using an array of eigenseries
-function rplot(tc::TCAnalysis,C::EigenSeries;n=ncomponents(C))
+function rplot(tc::CoherenceModel,C::EigenSeries;n=ncomponents(C))
   λ = eigvals(C)
   λ = λ[:,sortperm(abs.(λ[max(1,end-10),:]),rev=true)]
   ii = CartesianRange(size(λ))
@@ -383,7 +384,7 @@ R"""
 """
 end
 
-function rplot(tc::TCAnalysis,C::EigenSpace;
+function rplot(tc::CoherenceModel,C::EigenSpace;
                n=ncomponents(C),showvar=true,λ_digits=:automatic)
   λ = abs.(eigvals(C))
   order = sortperm(λ,rev=true)
@@ -431,7 +432,7 @@ R"""
 
 end
 
-function rplot(tempc::TCAnalysis,C::Array{<:EigenSeries},
+function rplot(tempc::CoherenceModel,C::Array{<:EigenSeries},
                label=:index => 1:length(C))
   x = [fusion_signal(tempc,Ci) for Ci in C]
   df = DataFrame(resp = vcat((real.(xi) for xi in x)...),

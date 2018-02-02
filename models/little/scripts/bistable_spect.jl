@@ -1,8 +1,8 @@
-include("units.jl")
-include("tempc.jl")
+push!(LOAD_PATH,"packages")
+using AuditoryModel
+using AuditoryCoherence
+using RCall
 include("stim.jl")
-include("adaptmi.jl")
-setup_sound(sample_rate=8kHz)
 
 dir = "../../plots/run_2017_12_25"
 mkdir(dir)

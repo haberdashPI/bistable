@@ -1,7 +1,8 @@
-include("units.jl"); Revise.track("units.jl")
-include("tempc.jl"); Revise.track("tempc.jl")
-include("stim.jl"); Revise.track("stim.jl")
-include("adaptmi.jl"); Revise.track("adaptmi.jl")
+push!(LOAD_PATH,"packages")
+using AuditoryModel
+using AuditoryCoherence
+using RCall
+include("stim.jl")
 
 R"library(ggplot2)"
 R"library(cowplot)"

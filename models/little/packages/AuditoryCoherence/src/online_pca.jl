@@ -1,3 +1,5 @@
+using Unitful
+
 # TODO: make eigenspace time unit aware and rename it
 struct EigenSpace{U,L}
   u::Matrix{U}

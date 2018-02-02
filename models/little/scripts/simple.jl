@@ -1,9 +1,12 @@
+push!(LOAD_PATH,"packages")
+using AuditoryModel
+using AuditoryCoherence
+include("stim.jl")
+
 using DSP
-using Unitful: ustrip, s, ms
+using Unitful: ustrip
 using RCall
 using DataFrames
-include("units.jl"); 
-include("adaptmi.jl"); Revise.track("adaptmi.jl")
 delta_t = 10ms
 
 R"""

@@ -1,9 +1,8 @@
-using DataFrames
-include("units.jl"); Revise.track("units.jl")
-include("stim.jl"); Revise.track("stim.jl")
-include("tempc.jl"); Revise.track("tempc.jl")
-include("adaptmi.jl"); Revise.track("adaptmi.jl")
-include("cortmi.jl"); Revise.track("cortmi.jl")
+push!(LOAD_PATH,"packages")
+using AuditoryModel
+using AuditoryCoherence
+using RCall
+include("stim.jl")
 
 R"library(ggplot2)"
 R"library(cowplot)"
@@ -11,10 +10,9 @@ quartz() = R"quartz()"
 dir = "../../plots/run_2018_02_01"
 isdir(dir) || mkdir(dir)
 
-spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=25,
-                            min_freq = 250Hz,max_freq=1500Hz)
+spect = AuditorySpectrogram(len=25,min_freq = 250Hz,max_freq=1500Hz)
 cort = CorticalModel(spect,scales = 2.0.^linspace(-2,1,10))
-tempc = TCAnalysis(cort,4,window=750ms,method=(:real_pca,8),frame_len=600ms)
+tempc = CoherenceModel(cort,4,window=750ms,method=(:real_pca,8),frame_len=600ms)
 
 x = @> ab(120ms,120ms,1,10,500Hz,6) normpower amplify(-20)
 
