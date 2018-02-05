@@ -1,6 +1,7 @@
 module AuditoryCoherence
 using AuditoryModel
 using DataFrames
+using Requires
 
 import AuditoryModel: rplot, Δt, Δf, times, freqs 
 
@@ -12,5 +13,8 @@ include("online_pca.jl")
 include("adaptmi.jl")
 include("cortmi.jl")
 include("tempc.jl")
+
+@require RCall include("rplots.jl")
+# @require Gadfly include("gplots.jl")
 
 end
