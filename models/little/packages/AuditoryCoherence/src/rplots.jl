@@ -1,8 +1,8 @@
 using RCall
 
-rplot(tc::CoherenceModel,x::Sound;kwds...) = rplot(tc,tc(x);kwds...)
+rplot(cohere::CoherenceModel,x::Sound;kwds...) = rplot(cohere,cohere(x);kwds...)
 
-function rplot(tc::CoherenceModel,λ::Vector)
+function rplot(cohere::CoherenceModel,λ::Vector)
   @assert all(imag.(λ) .== 0) "Can't plot complex eigenvalues"
   λ = real.(λ)
   df = DataFrame(value = sort(λ,rev=true),index = collect(eachindex(λ)))
@@ -16,7 +16,7 @@ end
 
 # TODO: improve this plot by making it relative to variance (ala fusion signal)
 # and then make plot_resps a version of this using an array of eigenseries
-function rplot(tc::CoherenceModel,C::EigenSeries;n=ncomponents(C))
+function rplot(cohere::CoherenceModel,C::EigenSeries;n=ncomponents(C))
   λ = eigvals(C)
   λ = λ[:,sortperm(abs.(λ[max(1,end-10),:]),rev=true)]
   ii = CartesianRange(size(λ))
@@ -29,7 +29,7 @@ function rplot(tc::CoherenceModel,C::EigenSeries;n=ncomponents(C))
   end
 
   df = DataFrame(value = vec(abs.(λ) ./ sum.(var.(C))),
-                 time = vec(ustrip(at(1) * Δt(tc))),
+                 time = vec(ustrip(at(1) * Δt(cohere))),
                  component = vec(at(2)))
 
   df = df[df[:component] .<= n,:]
@@ -43,7 +43,7 @@ R"""
 """
 end
 
-function rplot(tc::CoherenceModel,C::EigenSpace;
+function rplot(cohere::CoherenceModel,C::EigenSpace;
                n=ncomponents(C),showvar=true,λ_digits=:automatic)
   λ = abs.(eigvals(C))
   order = sortperm(λ,rev=true)
@@ -51,7 +51,7 @@ function rplot(tc::CoherenceModel,C::EigenSpace;
   u = eigvecs(C)[:,order]
   u = u[:,1:min(n,end)]
   if showvar; u = [u var(C)]; end
-  u = reshape(u,length(scales(tc.cort)),:,size(u,2))
+  u = reshape(u,length(scales(cohere.cort)),:,size(u,2))
   ii = CartesianRange(size(u))
   at(i) = vec(map(ii -> ii[i],ii))
   digits = λ_digits == :automatic ? -floor(Int,log10(λ[end]))+2 : λ_digits
@@ -73,9 +73,9 @@ function rplot(tc::CoherenceModel,C::EigenSpace;
                  component = at(3),
                  component_title = title.(at(3)))
 
-  sindices = 1:2:length(scales(tc.cort))
-  sbreaks = round.(scales(tc.cort)[sindices],2)
-  fbreaks,findices = freq_ticks(tc.cort.aspect,u[:,:,1])
+  sindices = 1:2:length(scales(cohere.cort))
+  sbreaks = round.(scales(cohere.cort)[sindices],2)
+  fbreaks,findices = freq_ticks(cohere.cort.aspect,u[:,:,1])
 
   p = raster_plot(df,value=:response,x=:scale_index,y=:freq_bin)
 
@@ -91,13 +91,13 @@ R"""
 
 end
 
-function rplot(tempc::CoherenceModel,C::Array{<:EigenSeries},
+function rplot(cohere::CoherenceModel,C::Array{<:EigenSeries},
                label=:index => 1:length(C))
-  x = [fusion_signal(tempc,Ci) for Ci in C]
+  x = [fusion_signal(cohere,Ci) for Ci in C]
   df = DataFrame(resp = vcat((real.(xi) for xi in x)...),
                  var = vcat((fill(label[2][i],length(x[i]))
                              for i in eachindex(x))...),
-                 time = vcat((ustrip.(eachindex(xi) * Δt(tempc))
+                 time = vcat((ustrip.(eachindex(xi) * Δt(cohere))
                               for xi in x)...))
 
 R"""

@@ -13,11 +13,12 @@ struct CoherenceModel
   frame_len::Int
 end
 
-Δt(tc::CoherenceModel) = Δt(tc.cort)*tc.frame_len
-times(tc::CoherenceModel,x) = times(tc.cort,x)[min_window_size:tc.frame_len:end]
+Δt(cohere::CoherenceModel) = Δt(cohere.cort)*cohere.frame_len
+times(cohere::CoherenceModel,x) =
+    times(cohere.cort,x)[min_window_size:cohere.frame_len:end]
 
-(tc::CoherenceModel)(x::AbstractVector) = tc(tc.cort(x))
-(tc::CoherenceModel)(x::AbstractMatrix) = tc(tc.cort(x))
+(cohere::CoherenceModel)(x::AbstractVector) = cohere(cohere.cort(x))
+(cohere::CoherenceModel)(x::AbstractMatrix) = cohere(cohere.cort(x))
 
 CoherenceModel(cort,ncomponents;window=1s,method=:pca,frame_len=10ms) =
   CoherenceModel(cort,ncomponents,window,method,
@@ -27,29 +28,30 @@ const min_window_size = 10
 windowing(x,dim;length=nothing,step=nothing) =
   (max(1,t-length):t for t in indices(x,dim)[min_window_size:step:end])
 
-windowlen(tc::CoherenceModel) = round(Int,tc.window/Δt(tc.cort))
-nunits(tc::CoherenceModel,x) = prod(size(x,3,4))
-ncomponents(tc::CoherenceModel) = tc.ncomponents
+windowlen(cohere::CoherenceModel) = round(Int,cohere.window/Δt(cohere.cort))
+nunits(cohere::CoherenceModel,x) = prod(size(x,3,4))
+ncomponents(cohere::CoherenceModel) = cohere.ncomponents
 
 # alternative: I could have a different
 # set of eigenseries for each time scale
 Base.CartesianRange(x::Int) = CartesianRange((x,))
-function (tc::CoherenceModel)(x)
-  @match tc.method begin
+function (cohere::CoherenceModel)(x)
+  @match cohere.method begin
     :pca => begin
-      windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
-      C = EigenSeries(eltype(x),length(windows),nunits(tc,x),
-                      ncomponents(tc),Δt(tc))
+      windows = enumerate(windowing(x,1;length=windowlen(cohere),
+                                    step=cohere.frame_len))
+      C = EigenSeries(eltype(x),length(windows),nunits(cohere,x),
+                      ncomponents(cohere),Δt(cohere))
 
       @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
         window = x[w_inds,:,:,:]
         x_t = reshape(window,prod(size(window,1,2)),:)
 
-        n = min(size(x_t,1),ncomponents(tc))
+        n = min(size(x_t,1),ncomponents(cohere))
         sv, = svds(x_t,nsv=n)
 
-        λ = zeros(eltype(x),ncomponents(tc))
-        u = zeros(eltype(x),size(x_t,2),ncomponents(tc))
+        λ = zeros(eltype(x),ncomponents(cohere))
+        u = zeros(eltype(x),size(x_t,2),ncomponents(cohere))
 
         λ[1:n] = sv[:S].^2 ./ size(x_t,1)
 
@@ -61,9 +63,10 @@ function (tc::CoherenceModel)(x)
       C
     end
     (:real_pca,n_phases) => begin
-      windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
-      C = EigenSeries(real(eltype(x)),length(windows),nunits(tc,x),
-                      ncomponents(tc),Δt(tc))
+      windows = enumerate(windowing(x,1;length=windowlen(cohere),
+                                    step=cohere.frame_len))
+      C = EigenSeries(real(eltype(x)),length(windows),nunits(cohere,x),
+                      ncomponents(cohere),Δt(cohere))
 
       @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
         window = x[w_inds,:,:,:]
@@ -77,11 +80,11 @@ function (tc::CoherenceModel)(x)
         end
         x_t = reshape(xp_t,:,size(xc_t,2))
 
-        n = min(size(x_t,1),ncomponents(tc))
+        n = min(size(x_t,1),ncomponents(cohere))
         sv, = svds(x_t,nsv=n)
 
-        λ = zeros(eltype(x),ncomponents(tc))
-        u = zeros(eltype(x),size(x_t,2),ncomponents(tc))
+        λ = zeros(eltype(x),ncomponents(cohere))
+        u = zeros(eltype(x),size(x_t,2),ncomponents(cohere))
 
         λ[1:n] = sv[:S].^2 ./ size(x_t,1)
 
@@ -98,16 +101,16 @@ function (tc::CoherenceModel)(x)
   end
 end
 
-# fusion_signal(tc::CoherenceModel,C::EigenSeries) = fusion_signal(tc.cort(x),C)
-# function fusion_signal(tc::CoherenceModel,C::EigenSeries)
+# fusion_signal(cohere::CoherenceModel,C::EigenSeries) = fusion_signal(cohere.cort(x),C)
+# function fusion_signal(cohere::CoherenceModel,C::EigenSeries)
 #   vec(first.(eigvals.(C)) ./ sum.(var.(C)))
 # end
 
 const phase_resolution = 128
 
-mask(tc::CoherenceModel,C,x;kwds...) = mask(tc,C,tc.cort(x);kwds...)
+mask(cohere::CoherenceModel,C,x;kwds...) = mask(cohere,C,cohere.cort(x);kwds...)
 """
-    mask(tc,C,x;[phase=max_energy],[component=1])
+    mask(cohere,C,x;[phase=max_energy],[component=1])
 
 Filter the given scene by a given principle component to extract
 the object represented by that component from the scene.
@@ -124,15 +127,15 @@ is a set of cortical responses.
 
 # Arguments
 
-* tc - The settings for temporal coherence analysis.
+* cohere - The settings for temporal coherence analysis.
 * C - the previosuly computed temporal coherence, as an EigenSeries,
-      (e.g. C = tc(scene))
+      (e.g. C = cohere(scene))
 * x - the auditory scene
 * phase - the phase of the component, see above
 * component - the eigenvector of C to use (note that by default only the first
     is computed).
 """
-function mask(tc::CoherenceModel,C::EigenSpace,x::Array{T,4};
+function mask(cohere::CoherenceModel,C::EigenSpace,x::Array{T,4};
               phase=max_energy,component=1) where T
   m,selected_phase = select_mask(C,x,phase,component)
   m = reshape(m,size(x,3,4)...)
@@ -170,15 +173,16 @@ function max_filtering(x,mask,phase)
 end
 min_filtering(x,mask,phase) = -max_filtering(x,mask,phase)
 
-function __map_mask(fn::Function,tc::CoherenceModel,
+function __map_mask(fn::Function,cohere::CoherenceModel,
                     C::EigenSeries,x::Array{T},phase) where T
-  windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
+  windows = enumerate(windowing(x,1;length=windowlen(cohere),
+                                step=cohere.frame_len))
   y = zeros(length(windows))
   phases = zeros(y)
 
   @showprogress "Calculating Mask: " for (i,w_inds) in windows
     window = x[w_inds,:,:,:]
-    m,phases[i] = mask(tc,C[i],window,phase=phase)
+    m,phases[i] = mask(cohere,C[i],window,phase=phase)
     masked = inv(cort,m)
 
     masked ./= maximum(abs.(masked))
@@ -189,7 +193,8 @@ function __map_mask(fn::Function,tc::CoherenceModel,
   y,phases
 end
 
-function mask2(tc::CoherenceModel,C::EigenSpace,x::Array{T,4};component=1) where T
+function mask2(cohere::CoherenceModel,C::EigenSpace,x::Array{T,4};
+               component=1) where T
   m = eigvecs(C)[:,component]
   m ./= maximum(abs.(m))
   m = reshape(m,size(x,3,4)...)
@@ -201,14 +206,15 @@ function mask2(tc::CoherenceModel,C::EigenSpace,x::Array{T,4};component=1) where
   y
 end
 
-function __map_mask2(fn::Function,tc::CoherenceModel,
+function __map_mask2(fn::Function,cohere::CoherenceModel,
                      C::EigenSeries,x::Array{T}) where T
-  windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
+  windows = enumerate(windowing(x,1;length=windowlen(cohere),
+                                step=cohere.frame_len))
   y = zeros(length(windows))
 
   @showprogress "Calculating Mask: " for (i,w_inds) in windows
     window = x[w_inds,:,:,:]
-    m = mask2(tc,C[i],window)
+    m = mask2(cohere,C[i],window)
     masked = inv(cort,m)
 
     masked ./= maximum(abs.(masked))
@@ -219,7 +225,7 @@ function __map_mask2(fn::Function,tc::CoherenceModel,
   y
 end
 
-function mask(tc::CoherenceModel,C::EigenSpace{<:Real},x::Array{T,4};
+function mask(cohere::CoherenceModel,C::EigenSpace{<:Real},x::Array{T,4};
               component=1) where T
   m = if component == :max
     eigvecs(C)[:,indmax(eigvals(C))]
@@ -237,15 +243,16 @@ function mask(tc::CoherenceModel,C::EigenSpace{<:Real},x::Array{T,4};
   y
 end
 
-function __map_mask(fn::Function,tc::CoherenceModel,
+function __map_mask(fn::Function,cohere::CoherenceModel,
                     C::EigenSeries{<:Real},x::Array{T},
                     component) where T
-  windows = enumerate(windowing(x,1;length=windowlen(tc),step=tc.frame_len))
+  windows = enumerate(windowing(x,1;length=windowlen(cohere),
+                                step=cohere.frame_len))
   y = zeros(length(windows))
 
   @showprogress "Calculating Mask: " for (i,w_inds) in windows
     window = x[w_inds,:,:,:]
-    m = mask(tc,C[i],window,component=component)
+    m = mask(cohere,C[i],window,component=component)
     masked = inv(cort,m)
 
     masked ./= maximum(abs.(masked))
@@ -256,11 +263,11 @@ function __map_mask(fn::Function,tc::CoherenceModel,
   y
 end
 
-function mean_spect(tc::CoherenceModel,C::EigenSeries{<:Real},x::Array{T,4};
+function mean_spect(cohere::CoherenceModel,C::EigenSeries{<:Real},x::Array{T,4};
                     component=1) where T
   y = fill(real(zero(x[1])),size(x,1,4))
   norm = fill(zero(real(x[1])),size(x,1,4))
-  dummy = __map_mask(tc,C,x,component) do i,w_inds,masked,window
+  dummy = __map_mask(cohere,C,x,component) do i,w_inds,masked,window
     y[w_inds,:] .+= masked
     norm[w_inds,:] .+= 1.0
 
@@ -270,27 +277,27 @@ function mean_spect(tc::CoherenceModel,C::EigenSeries{<:Real},x::Array{T,4};
   y ./ max.(1e-10,norm)
 end
 
-function scene_object_ratio(tc::CoherenceModel,C::EigenSeries{<:Real},
+function scene_object_ratio(cohere::CoherenceModel,C::EigenSeries{<:Real},
                             x::Array{T,4},sp::Matrix;component=1) where T
-  __map_mask(tc,C,x,component) do i,w_inds,masked,window
+  __map_mask(cohere,C,x,component) do i,w_inds,masked,window
     normed = sp[w_inds,:] ./ maximum(sp[w_inds,:])
     mean(masked .* normed) / mean(normed.^2)
   end
 end
 
 # TODO: make this work with mask2 (if we end up using that approach)
-# function fusion_ratio2(tc::CoherenceModel,C::EigenSeries,
+# function fusion_ratio2(cohere::CoherenceModel,C::EigenSeries,
 #                       x::Array{T,4};phase=max_energy) where T
 
-#   y,phases = __map_mask(tc,C,x,phase) do i,w_inds,masked,window
+#   y,phases = __map_mask(cohere,C,x,phase) do i,w_inds,masked,window
 #     sqrt(mean(abs2.(masked))) / sqrt(mean(abs2.(window)))
 #   end
 # end
 
-function mean_spect(tc::CoherenceModel,C::EigenSeries,x::Array{T,4}) where T
+function mean_spect(cohere::CoherenceModel,C::EigenSeries,x::Array{T,4}) where T
   y = fill(real(zero(x[1])),size(x,1,4))
   norm = fill(zero(real(x[1])),size(x,1,4))
-  dummy = __map_mask2(tc,C,x) do i,w_inds,masked,window
+  dummy = __map_mask2(cohere,C,x) do i,w_inds,masked,window
     y[w_inds,:] .+= masked
     norm[w_inds,:] .+= 1.0
 
