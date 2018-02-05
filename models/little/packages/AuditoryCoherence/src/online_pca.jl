@@ -116,3 +116,13 @@ function project(x::EigenSpace,y::EigenSpace)
     EigenSpace(x.u,λp,x.var)
   end
 end
+
+# maintains the sign of the feature of component 1 with the largest mean
+function normalize_sign(pcas::EigenSeries)
+  for c in 1:ncomponents(pcas)
+    max_feature_i = indmax(mean(abs.(pcas.u[:,:,c]),1))
+    pcas.u[:,:,c] .*= sign.(pcas.u[:,max_feature_i,c])
+  end
+
+  pcas
+end

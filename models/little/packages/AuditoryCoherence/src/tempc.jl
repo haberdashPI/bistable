@@ -63,7 +63,7 @@ function (cohere::CoherenceModel)(x)
         C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
       end
 
-      C
+      normalize_sign(C)
     end
     (:real_pca,n_phases) => begin
       windows = enumerate(windowing(x,1;length=windowlen(cohere),
@@ -96,7 +96,7 @@ function (cohere::CoherenceModel)(x)
         C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
       end
 
-      C
+      normalize_sign(C)
     end
     method => begin
       error("No method named $(method)")
