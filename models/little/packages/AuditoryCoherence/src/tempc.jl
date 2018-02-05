@@ -189,25 +189,6 @@ function __map_mask(fn::Function,tc::CoherenceModel,
   y,phases
 end
 
-function fusion_ratio(tc::CoherenceModel,C::EigenSeries,
-                      x::Array{T,4};phase=max_energy) where T
-
-  y,phases = __map_mask(tc,C,x,phase) do i,w_inds,masked,window
-    sqrt(mean(abs2.(masked))) / sqrt(mean(abs2.(window)))
-  end
-end
-
-function object_SNR(tc::CoherenceModel,C::EigenSeries,
-                    x::Array{T,4},target::Matrix;phase=max_energy) where T
-  y,phases = __map_mask(tc,C,x,phase) do i,w_inds,masked,window
-    target_win = target[w_inds,:,:,:]
-    target_win ./= maximum(abs.(target_win))
-
-    20 * log10(sqrt(mean(masked .* target_win)) /
-               sqrt(mean(abs.(masked.^2 .- masked.*target_win))))
-  end
-end
-
 function mask2(tc::CoherenceModel,C::EigenSpace,x::Array{T,4};component=1) where T
   m = eigvecs(C)[:,component]
   m ./= maximum(abs.(m))
@@ -305,28 +286,6 @@ end
 #     sqrt(mean(abs2.(masked))) / sqrt(mean(abs2.(window)))
 #   end
 # end
-
-function object_SNR2(tc::CoherenceModel,C::EigenSeries,
-                    x::Array{T,4},target::Matrix) where T
-  y = __map_mask2(tc,C,x) do i,w_inds,masked,window
-    target_win = target[w_inds,:,:,:]
-    target_win ./= maximum(abs.(target_win))
-
-    20 * log10(sqrt(mean(masked .* target_win)) /
-               sqrt(mean(abs.(masked.^2 .- masked.*target_win))))
-  end
-end
-
-ab_match(tc,C,x,a,b) = ab_match(tc,C,x,tc.cort.aspect(a),tc.cort.aspect(b))
-function ab_match(tc::CoherenceModel,C::EigenSeries,x::Array{T,4},
-                  a::Matrix,b::Matrix) where T
-  y = __map_mask2(tc,C,x) do i,w_inds,masked,window
-    a_win = a[w_inds,:,:,:]
-    b_win = b[w_inds,:,:,:]
-
-    20 * log10(sqrt(mean(masked .* a_win)) / sqrt(mean(masked .* b_win)))
-  end
-end
 
 function mean_spect(tc::CoherenceModel,C::EigenSeries,x::Array{T,4}) where T
   y = fill(real(zero(x[1])),size(x,1,4))
