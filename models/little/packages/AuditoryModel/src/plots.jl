@@ -3,6 +3,21 @@ import PerceptualColourMaps: cmap
 import Colors: RGB
 R"library(ggplot2)"
 
+# function colorsfn(x::Array{T},limits=extrema(x)) where T
+#   colors = if real(T) === T || all(iszero.(imag.(x)))
+#     if any(x .< 0)
+#       lim = maximum(abs.(limits))
+#       limits = (-lim,lim)
+
+#       cmap("D1")
+#     else
+#       Colors.colormap("Reds")
+#     end
+#   else
+#     cmap("C6")
+#   end
+# end
+
 function raster_plot(z::Matrix;x=indices(z,1),y=indices(z,2))
   Y = ones(x) .* y'
   X = x .* ones(y)'

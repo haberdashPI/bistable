@@ -5,6 +5,7 @@ using DSP
 using HDF5
 using Sounds
 using RecipesBase
+# using Gadfly
 
 import DSP.Filters.freqs
 
@@ -107,6 +108,22 @@ R"""
 
 """
 end
+
+# gplot(as::AuditorySpectrogram,data::AbstractVector) = gplot(as,as(data))
+# function gplot(as::AuditorySpectrogram,data::Matrix)
+#   ixs = CartesianRange(size(data))
+#   at(ixs,i) = map(x -> x[i],ixs)
+
+#   df = DataFrame(response = vec(data),
+#                  time = vec(ustrip(times(as,data)[at(ixs,1)])),
+#                  freq_bin = vec(at(ixs,2)))
+#   fbreaks,findices = freq_ticks(as)
+
+#   colors = Colors.colormap("Reds")
+#   plot(df,x=:time,y=:freq_bin,color=:response,Geom.rectbin,
+#        Scale.color_continuous(colormap=x -> colors[ceil(Int,100x)]))
+# end
+
 
 function sigmoid(x,fac)
   if fac > 0
