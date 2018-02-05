@@ -42,6 +42,39 @@ R"""
 """
 end
 
+function scale_plot(cohere::CoherenceModel,C::EigenSeries;
+                    n=ncomponents(C),scales=AuditoryModel.scales(cohere))
+  nscales = length(AuditoryModel.scales(cohere))
+  scales,indices = findscales(cohere.cort,scales)
+
+  u = reshape(eigvecs(C),length(C),nscales,:,ncomponents(C))
+  u = u[:,indices,:,:]
+  ii = CartesianRange(size(u))
+  at(i) = map(ii -> ii[i],ii)
+
+  df = DataFrame(value = vec(u),
+                 time = vec(ustrip.(times(cohere,C)[at(1)])),
+                 scale = vec(round.(scales[at(2)],2)),
+                 freq_bin = vec(at(3)),
+                 component = vec(at(4)))
+
+  fbreaks,findices = freq_ticks(cohere.cort.aspect)
+  p = raster_plot(df,value=:value,x=:time,y=:freq_bin)
+
+R"""
+
+  scalestr = function(x){sprintf("Scale: %3.2f cyc/oct",x)}
+  ordered_scales = function(x){
+    factor(scalestr(x),levels=scalestr($scales))
+  }
+
+  $p + facet_grid(ordered_scales(scale)~paste("component",component)) +
+  scale_y_continuous(breaks=$findices,labels=$fbreaks) +
+  ylab('Frequency (Hz)') + xlab('Time (s)')
+
+"""
+end
+
 function rplot(cohere::CoherenceModel,C::EigenSpace;
                n=ncomponents(C),showvar=true,λ_digits=:automatic)
   λ = abs.(eigvals(C))
