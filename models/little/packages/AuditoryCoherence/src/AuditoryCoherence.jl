@@ -3,7 +3,7 @@ using AuditoryModel
 using DataFrames
 using Requires
 
-import AuditoryModel: rplot, Δt, Δf, times, freqs 
+import AuditoryModel: Δt, Δf, times, freqs 
 
 export adaptmi, drift, scale_weighting, ncomponents, CoherenceModel,
     fusion_ratio, object_SNR, mask, scene_object_ratio,

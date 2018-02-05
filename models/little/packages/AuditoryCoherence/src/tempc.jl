@@ -3,7 +3,6 @@ using RCall
 using Match
 using Parameters
 using ProgressMeter
-import AuditoryModel: raster_plot
 
 struct CoherenceModel
   cort::CorticalModel

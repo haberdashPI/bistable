@@ -1,4 +1,6 @@
 using RCall
+import AuditoryModel: rplot, raster_plot
+export rplot, scale_plot
 R"library(ggplot2)"
 
 rplot(cohere::CoherenceModel,x::Sound;kwds...) = rplot(cohere,cohere(x);kwds...)
