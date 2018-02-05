@@ -1,4 +1,5 @@
 using RCall
+R"library(ggplot2)"
 
 rplot(cohere::CoherenceModel,x::Sound;kwds...) = rplot(cohere,cohere(x);kwds...)
 
@@ -8,8 +9,6 @@ function rplot(cohere::CoherenceModel,λ::Vector)
   df = DataFrame(value = sort(λ,rev=true),index = collect(eachindex(λ)))
 
 R"""
-  library(ggplot2)
-
   ggplot($df,aes(x=index,y=value)) + geom_bar(stat='identity')
 """
 end
@@ -35,8 +34,6 @@ function rplot(cohere::CoherenceModel,C::EigenSeries;n=ncomponents(C))
   df = df[df[:component] .<= n,:]
 
 R"""
-  library(ggplot2)
-
   ggplot($df,aes(x=time,y=value,color=factor(component),group=component)) +
     geom_line() + scale_color_brewer(palette='Set1',name='Component') +
     xlab('Time (s)') + ylab('Value')
@@ -80,31 +77,6 @@ function rplot(cohere::CoherenceModel,C::EigenSpace;
   p = raster_plot(df,value=:response,x=:scale_index,y=:freq_bin)
 
 R"""
-
-  library(ggplot2)
-
-  $p + facet_wrap(~component_title,labeller=label_parsed) +
-    scale_y_continuous(breaks=$findices,labels=$fbreaks) +
-    scale_x_continuous(breaks=$sindices,labels=$sbreaks) +
-    ylab('Frequency (Hz)') + xlab('Scale (cycles/octave)')
-"""
-
-end
-
-function rplot(cohere::CoherenceModel,C::Array{<:EigenSeries},
-               label=:index => 1:length(C))
-  x = [fusion_signal(cohere,Ci) for Ci in C]
-  df = DataFrame(resp = vcat((real.(xi) for xi in x)...),
-                 var = vcat((fill(label[2][i],length(x[i]))
-                             for i in eachindex(x))...),
-                 time = vcat((ustrip.(eachindex(xi) * Δt(cohere))
-                              for xi in x)...))
-
-R"""
-  library(ggplot2)
-
-  ggplot($df,aes(x=time,y=resp,group=factor(var),color=factor(var))) +
-    geom_line() +
     scale_color_brewer(palette='Set1',name=$(string(label[1]))) +
     coord_cartesian(ylim=c(1.1,0)) + ylab('lambda / var(x)') +
     xlab('time (s)')
