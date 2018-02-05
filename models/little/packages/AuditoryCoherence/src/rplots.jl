@@ -74,7 +74,7 @@ function rplot(cohere::CoherenceModel,C::EigenSpace;
 
   sindices = 1:2:length(scales(cohere.cort))
   sbreaks = round.(scales(cohere.cort)[sindices],2)
-  fbreaks,findices = freq_ticks(cohere.cort.aspect,u[:,:,1])
+  fbreaks,findices = freq_ticks(cohere.cort.aspect)
 
   p = raster_plot(df,value=:response,x=:scale_index,y=:freq_bin)
 
@@ -84,5 +84,3 @@ R"""
     xlab('time (s)')
 """
 end
-
-  

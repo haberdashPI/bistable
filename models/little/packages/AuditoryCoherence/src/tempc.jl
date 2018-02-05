@@ -14,7 +14,11 @@ end
 
 Δt(cohere::CoherenceModel) = Δt(cohere.cort)*cohere.frame_len
 times(cohere::CoherenceModel,x) =
-    times(cohere.cort,x)[min_window_size:cohere.frame_len:end]
+  times(cohere.cort,x)[min_window_size:cohere.frame_len:end]
+times(cohere::CoherenceModel,C::EigenSeries) =
+  (min_window_size:cohere.frame_len:length(C)*cohere.frame_len).*Δt(cohere.cort)
+scales(cohere::CoherenceModel) = scales(cohere.cort)
+rates(cohere::CoherenceModel) = rates(cohere.cort)
 
 (cohere::CoherenceModel)(x::AbstractVector) = cohere(cohere.cort(x))
 (cohere::CoherenceModel)(x::AbstractMatrix) = cohere(cohere.cort(x))

@@ -45,12 +45,12 @@ end
 all_freqs(as::AuditorySpectrogram) =
   440.0Hz * 2.0.^(((1:nchannels(as)).-31)./24 .+ as.octave_shift)
 
-freqs(as::AuditorySpectrogram) = freqs(as,1:length(channels_computed(as)))
+freqs(as::AuditorySpectrogram) = freqs(as,channels_computed(as))
 freqs(as::AuditorySpectrogram,data::AbstractMatrix) = freqs(as,indices(data,2))
 freqs(as::AuditorySpectrogram,data::AbstractArray{T,4}) where T =
     freqs(as,indices(data,2))
-freqs(as::AuditorySpectrogram,ixs) =
-  filter(f -> as.min_freq <= f <= as.max_freq,all_freqs(as))[ixs]
+freqs(as::AuditorySpectrogram,ixs::Union{Range,AbstractVector,Number}) =
+  all_freqs(as)[ixs]
 
 times(as::AuditorySpectrogram,data::AbstractMatrix) =
   indices(data,1) ./ as.fs .* frame_length(as) * s
@@ -65,18 +65,18 @@ times(as::AuditorySpectrogram,data::AbstractMatrix) =
   end
 end
 
-function freq_ticks(as::AuditorySpectrogram,x)
+function freq_ticks(as::AuditorySpectrogram)
   a = ustrip(as.min_freq)
   b = ustrip(as.max_freq)
   step = 0.25
 
-  helper(x,step) = round.(filter(f -> a <= f <= b,1000*2.0.^(-3:step:2)),-1)
-  fbreaks = helper(x,step)
+  helper(step) = round.(filter(f -> a <= f <= b,1000*2.0.^(-3:step:2)),-1)
+  fbreaks = helper(step)
   while length(fbreaks) > 7
-    fbreaks = helper(x,(step *= 2))
+    fbreaks = helper(step *= 2)
   end
 
-  fs = ustrip(freqs(as,x))
+  fs = ustrip(freqs(as))
 
   findices = mapslices(abs.(fbreaks .- fs'),2) do row
     _, i = findmin(row)
@@ -95,7 +95,7 @@ function rplot(as::AuditorySpectrogram,data::Matrix)
   df = DataFrame(response = vec(data),
                  time = vec(ustrip(times(as,data)[at(ixs,1)])),
                  freq_bin = vec(at(ixs,2)))
-  fbreaks,findices = freq_ticks(as,data)
+  fbreaks,findices = freq_ticks(as)
   p = raster_plot(df,value=:response,x=:time,y=:freq_bin)
 R"""
 

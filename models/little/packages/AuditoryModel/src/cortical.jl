@@ -343,6 +343,16 @@ function nearin(xin,xs)
   cols[inds[:,1]]
 end
 
+function findscales(cort::CorticalModel,scales)
+  sindices = sort(unique(nearin(scales,cort.scales)))
+  cort.scales[sindices], sindices
+end
+
+function findrates(cort::CorticalModel,rates)
+  rindices = sort(unique(nearin(rates,cort.rates)))
+  cort.rates[rindices], rindices
+end
+
 function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
   rindices = sort(unique(nearin(rates,cort.rates)))
   sindices = sort(unique(nearin(scales,cort.scales)))
@@ -365,14 +375,14 @@ function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
                  scale = vec(scales[at(ixs,3)]),
                  freq_bin = vec(at(ixs,4)))
 
-  fbreaks,findices = freq_ticks(cort.aspect,y[:,1,1,:])
+  fbreaks,findices = freq_ticks(cort.aspect)
   p = raster_plot(df,value=:response,x=:time,y=:freq_bin)
 
 R"""
 
   library(ggplot2)
 
-  scalestr = function(x){sprintf("Scale: %3.2f/oct",x)}
+  scalestr = function(x){sprintf("Scale: %3.2f cyc/oct",x)}
   ratestr = function(x){sprintf("Rate: %5.2f Hz",x)}
 
   ordered_scales = function(x){
