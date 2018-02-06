@@ -50,8 +50,12 @@ R"""
 
   library(ggplot2)
 
-  scalestr = function(x){sprintf("Scale: %3.2f cyc/oct",x)}
-  ratestr = function(x){sprintf("Rate: %5.2f Hz",x)}
+  scalestr = function(x){
+    ifelse(!is.nan(x),sprintf("Scale: %3.2f cyc/oct",x),"All Scales")
+  }
+  ratestr = function(x){
+    ifelse(!is.nan(x),sprintf("Rate: %5.2f Hz",x),"All Rates")
+  }
 
   ordered_scales = function(x){
     factor(scalestr(x),levels=scalestr($(sort(scales))))
