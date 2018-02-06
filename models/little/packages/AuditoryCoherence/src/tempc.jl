@@ -43,6 +43,32 @@ ncomponents(cohere::CoherenceModel) = cohere.ncomponents
 Base.CartesianRange(x::Int) = CartesianRange((x,))
 function (cohere::CoherenceModel)(x)
   @match cohere.method begin
+    (:real_svd,n_phases) => begin
+      windows = enumerate(windowing(x,1;length=windowlen(cohere),
+                                    step=cohere.frame_len))
+      C = EigenSeries(real(eltype(x)),length(windows),nunits(cohere,x),
+                      ncomponents(cohere),Δt(cohere))
+
+      @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
+        window = x[w_inds,:,:,:]
+        xc_t = reshape(window,prod(size(window,1,2)),:)
+
+        # expand the representation, to have n_phase
+        # real filters
+        xp_t = Array{real(eltype(xc_t))}((size(xc_t,1),n_phases,size(xc_t,2)))
+        for (j,phase) in enumerate(linspace(-π,π,n_phases+1)[1:end-1])
+          xp_t[:,j,:] = real.(xc_t .* exp.(phase.*im))
+        end
+        x_t = reshape(xp_t,:,size(xc_t,2))
+        cor = x_t' * x_t
+        n = min(size(cor,1),ncomponents(cohere))
+        sv, = svds(cor,nsv=n)
+
+        var = mean(abs2.(cor),1)
+        C[i] = EigenSpace(sv[:U],sqrt.(sv[:S]),var)
+      end
+      normalize_phase!(C)
+    end
     :pca => begin
       windows = enumerate(windowing(x,1;length=windowlen(cohere),
                                     step=cohere.frame_len))
