@@ -45,7 +45,7 @@ end
 function scale_plot(cohere::CoherenceModel,C::EigenSeries;
                     components=1:ncomponents(C),scales=AuditoryModel.scales(cohere))
   nscales = length(AuditoryModel.scales(cohere))
-  scales,indices = findnear(AuditoryModel.scales(cohere),scales)
+  scales,indices = AuditoryModel.findnear(AuditoryModel.scales(cohere),scales)
 
   u = reshape(eigvecs(C),length(C),nscales,:,ncomponents(C))
   u = u[:,indices,:,components]
