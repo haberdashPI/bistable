@@ -117,11 +117,26 @@ function project(x::EigenSpace,y::EigenSpace)
   end
 end
 
-# maintains the sign of the feature of component 1 with the largest mean
-function normalize_sign(pcas::EigenSeries)
+"""
+    normalize_phase(C::EigenSeries)
+
+Given a series of principle components, for each component rotate all phases so
+that the feature with the largest mean absolute value has the same phase
+throughout the series.
+"""
+function normalize_phase!(pcas::EigenSeries{<:Real})
   for c in 1:ncomponents(pcas)
-    max_feature_i = indmax(mean(abs.(pcas.u[:,:,c]),1))
-    pcas.u[:,:,c] .*= sign.(pcas.u[:,max_feature_i,c])
+    mi = indmax(mean(abs.(pcas.u[:,:,c]),1))
+    pcas.u[:,:,c] .*= sign.(pcas.u[:,mi,c])
+  end
+
+  pcas
+end
+
+function normalize_phase!(pcas::EigenSeries{<:Complex})
+  for c in 1:ncomponents(pcas)
+    mi = indmax(mean(abs.(pcas.u[:,:,c]),1))
+    pcas.u[:,:,c] ./= exp.(im*angle.(pcas.u[:,mi,c]))
   end
 
   pcas

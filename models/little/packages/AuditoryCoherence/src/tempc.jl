@@ -12,11 +12,15 @@ struct CoherenceModel
   frame_len::Int
 end
 
+const min_window_size = 10
+
 Δt(cohere::CoherenceModel) = Δt(cohere.cort)*cohere.frame_len
-times(cohere::CoherenceModel,x) =
+function times(cohere::CoherenceModel,x)
+  @show length(times(cohere.cort,x))
   times(cohere.cort,x)[min_window_size:cohere.frame_len:end]
+end
 times(cohere::CoherenceModel,C::EigenSeries) =
-  (min_window_size:cohere.frame_len:length(C)*cohere.frame_len).*Δt(cohere.cort)
+  ((0:length(C)-1).*cohere.frame_len .+ min_window_size) .* Δt(cohere.cort)
 scales(cohere::CoherenceModel) = scales(cohere.cort)
 rates(cohere::CoherenceModel) = rates(cohere.cort)
 
@@ -27,7 +31,6 @@ CoherenceModel(cort,ncomponents;window=1s,method=:pca,frame_len=10ms) =
   CoherenceModel(cort,ncomponents,window,method,
              max(1,floor(Int,frame_len/Δt(cort))))
 
-const min_window_size = 10
 windowing(x,dim;length=nothing,step=nothing) =
   (max(1,t-length):t for t in indices(x,dim)[min_window_size:step:end])
 
@@ -63,7 +66,7 @@ function (cohere::CoherenceModel)(x)
         C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
       end
 
-      normalize_sign(C)
+      normalize_phase!(C)
     end
     (:real_pca,n_phases) => begin
       windows = enumerate(windowing(x,1;length=windowlen(cohere),
@@ -96,7 +99,7 @@ function (cohere::CoherenceModel)(x)
         C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
       end
 
-      normalize_sign(C)
+      normalize_phase!(C)
     end
     method => begin
       error("No method named $(method)")
