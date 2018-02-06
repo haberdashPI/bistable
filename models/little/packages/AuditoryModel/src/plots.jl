@@ -34,9 +34,12 @@ function raster_plot(df::DataFrame;value=:z,kwds...)
 end
 
 function raster_plot__real(df::DataFrame;value=:z,x=:x,y=:y,name=string(value),
-                           limits=extrema(df[value]))
+                           limits=extrema(real.(df[value])),real_suffix=:_real)
+  value_r = Symbol(string(value,real_suffix))
+  df = copy(df)
+  df[value_r] = real.(df[value])
 
-  colormap = if any(df[value] .< 0)
+  colormap = if any(df[value_r] .< 0)
     lim = maximum(abs.(limits))
     limits = (-lim,lim)
     "#".*hex.(RGB.(cmap("D1")))
@@ -46,7 +49,7 @@ function raster_plot__real(df::DataFrame;value=:z,x=:x,y=:y,name=string(value),
 
 R"""
 
-  ggplot($df,aes_string(x=$(string(x)),y=$(string(y)),fill=$(string(value)))) +
+  ggplot($df,aes_string(x=$(string(x)),y=$(string(y)),fill=$(string(value_r)))) +
     geom_raster() +
     scale_fill_gradientn(colors=$colormap,limits=$(collect(limits)),name=$name)
 
