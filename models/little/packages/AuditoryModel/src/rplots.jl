@@ -6,29 +6,31 @@ rplot(cort::CorticalModel,y::AbstractVector) = rplot(cort,cort(y))
 function nearin(xin,xs)
   _,inds = findmin(abs.(vec(xin) .- vec(xs)'),2)
   cols = map(ii -> ii[2],CartesianRange((length(xin),length(xs))))
-  cols[inds[:,1]]
+  if length(inds) > 0
+    cols[inds[:,1]]
+  else
+    Array{Int}(0)
+  end
 end
 
-function findscales(cort::CorticalModel,scales)
-  sindices = sort(unique(nearin(scales,cort.scales)))
-  cort.scales[sindices], sindices
-end
-
-function findrates(cort::CorticalModel,rates)
-  rindices = sort(unique(nearin(rates,cort.rates)))
-  cort.rates[rindices], rindices
+function findnear(x,nearby)
+  indices = sort(unique(nearin(filter(!isnan,nearby),
+                                filter(!isnan,x))))
+  if any(isnan(nearby))
+    [NaN; x[indices]], [find(isnan,x); indices]
+  else
+    x[indices], indices
+  end
 end
 
 function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
-  rindices = sort(unique(nearin(rates,cort.rates)))
-  sindices = sort(unique(nearin(scales,cort.scales)))
+  rates, rindices = findnear(cort.rates,rates)
+  scales, sindices = findnear(cort.scales,scales)
 
   if rates != cort.rates || scales != cort.scales
     @show rindices
     @show sindices
   end
-  rates = cort.rates[rindices]
-  scales = cort.scales[sindices]
 
   y = y[:,rindices,sindices,:]
 

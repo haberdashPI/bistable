@@ -43,12 +43,12 @@ R"""
 end
 
 function scale_plot(cohere::CoherenceModel,C::EigenSeries;
-                    n=ncomponents(C),scales=AuditoryModel.scales(cohere))
+                    components=1:ncomponents(C),scales=AuditoryModel.scales(cohere))
   nscales = length(AuditoryModel.scales(cohere))
-  scales,indices = findscales(cohere.cort,scales)
+  scales,indices = findnear(AuditoryModel.scales(cohere),scales)
 
   u = reshape(eigvecs(C),length(C),nscales,:,ncomponents(C))
-  u = u[:,indices,:,:]
+  u = u[:,indices,:,components]
   ii = CartesianRange(size(u))
   at(i) = map(ii -> ii[i],ii)
 
