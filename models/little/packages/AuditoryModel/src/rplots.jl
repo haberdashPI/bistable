@@ -2,6 +2,7 @@ using RCall
 export rplot, collapsed_scale_plot
 
 rplot(cort::CorticalModel,y::AbstractVector) = rplot(cort,cort(y))
+rplot(cort::CorticalModel,y::AbstractMatrix) = rplot(cort,cort(y))
 
 function nearin(xin,xs)
   _,inds = findmin(abs.(vec(xin) .- vec(xs)'),2)
