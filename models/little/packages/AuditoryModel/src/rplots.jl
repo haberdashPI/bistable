@@ -17,7 +17,7 @@ end
 function findnear(x,nearby)
   indices = sort(unique(nearin(filter(!isnan,nearby),
                                 filter(!isnan,x))))
-  if any(isnan(nearby))
+  if any(isnan.(nearby))
     [NaN; x[indices]], [find(isnan,x); indices]
   else
     x[indices], indices
