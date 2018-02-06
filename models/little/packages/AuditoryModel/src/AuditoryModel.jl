@@ -14,4 +14,7 @@ include("plots.jl")
 include("audio_spect.jl")
 include("cortical.jl")
 
+# @require RCall include(joinpath(@__DIR__,"rplots.jl"))
+include(joinpath(@__DIR__,"rplots.jl"))
+
 end
