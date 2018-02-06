@@ -219,7 +219,7 @@ function (cm::CorticalModel)(s_in::Matrix;usematlab=false,progressbar=true)
         z = t_ifft * (HR .* S1)
         cr[:, ri, si, :] = view(z,indices(s)...)
       else
-			  HS = scale_filter(scale, N_f, spect_rate,
+	      HS = scale_filter(scale, N_f, spect_rate,
                           cm.bandonly ? :band :
                           scale == smin ? :low : scale < smax ? :band : :high)
 
