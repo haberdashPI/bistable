@@ -1,8 +1,8 @@
 using RCall
 export rplot, collapsed_scale_plot
 
-rplot(cort::CorticalModel,y::AbstractVector) = rplot(cort,cort(y))
-rplot(cort::CorticalModel,y::AbstractMatrix) = rplot(cort,cort(y))
+rplot(cort::CorticalModel,y::AbstractVector;kwds...) = rplot(cort,cort(y);kwds...)
+rplot(cort::CorticalModel,y::AbstractMatrix;kwds...) = rplot(cort,cort(y);kwds...)
 
 function nearin(xin,xs)
   _,inds = findmin(abs.(vec(xin) .- vec(xs)'),2)
