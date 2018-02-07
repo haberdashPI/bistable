@@ -86,7 +86,9 @@ function rplot(cohere::CoherenceModel,C::EigenSpace;
   u = reshape(u,length(scales(cohere.cort)),:,size(u,2))
   ii = CartesianRange(size(u))
   at(i) = vec(map(ii -> ii[i],ii))
-  digits = λ_digits == :automatic ? -floor(Int,log10(λ[end]))+2 : λ_digits
+  digits = λ_digits != :automatic ?  λ_digits :
+    min(-floor(Int,log10(λ[minimum(components)]))+2,
+        -floor(Int,log10(λ[maximum(components)]))+1)
 
   function title(n)
     if n <= length(λ)
