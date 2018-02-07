@@ -43,7 +43,9 @@ R"""
 end
 
 function scale_plot(cohere::CoherenceModel,C::EigenSeries;
-                    components=1:ncomponents(C),scales=AuditoryModel.scales(cohere))
+                    λ_digits=:automatic,
+                    components=1:ncomponents(C),
+                    scales=AuditoryModel.scales(cohere))
   nscales = length(AuditoryModel.scales(cohere))
   scales,indices = AuditoryModel.findnear(AuditoryModel.scales(cohere),scales)
 
@@ -51,27 +53,39 @@ function scale_plot(cohere::CoherenceModel,C::EigenSeries;
   u = u[:,indices,:,components]
   ii = CartesianRange(size(u))
   at(i) = map(ii -> ii[i],ii)
+  λ = mean(eigvals(C),1)
+  digits = λ_digits != :automatic ?  λ_digits :
+    min(-floor(Int,log10(λ[minimum(components)]))+2,
+        -floor(Int,log10(λ[maximum(components)]))+1)
+  function rowtitle(n)
+    rounded = round(λ[n],digits)
+    if rounded > 0
+      "lambda[$(n)] == $(round(λ[n],digits))"
+    else
+      "lambda[$(n)] < 1e$(-digits)"
+    end
+  end
 
   df = DataFrame(value = vec(u),
                  time = vec(ustrip.(times(cohere,C)[at(1)])),
                  scale = vec(round.(scales[at(2)],2)),
                  freq_bin = vec(at(3)),
-                 component = vec(at(4)))
+                 component = vec(at(4)),
+                 component_title = rowtitle.(vec(at(4))))
 
   fbreaks,findices = freq_ticks(cohere.cort.aspect)
   p = raster_plot(df,value=:value,x=:time,y=:freq_bin)
 
 R"""
-
-  scalestr = function(x){sprintf("Scale: %3.2f cyc/oct",x)}
+  scalevals = $scales
+  scalestr = function(x){sprintf("'Scale: %3.2f cyc/oct'",x)}
   ordered_scales = function(x){
-    factor(scalestr(x),levels=scalestr($scales))
+    factor(scalestr(x),levels=scalestr(scalevals))
   }
 
-  $p + facet_grid(ordered_scales(scale)~paste("component",component)) +
+  $p + facet_grid(ordered_scales(scale)~component_title,labeller=label_parsed) +
   scale_y_continuous(breaks=$findices,labels=$fbreaks) +
   ylab('Frequency (Hz)') + xlab('Time (s)')
-
 """
 end
 
