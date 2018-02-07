@@ -166,7 +166,7 @@ function (cm::CorticalModel)(s_in::Matrix;usematlab=false,progressbar=true)
       y = mat"aud2cor($s,$paras,$orates,$oscales,'tmpxxx',0)"
 
       y = permutedims(y,[3,2,1,4])
-      rs = Main.rates(cort)
+      rs = AuditoryModel.rates(cm)
       order = sortperm([.-rs[rs .> 0]; rs[rs .> 0]])
 
       return y[:,order,:,channels_computed(cm.aspect)]
