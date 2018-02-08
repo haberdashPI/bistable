@@ -10,6 +10,7 @@ struct CoherenceModel
   window::Seconds{Float64}
   method::Any
   frame_len::Int
+  normalize::Bool
 end
 
 const min_window_size = 10
@@ -27,9 +28,10 @@ rates(cohere::CoherenceModel) = rates(cohere.cort)
 (cohere::CoherenceModel)(x::AbstractVector) = cohere(cohere.cort(x))
 (cohere::CoherenceModel)(x::AbstractMatrix) = cohere(cohere.cort(x))
 
-CoherenceModel(cort,ncomponents;window=1s,method=:pca,frame_len=10ms) =
+CoherenceModel(cort,ncomponents;window=1s,method=:pca,frame_len=10ms,
+               normalize_phase=true) =
   CoherenceModel(cort,ncomponents,window,method,
-             max(1,floor(Int,frame_len/Δt(cort))))
+                 max(1,floor(Int,frame_len/Δt(cort))),normalize_phase)
 
 windowing(x,dim;length=nothing,step=nothing) =
   (max(1,t-length):t for t in indices(x,dim)[min_window_size:step:end])
@@ -66,7 +68,7 @@ function (cohere::CoherenceModel)(x)
         C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
       end
 
-      normalize_phase!(C)
+      cohere.normalize ? normalize_phase!(C) : C
     end
     (:real_pca,n_phases) => begin
       windows = enumerate(windowing(x,1;length=windowlen(cohere),
@@ -99,7 +101,7 @@ function (cohere::CoherenceModel)(x)
         C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
       end
 
-      normalize_phase!(C)
+      cohere.normalize ? normalize_phase!(C) : C
     end
     method => begin
       error("No method named $(method)")
