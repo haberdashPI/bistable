@@ -120,13 +120,17 @@ end
 """
     normalize_phase(C::EigenSeries)
 
-Given a series of principle components, for each component rotate all phases so
-that the feature with the largest mean absolute value has the same phase
+Given a series of principle components, for each component, rotate all phases so
+that the feature with the largest mean absolute value has zero phase
 throughout the series.
+
+**note** - because the early part of the anlaysis can be more noisy
+this only computes the mean of features across the second half of
+the series.
 """
 function normalize_phase!(pcas::EigenSeries{<:Real})
   for c in 1:ncomponents(pcas)
-    mi = indmax(mean(abs.(pcas.u[:,:,c]),1))
+    mi = indmax(mean(abs.(pcas.u[end>>1:end,:,c]),1))
     pcas.u[:,:,c] .*= sign.(pcas.u[:,mi,c])
   end
 
@@ -135,7 +139,7 @@ end
 
 function normalize_phase!(pcas::EigenSeries{<:Complex})
   for c in 1:ncomponents(pcas)
-    mi = indmax(mean(abs.(pcas.u[:,:,c]),1))
+    mi = indmax(mean(abs.(pcas.u[end>>1:end,:,c]),1))
     pcas.u[:,:,c] ./= exp.(im*angle.(pcas.u[:,mi,c]))
   end
 
