@@ -15,7 +15,8 @@ isdir(dir) || mkdir(dir)
 spect = AuditorySpectrogram(len=25)
 cort = CorticalModel(spect,scales = 2.0.^linspace(-2,1,10),bandonly=true)
 
-function ideal_ab(spect,tone_len,spacing_len,offset_ratio,repeats,freq,delta,options...)
+function ideal_ab(spect,tone_len,spacing_len,offset_ratio,repeats,freq,
+                  delta,options...)
   a_freq=freq
   b_freq=freq*(2^(delta/12))
 
@@ -114,6 +115,35 @@ p = plot_grid($p2 + ggtitle("Alternating AB"),
 save_plot($(joinpath(dir,"2_complex_valued_components.pdf")),p,
   base_aspect_ratio=3,nrow=5,ncol=3)
 """
+########################################
+# complex valued with simplified scales (real and fake data)
+
+cort = CorticalModel(spect,scales = [1,4],bandonly=true) # 3 ?
+cohere = CoherenceModel(cort,6,window=750ms,method=:pca,frame_len=50ms)
+
+sp = ideal_ab(spect,120ms,120ms,1,6,500Hz,6)
+cr = cort(sp);
+Cr = cohere(cr);
+
+p1 = scale_plot(cohere,Cr);
+p2 = rplot(spect,sp)
+
+cort = CorticalModel(spect,scales = [1,4],bandonly=true) # 3 ?
+cohere = CoherenceModel(cort,6,window=750ms,method=:pca,frame_len=50ms)
+
+x = @>(ab(120ms,120ms,1,6,500Hz,6),normpower,amplify(-10))
+sp = spect(x)
+cr = cort(sp);
+Cr = cohere(cr);
+
+p1 = scale_plot(cohere,Cr)
+p2 = rplot(spect,sp)
+
+spC = mean_spect(cohere,Cr,cr)
+rplot(spect,spC)
+
+spC = mean_spect(cohere,Cr,cr,component=2)
+rplot(spect,spC)
 
 ########################################
 # complex valued components with real stimulis
