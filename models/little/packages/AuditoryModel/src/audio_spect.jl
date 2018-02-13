@@ -9,8 +9,11 @@ using RecipesBase
 
 import DSP.Filters.freqs
 
+const cochba = h5open(joinpath(@__DIR__,"..","data","cochba.h5")) do file
+  read(file,"/real") + read(file,"/imag")*im
+end
+
 struct AuditorySpectrogram
-  cochba::Matrix{Complex128}
   len::Int
   decay_tc::Float64
   nonlinear::Float64
@@ -20,7 +23,7 @@ struct AuditorySpectrogram
   max_freq::Hertz{Float64}
 end
 
-Sounds.nchannels(as::AuditorySpectrogram) = size(as.cochba,2)-1
+Sounds.nchannels(as::AuditorySpectrogram) = size(cochba,2)-1
 channels_computed(s::AuditorySpectrogram) =
   find(f -> s.min_freq <= f <= s.max_freq,all_freqs(s))
 
@@ -35,12 +38,9 @@ function AuditorySpectrogram(;fs=ustrip(samplerate()),
   max_freq = convert(Hertz{Float64},max_freq)
 
   @assert fs == 8000 "The only sample rate supported is 8000 Hz"
-  h5open(joinpath(@__DIR__,"..","data","cochba.h5")) do file
-    r = read(file,"/real")
-    i = read(file,"/imag")
-    AuditorySpectrogram(r + i*im,len,decay_tc,nonlinear,octave_shift,fs,
-                        min_freq,max_freq)
-  end
+
+  AuditorySpectrogram(len,decay_tc,nonlinear,octave_shift,fs,
+                      min_freq,max_freq)
 end
 
 all_freqs(as::AuditorySpectrogram) =
@@ -147,7 +147,7 @@ frame_length(s::AuditorySpectrogram) = round(Int,s.len * 2^(4+s.octave_shift))
 (s::AuditorySpectrogram)(x::Sound) = s(Array(convert(Sound{s.fs,Float64,1},x)))
 
 function (s::AuditorySpectrogram)(x::Vector{T},internal_call=false) where T
-  L, M = size(s.cochba)	# p_max = L - 2
+  L, M = size(cochba)	# p_max = L - 2
   L_x = length(x)	# length of input
   frame_len	= frame_length(s)
 
@@ -169,9 +169,9 @@ function (s::AuditorySpectrogram)(x::Vector{T},internal_call=false) where T
   # last channel (highest frequency)
   #######################################
 
-	p	= floor(Int,real(s.cochba[1, M]))
-	B	= real(s.cochba[(0:p)+2, M])
-	A	= imag(s.cochba[(0:p)+2, M])
+	p	= floor(Int,real(cochba[1, M]))
+	B	= real(cochba[(0:p)+2, M])
+	A	= imag(cochba[(0:p)+2, M])
 
   y1	= filt(PolynomialRatio(B,A),x)
   y2	= sigmoid(y1, s.nonlinear)
@@ -189,9 +189,9 @@ function (s::AuditorySpectrogram)(x::Vector{T},internal_call=false) where T
 	  # ANALYSIS: cochlear filterbank
 	  ########################################
 	  # (IIR) filter bank convolution ---> y1
-	  p  = floor(Int,real(s.cochba[1, ch]))	# order of ARMA filter
-	  B  = real(s.cochba[(0:p)+2, ch])	# moving average coefficients
-	  A  = imag(s.cochba[(0:p)+2, ch])	# autoregressive coefficients
+	  p  = floor(Int,real(cochba[1, ch]))	# order of ARMA filter
+	  B  = real(cochba[(0:p)+2, ch])	# moving average coefficients
+	  A  = imag(cochba[(0:p)+2, ch])	# autoregressive coefficients
 
 	  y1 = filt(B, A, x)
 	  ########################################
@@ -257,7 +257,7 @@ function inv_guess(spect::AuditorySpectrogram,y::AbstractMatrix)
 end
 
 function match_x(spect::AuditorySpectrogram,x,ratios,y,y_hat,y3_hat)
-  M = size(spect.cochba,2)
+  M = size(cochba,2)
   steps = 1:frame_length(spect)*size(y,1)
   indices = ceil.(Int,steps / frame_length(spect))
 
@@ -267,10 +267,10 @@ function match_x(spect::AuditorySpectrogram,x,ratios,y,y_hat,y3_hat)
 
   x .= 0
   for ch in 1:M-1
-	  p = floor(Int,real(spect.cochba[1, ch]))	# order of ARMA filter
-		ch_norm	= imag(spect.cochba[1, M])
-	  B = real(spect.cochba[(0:p)+2, ch])	# moving average coefficients
-	  A = imag(spect.cochba[(0:p)+2, ch])	# autoregressive coefficients
+	  p = floor(Int,real(cochba[1, ch]))	# order of ARMA filter
+		ch_norm	= imag(cochba[1, M])
+	  B = real(cochba[(0:p)+2, ch])	# moving average coefficients
+	  A = imag(cochba[(0:p)+2, ch])	# autoregressive coefficients
 
     if spect.nonlinear == -2
       y1 = y3_hat[:,ch].*view(ratios,indices,ch)
@@ -295,7 +295,7 @@ function Base.inv(spect::AuditorySpectrogram,y_in::AbstractMatrix;
           "No stopping criterion specified (max_iterations or max_error).")
 
   y = y_in
-  M = size(spect.cochba,2)
+  M = size(cochba,2)
 
   # expand y to include all frequencies
   y = similar(y_in,size(y,1),M-1)
