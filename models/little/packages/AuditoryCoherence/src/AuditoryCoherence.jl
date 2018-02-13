@@ -5,7 +5,7 @@ using Requires
 
 import AuditoryModel: Δt, Δf, times, freqs, scales, rates
 
-export adaptmi, drift, scale_weighting, ncomponents, CoherenceModel,
+export adaptmi, drift, scale_weighting, ncomponents, nfeatures, CoherenceModel,
     fusion_ratio, object_SNR, mask, scene_object_ratio,
     object_SNR2, ab_match, mean_spect, AdaptMI
 

@@ -7,6 +7,7 @@ struct EigenSpace{U,L}
   var::Vector{L}
 end
 ncomponents(x::EigenSpace) = size(x.u,2)
+nfeatures(x::EigenSpace) = size(x.u,1)
 
 function EigenSpace(u::Array,λ::Array{L},var::Array{L}) where L
   @assert size(u,2) == size(λ,1) "Mismatched number of eigenvectors and values."
@@ -39,6 +40,7 @@ struct EigenSeries{U,L} <: AbstractArray{EigenSpace{U,L},1}
   end
 end
 ncomponents(x::EigenSeries) = size(x.u,3)
+nfeatures(x::EigenSeries) = size(x.u,2)
 
 EigenSeries(::Type{T},t,d,n,delta) where T =
   EigenSeries(Array{T}(t,d,n),Array{real(T)}(t,n),Array{real(T)}(t,d),delta)
