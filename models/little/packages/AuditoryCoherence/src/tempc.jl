@@ -115,7 +115,8 @@ end
 # end
 
 function mask(cohere::CoherenceModel,C::EigenSpace{<:Complex},
-              x::Array{T,4} where T;component=1)
+              x::AbstractArray{T,4} where T;component=1)
+  @assert nfeatures(C) == prod(size(x,3,4))
   y = copy(x)
   pc_ = eigvecs(C)[:,component]
   pc = reshape(pc_,length(scales(cohere)),:)
@@ -127,7 +128,7 @@ function mask(cohere::CoherenceModel,C::EigenSpace{<:Complex},
   y
 end
 
-function mask(cohere::CoherenceModel,C::EigenSpace{<:Real},x::Array{T,4};
+function mask(cohere::CoherenceModel,C::EigenSpace{<:Real},x::AbstractArray{T,4};
               component=1) where T
   m = if component == :max
     eigvecs(C)[:,indmax(eigvals(C))]
@@ -146,7 +147,7 @@ function mask(cohere::CoherenceModel,C::EigenSpace{<:Real},x::Array{T,4};
 end
 
 function __map_mask(fn::Function,cohere::CoherenceModel,C::EigenSeries,
-                    x::Array{T} where T,component)
+                    x::AbstractArray{T} where T,component)
   windows = enumerate(windowing(x,1;length=windowlen(cohere),
                                 step=cohere.frame_len))
   y = zeros(length(windows))
@@ -164,7 +165,7 @@ function __map_mask(fn::Function,cohere::CoherenceModel,C::EigenSeries,
   y
 end
 
-function mean_spect(cohere::CoherenceModel,C::EigenSeries,x::Array{T,4};
+function mean_spect(cohere::CoherenceModel,C::EigenSeries,x::AbstractArray{T,4};
                     component=1) where T
   y = fill(real(zero(x[1])),size(x,1,4))
   norm = fill(zero(real(x[1])),size(x,1,4))

@@ -3,7 +3,7 @@ import PerceptualColourMaps: cmap
 import Colors: RGB
 R"library(ggplot2)"
 
-# function colorsfn(x::Array{T},limits=extrema(x)) where T
+# function colorsfn(x::AbstractArray{T},limits=extrema(x)) where T
 #   colors = if real(T) === T || all(iszero.(imag.(x)))
 #     if any(x .< 0)
 #       lim = maximum(abs.(limits))

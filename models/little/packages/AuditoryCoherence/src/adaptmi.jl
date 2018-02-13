@@ -119,7 +119,7 @@ end
 #   so that m and a remain real, the resulting output
 #   can be multiplied by the phase of the original signal
 #   to find the final, complex output
-function __approx(f,x::Array{<:Complex},args...)
+function __approx(f,x::AbstractArray{<:Complex},args...)
   y = f(abs.(x),args...)
   withangle(angle.(x),y)
 end
@@ -131,9 +131,9 @@ end
 function withangle(angle,y)
   y.*angle
 end
-approx_similar(x::Array{<:Complex{T}}) where T =
+approx_similar(x::AbstractArray{<:Complex{T}}) where T =
   similar(x,T)
-approx_empty_timeslice(y::Array{<:Complex{T}}) where T =
+approx_empty_timeslice(y::AbstractArray{<:Complex{T}}) where T =
   zeros(T,size(y)[2:end]...)
 
 ##############################

@@ -11,7 +11,7 @@ function scale_weighting(cort,σ=1)
 
   @show W
 
-  function helper(x::Array{T,3}) where T
+  function helper(x::AbstractArray{T,3}) where T
     m = W*vec(sum(x,(1,3)))
     x./max.(1e-10,sum(x,(1,3))) .* reshape(m,1,:,1)
     # ones(x) .* reshape(m,1,:,1)

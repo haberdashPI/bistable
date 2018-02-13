@@ -19,14 +19,14 @@ end
 scales(cm::CorticalModel) = cm.scales
 rates(cm::CorticalModel) = cm.rates
 
-freqs(cm::CorticalModel,data::Array{T,4}) where T =
+freqs(cm::CorticalModel,data::AbstractArray{T,4}) where T =
   @views freqs(cm.aspect,data[:,1,1,:])
-freqs(cm::CorticalModel,data::Array{T,2}) where T =
+freqs(cm::CorticalModel,data::AbstractArray{T,2}) where T =
   @views freqs(cm.aspect,data)
 
-times(cm::CorticalModel,data::Array{T,4}) where T =
+times(cm::CorticalModel,data::AbstractArray{T,4}) where T =
   @views times(cm.aspect,data[:,1,1,:])
-times(cm::CorticalModel,data::Array{T,2}) where T =
+times(cm::CorticalModel,data::AbstractArray{T,2}) where T =
   @views times(cm.aspect,data)
 
 const loadloaded = fill(false)
@@ -39,7 +39,7 @@ end
 
 Δt(c::CorticalModel) = Δt(c.aspect)
 
-@recipe function plot(cm::CorticalModel,data::Array{T,4}) where T
+@recipe function plot(cm::CorticalModel,data::AbstractArray{T,4}) where T
   N_r, N_s = length(cm.rates), length(cm.scales)
   layout := (N_r, N_s)
   for (i,x) in enumerate(CartesianRange((N_r,N_s)))
@@ -141,7 +141,8 @@ end
 # TODO: use complex numbers to represent the output
 # but allow plotting to show absolute value and phase???
 
-function (cm::CorticalModel)(s_in::Matrix;usematlab=false,progressbar=true)
+function (cm::CorticalModel)(s_in::AbstractMatrix;usematlab=false,
+                             progressbar=true)
   if usematlab
     @static if USING_MATLAB
       if !loadloaded[]
@@ -236,7 +237,7 @@ function (cm::CorticalModel)(s_in::Matrix;usematlab=false,progressbar=true)
   cr
 end
 
-function Base.inv(cm::CorticalModel,cr_in::Array{T,4};
+function Base.inv(cm::CorticalModel,cr_in::AbstractArray{T,4};
                   usematlab=false,norm=0.9,progressbar=true) where T
   if usematlab
     @static if USING_MATLAB

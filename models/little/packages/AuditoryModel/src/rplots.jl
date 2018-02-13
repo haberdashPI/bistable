@@ -126,7 +126,8 @@ R"""
 end
 
 
-function plot_scales2(cort,data::Array{<:Complex};name="response",range=nothing)
+function plot_scales2(cort,data::AbstractArray{<:Complex};name="response",
+                      range=nothing)
   data = data[:,1,:,1]
   ixs = CartesianRange(size(data))
   at(ixs,i) = map(x -> x[i],ixs)

@@ -139,7 +139,7 @@ R"""
 
 end
 
-function rplot(tempc::CoherenceModel,C::Array{<:EigenSeries},
+function rplot(tempc::CoherenceModel,C::AbstractArray{<:EigenSeries},
                label=:index => 1:length(C))
   x = [fusion_signal(tempc,Ci) for Ci in C]
   df = DataFrame(resp = vcat((real.(xi) for xi in x)...),
