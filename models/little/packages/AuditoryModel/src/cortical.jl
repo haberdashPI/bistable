@@ -30,7 +30,26 @@ times(cm::CorticalModel,data::AbstractArray{T,2}) where T =
   @views times(cm.aspect,data)
 
 const loadloaded = fill(false)
-function CorticalModel(aspect::AuditorySpectrogram;
+
+"""
+    CorticalModel(spect=AuditorySpectrogram();
+       [rates=sort([-2.^(1:0.5:5); 2.^(1:0.5:5)])],
+       [scales=2.^(-2:0.5:3)]
+       [bandonly=false])
+
+Define parameters of the cortical model. Creates a callable
+object that can be used to produce the 4D time-rate-scale-frequency
+representation.
+
+By specificying `missing` values in the rates or scales to
+include a scale only or rate only analysis. For example, to
+create a time-scale-frequency analysis you can define
+
+```
+scaleonly = CorticalModel(rates=[missing])
+```
+"""
+function CorticalModel(aspect::AuditorySpectrogram=AuditorySpectrogram();
                        rates=sort([-2.^(1:0.5:5); 2.^(1:0.5:5)]),
                        scales=2.^(-2:0.5:3),
                        bandonly=false)
