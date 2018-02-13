@@ -1,4 +1,6 @@
 using RCall
+using Missings
+export missing
 # without this sleep, `using RCall` can lead to a segmentation fault
 # (interaction with MATLAB???)
 sleep(0.25)
@@ -109,7 +111,7 @@ end
 
 # create the frequency-scale filter (filter along spectral axis)
 function scale_filter(scale,len,ts,kind)
-  if isnan(scale)
+  if ismissing(scale)
     ones(len)
   end
 
@@ -121,7 +123,7 @@ end
 
 # create the temporal-rate filter (filter along temporal axis)
 function rate_filter(rate,len,spect_len,kind,use_conj=false)
-  if isnan(rate)
+  if ismissing(rate)
     return ones(2len)
   end
 
@@ -174,12 +176,12 @@ function (cm::CorticalModel)(s_in::AbstractMatrix;usematlab=false,
                cm.aspect.nonlinear,cm.aspect.octave_shift,
                0.0, 0.0, cm.bandonly ? 1.0 : 0.0]
       if !all(indexin(-abs.(cm.rates),cm.rates) .> 0)
-        error("Missing negative rates. Cannot use matlab implementation."*
-              " Set usematlab=false.")
+          error("Negative rates don't match postiive rates. Cannot use matlab"*
+                " implementation. Set usematlab=false.")
       end
-      if any(isnan.(cm.rates)) || any(isnan.(cm.scales))
-        error("NaN rate and/or scale not supproted by matlab implementation."*
-              " Set usematlab=false.")
+      if any(ismissing.(cm.rates)) || any(ismissing.(cm.scales))
+          error("missing value for rate and scale not supported by matlab"*
+                " implementation. Set usematlab=false.")
       end
       orates = sort(unique(abs.(cm.rates)))
       oscales = sort(unique(cm.scales))
@@ -220,7 +222,7 @@ function (cm::CorticalModel)(s_in::AbstractMatrix;usematlab=false,
                       desc="Cortical Simulation: ",
                       dt = progressbar ? 1.0 : Inf)
   for (ri,rate) in enumerate(rates)
-    z_t = if isnan(rate)
+    z_t = if ismissing(rate)
       # do not filter by rate
       (t_ifft * S)[1:size(s,1),:]
     else
@@ -234,7 +236,7 @@ function (cm::CorticalModel)(s_in::AbstractMatrix;usematlab=false,
     end
 
     for (si,scale) in enumerate(scales)
-      if isnan(scale)
+      if ismissing(scale)
         # do not filter by scale
         z = t_ifft * (HR .* S1)
         cr[:, ri, si, :] = view(z,indices(s)...)
@@ -272,8 +274,8 @@ function Base.inv(cm::CorticalModel,cr_in::AbstractArray{T,4};
         error("Missing negative rates. Cannot use matlab implementation."*
               " Set usematlab=false.")
       end
-      if any(isnan.(cm.rates)) || any(isnan.(cm.scales))
-        error("NaN rate and/or scale not supproted by matlab implementation."*
+      if any(ismissing.(cm.rates)) || any(ismissing.(cm.scales))
+        error("missing rate and/or scale not supproted by matlab implementation."*
               " Set usematlab=false.")
       end
       m_cr = permutedims(cr,[3,2,1,4])
@@ -312,7 +314,7 @@ function Base.inv(cm::CorticalModel,cr_in::AbstractArray{T,4};
                         desc="Cortical Inversion: ",
                         dt = progressbar ? 1.0 : Inf)
     for (ri,rate) in enumerate(rates)
-      if isnan(rate)
+      if ismissing(rate)
         next!(progresse)
         continue
       end
@@ -324,7 +326,7 @@ function Base.inv(cm::CorticalModel,cr_in::AbstractArray{T,4};
                        true)
 
       for (si,scale) in enumerate(scales)
-        if isnan(rate)
+        if ismissing(rate)
           next!(progress)
           continue
         end
