@@ -13,7 +13,7 @@ include("online_pca.jl")
 include("nmf.jl")
 include("adaptmi.jl")
 include("cortmi.jl")
-include("tempc.jl")
+include("cohere.jl")
 
 # after we stop revising this package use can use the conditionl
 # dependency (it interferes with 'Revise' automatic updates)
