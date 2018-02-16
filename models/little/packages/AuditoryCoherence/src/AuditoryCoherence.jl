@@ -9,7 +9,7 @@ export adaptmi, drift, scale_weighting, ncomponents, nunits, CoherenceModel,
     fusion_ratio, object_SNR, mask, scene_object_ratio,
     object_SNR2, ab_match, mean_spect, AdaptMI
 
-include("online_pca.jl")
+include("pca.jl")
 include("nmf.jl")
 include("adaptmi.jl")
 include("cortmi.jl")
