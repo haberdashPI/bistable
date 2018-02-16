@@ -1,10 +1,8 @@
-# push!(LOAD_PATH,"packages")
+push!(LOAD_PATH,"packages")
 using AuditoryModel
 using AuditoryCoherence
 using RCall
-# include("stim.jl")
-include("../stim.jl")
-
+include("stim.jl")
 
 R"library(ggplot2)"
 R"library(cowplot)"
@@ -15,56 +13,34 @@ isdir(dir) || mkdir(dir)
 spect = AuditorySpectrogram(len=25)
 cort = CorticalModel(spect,scales = 2.0.^linspace(-2,1,10),bandonly=true)
 
-function ideal_ab(spect,tone_len,spacing_len,offset_ratio,repeats,freq,
-                  delta,options...)
-  a_freq=freq
-  b_freq=freq*(2^(delta/12))
-
-  a_freqi = indmin(abs.(freqs(spect) .- a_freq))
-  b_freqi = indmin(abs.(freqs(spect) .- b_freq))
-
-  a_times = 2(tone_len+spacing_len) .* (0:10)
-  b_times = 2(tone_len+spacing_len) .* (0:10) .+
-    offset_ratio*(tone_len+spacing_len)
-  sp = zeros(ceil(Int,(maximum(b_times) + (tone_len+spacing_len)) / Δt(spect)),
-             length(freqs(spect)))
-
-  a_timei = find(mapslices(any,a_times .< times(spect,sp)' .<
-                           (a_times .+ (tone_len)),[1]))
-  b_timei = find(mapslices(any,b_times .< times(spect,sp)' .<
-                           (b_times .+ (tone_len)),[1]))
-
-  if !(:without_a in options) sp[a_timei,a_freqi] = 1 end
-  if !(:without_b in options) sp[b_timei,b_freqi] = 1 end
-
-  sp
-end
-
 sp = ideal_ab(spect,120ms,120ms,1,6,500Hz,6)
 cr = cort(sp);
 
-cohere = CoherenceModel(cort,6,window=750ms,method=(:real_pca,12),frame_len=50ms)
+cohere = CoherenceModel(cort,6,window=750ms,method=:real_pca,delta=50ms,
+                        n_phases=12)
 Cr = cohere(cr);
 
-p1 = scale_plot(cohere,Cr,scales=[0.25,0.5,1,2]);
+p1 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p2 = rplot(spect,sp)
 
 sp = ideal_ab(spect,120ms,120ms,1,6,500Hz,6,:without_b)
 cr = cort(sp);
 
-cohere = CoherenceModel(cort,4,window=750ms,method=(:real_pca,12),frame_len=50ms)
+cohere = CoherenceModel(cort,4,window=750ms,method=:real_pca,delta=50ms,
+                        n_phases=12)
 Cr = cohere(cr);
 
-p3 = scale_plot(cohere,Cr,scales=[0.25,0.5,1,2]);
+p3 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p4 = rplot(spect,sp)
 
 sp = ideal_ab(spect,120ms,120ms,0,6,500Hz,6)
 cr = cort(sp);
 
-cohere = CoherenceModel(cort,4,window=750ms,method=(:real_pca,12),frame_len=50ms)
+cohere = CoherenceModel(cort,4,window=750ms,method=:real_pca,delta=50ms,
+                        n_phases=12)
 Cr = cohere(cr);
 
-p5 = scale_plot(cohere,Cr,scales=[0.25,0.5,1,2]);
+p5 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p6 = rplot(spect,sp)
 
 R"""
@@ -82,28 +58,28 @@ save_plot($(joinpath(dir,"1_real_valued_components.pdf")),p,
 sp = ideal_ab(spect,120ms,120ms,1,6,500Hz,6)
 cr = cort(sp);
 
-cohere = CoherenceModel(cort,6,window=750ms,method=:pca,frame_len=50ms)
+cohere = CoherenceModel(cort,6,window=750ms,method=:pca,delta=50ms)
 Cr = cohere(cr);
 
-p1 = scale_plot(cohere,Cr,scales=[0.25,0.5,1,2]);
+p1 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p2 = rplot(spect,sp)
 
 sp = ideal_ab(spect,120ms,120ms,1,6,500Hz,6,:without_b)
 cr = cort(sp);
 
-cohere = CoherenceModel(cort,4,window=750ms,method=:pca,frame_len=50ms)
+cohere = CoherenceModel(cort,4,window=750ms,method=:pca,delta=50ms)
 Cr = cohere(cr);
 
-p3 = scale_plot(cohere,Cr,scales=[0.25,0.5,1,2]);
+p3 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p4 = rplot(spect,sp)
 
 sp = ideal_ab(spect,120ms,120ms,0,6,500Hz,6)
 cr = cort(sp);
 
-cohere = CoherenceModel(cort,4,window=750ms,method=:pca,frame_len=50ms)
+cohere = CoherenceModel(cort,4,window=750ms,method=:pca,delta=50ms)
 Cr = cohere(cr);
 
-p5 = scale_plot(cohere,Cr,scales=[0.25,0.5,1,2]);
+p5 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p6 = rplot(spect,sp)
 
 R"""
@@ -119,24 +95,24 @@ save_plot($(joinpath(dir,"2_complex_valued_components.pdf")),p,
 # complex valued with simplified scales (real and fake data)
 
 cort = CorticalModel(spect,scales = [1,4],bandonly=true) # 3 ?
-cohere = CoherenceModel(cort,6,window=750ms,method=:pca,frame_len=50ms)
+cohere = CoherenceModel(cort,6,window=750ms,method=:pca,delta=50ms)
 
 sp = ideal_ab(spect,120ms,120ms,1,6,500Hz,6)
 cr = cort(sp);
 Cr = cohere(cr);
 
-p1 = scale_plot(cohere,Cr);
+p1 = rplot(cohere,Cr);
 p2 = rplot(spect,sp)
 
 cort = CorticalModel(spect,scales = [1,4],bandonly=true) # 3 ?
-cohere = CoherenceModel(cort,6,window=750ms,method=:pca,frame_len=50ms)
+cohere = CoherenceModel(cort,6,window=750ms,method=:pca,delta=50ms)
 
 x = @>(ab(120ms,120ms,1,6,500Hz,6),normpower,amplify(-10))
 sp = spect(x)
 cr = cort(sp);
 Cr = cohere(cr);
 
-p1 = scale_plot(cohere,Cr)
+p1 = rplot(cohere,Cr)
 p2 = rplot(spect,sp)
 
 spC = mean_spect(cohere,Cr,cr)
@@ -146,36 +122,61 @@ spC = mean_spect(cohere,Cr,cr,component=2)
 rplot(spect,spC)
 
 ########################################
+# complex vlaued with NMF (fake data)
+
+spect = AuditorySpectrogram(len=25,min_freq=250Hz,max_freq=1kHz)
+cort = CorticalModel(spect,scales=2.0.^linspace(-0.5,2,6)) # 3 ?
+cohere = CoherenceModel(cort,6,window=500ms,method=:nmf,delta=250ms,
+                        minwindow=500ms,maxiter=200,tol=1e-3)
+
+sp = ideal_ab(spect,120ms,120ms,1,6,500Hz,6);
+cr = cort(sp);
+C = cohere(cr);
+#=
+using JLD
+W = C.W
+H = C.H
+@save "/Users/davidlittle/Data/bistable_cache.jld" W H
+=#
+
+#=
+using JLD
+@load "/Users/davidlittle/Data/bistable_cache.jld"
+C = AuditoryCoherence.NMFSeries(W,H,0.025s,0.25s)
+=#
+rplot(cohere,C)
+
+########################################
 # complex valued components with real stimulis
 
 x = @>(ab(120ms,120ms,1,6,500Hz,6),normpower,amplify(-10))
 sp = spect(x)
 cr = cort(sp);
 
-cohere = CoherenceModel(cort,6,window=750ms,method=:pca,frame_len=50ms)
+cohere = CoherenceModel(cort,6,window=750ms,method=:pca,delta=50ms)
 Cr = cohere(cr);
 
-p1 = scale_plot(cohere,Cr,scales=[0.25,0.5,1,2]);
+p1 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p2 = rplot(spect,sp)
 
 x = @>(ab(120ms,120ms,1,6,500Hz,6,:without_b),normpower,amplify(-10))
 sp = spect(x);
 cr = cort(sp);
 
-cohere = CoherenceModel(cort,6,window=750ms,method=:pca,frame_len=50ms)
+cohere = CoherenceModel(cort,6,window=750ms,method=:pca,delta=50ms)
 Cr = cohere(cr);
 
-p3 = scale_plot(cohere,Cr,scales=[0.25,0.5,1,2]);
+p3 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p4 = rplot(spect,sp)
 
 x = @>(ab(120ms,120ms,0,6,500Hz,6),normpower,amplify(-10))
 sp = spect(x)
 cr = cort(sp);
 
-cohere = CoherenceModel(cort,6,window=750ms,method=:pca,frame_len=50ms)
+cohere = CoherenceModel(cort,6,window=750ms,method=:pca,delta=50ms)
 Cr = cohere(cr);
 
-p5 = scale_plot(cohere,Cr,scales=[0.25,0.5,1,2]);
+p5 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p6 = rplot(spect,sp)
 
 R"""
@@ -197,30 +198,33 @@ x = @>(ab(120ms,120ms,1,6,500Hz,6),normpower,amplify(-10))
 sp = spect(x)
 cr = cort(sp);
 
-cohere = CoherenceModel(cort,9,window=750ms,method=(:real_pca,12),frame_len=50ms)
+cohere = CoherenceModel(cort,9,window=750ms,method=:real_pca,delta=50ms,
+                        n_phases=12)
 Cr = cohere(cr);
 
-p1 = scale_plot(cohere,Cr,scales=[0.25,0.5,1,2]);
+p1 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p2 = rplot(spect,sp)
 
 x = @>(ab(120ms,120ms,1,6,500Hz,6,:without_b),normpower,amplify(-10))
 sp = spect(x);
 cr = cort(sp);
 
-cohere = CoherenceModel(cort,9,window=750ms,method=(:real_pca,12),frame_len=50ms)
+cohere = CoherenceModel(cort,9,window=750ms,method=:real_pca,delta=50ms,
+                        n_phases=12)
 Cr = cohere(cr);
 
-p3 = scale_plot(cohere,Cr,scales=[0.25,0.5,1,2]);
+p3 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p4 = rplot(spect,sp)
 
 x = @>(ab(120ms,120ms,0,6,500Hz,6),normpower,amplify(-10))
 sp = spect(x)
 cr = cort(sp);
 
-cohere = CoherenceModel(cort,9,window=750ms,method=(:real_pca,12),frame_len=50ms)
+cohere = CoherenceModel(cort,9,window=750ms,method=:real_pca,delta=50ms,
+                        n_phases=12)
 Cr = cohere(cr);
 
-p5 = scale_plot(cohere,Cr,scales=[0.25,0.5,1,2]);
+p5 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p6 = rplot(spect,sp)
 
 R"""
@@ -241,14 +245,14 @@ cort = CorticalModel(spect,
                      scales = 2.0.^linspace(-2,1.5,10),
                      rates = [-2.0.^(0:0.5:5); 2.0.^(0:0.5:5)],
                      bandonly=false)
-cohere = CoherenceModel(cort,4,window=750ms,method=:pca,frame_len=50ms,
+cohere = CoherenceModel(cort,4,window=750ms,method=:pca,delta=50ms,
                         normalize_phase=true)
 
 sp = ideal_ab(spect,120ms,120ms,1,6,500Hz,6);
 cr = cort(sp);
 C = cohere(cr)
 
-scale_plot(cohere,C,scales=[0.25,0.5,1,2])
+rplot(cohere,C,scales=[0.25,0.5,1,2])
 
 spC = mean_spect(cohere,C,cr)
 p1 = rplot(spect,spC)
@@ -269,7 +273,7 @@ sp = spect(x)
 cr = cort(sp);
 C = cohere(cr)
 
-scale_plot(cohere,C,scales=[0.25,0.5,1,2])
+rplot(cohere,C,scales=[0.25,0.5,1,2])
 
 spC = mean_spect(cohere,C,cr)
 p1 = rplot(spect,spC)

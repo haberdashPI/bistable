@@ -130,3 +130,29 @@ function ab(tone_len,spacing_len,offset_ratio,repeats,freq,delta,options...)
 
   ab_seq
 end
+
+
+function ideal_ab(spect,tone_len,spacing_len,offset_ratio,repeats,freq,
+                  delta,options...)
+  a_freq=freq
+  b_freq=freq*(2^(delta/12))
+
+  a_freqi = indmin(abs.(freqs(spect) .- a_freq))
+  b_freqi = indmin(abs.(freqs(spect) .- b_freq))
+
+  a_times = 2(tone_len+spacing_len) .* (0:10)
+  b_times = 2(tone_len+spacing_len) .* (0:10) .+
+    offset_ratio*(tone_len+spacing_len)
+  sp = zeros(ceil(Int,(maximum(b_times) + (tone_len+spacing_len)) / Δt(spect)),
+             length(freqs(spect)))
+
+  a_timei = find(mapslices(any,a_times .< times(spect,sp)' .<
+                           (a_times .+ (tone_len)),[1]))
+  b_timei = find(mapslices(any,b_times .< times(spect,sp)' .<
+                           (b_times .+ (tone_len)),[1]))
+
+  if !(:without_a in options) sp[a_timei,a_freqi] = 1 end
+  if !(:without_b in options) sp[b_timei,b_freqi] = 1 end
+
+  sp
+end
