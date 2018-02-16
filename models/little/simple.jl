@@ -1,7 +1,7 @@
 push!(LOAD_PATH,"packages")
 using AuditoryModel
 using AuditoryCoherence
-include("stim.jl")
+include("util/stim.jl")
 
 using DSP
 using Unitful: ustrip

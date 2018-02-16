@@ -1,7 +1,7 @@
 push!(LOAD_PATH,"packages")
 using DataFrames
 using AuditoryModel
-include("stim.jl")
+include("util/stim.jl")
 
 R"library(ggplot2)"
 R"library(cowplot)"

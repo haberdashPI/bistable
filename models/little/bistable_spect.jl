@@ -2,7 +2,7 @@ push!(LOAD_PATH,"packages")
 using AuditoryModel
 using AuditoryCoherence
 using RCall
-include("stim.jl")
+include("util/stim.jl")
 
 dir = "../../plots/run_2017_12_25"
 mkdir(dir)

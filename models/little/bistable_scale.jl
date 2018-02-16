@@ -2,7 +2,7 @@ push!(LOAD_PATH,"packages")
 using AuditoryModel
 using AuditoryCoherence
 using RCall
-include("stim.jl")
+include("util/stim.jl")
 
 R"library(ggplot2)"
 R"library(cowplot)"

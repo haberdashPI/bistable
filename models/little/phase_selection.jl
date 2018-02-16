@@ -3,7 +3,7 @@ using AuditoryModel
 using AuditoryCoherence
 using RCall
 using DataFrames
-include("stim.jl")
+include("util/stim.jl")
 
 R"library(ggplot2)"
 R"library(cowplot)"
