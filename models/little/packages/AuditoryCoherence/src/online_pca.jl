@@ -74,40 +74,7 @@ Base.getindex(x::EigenSeries,i::Quantity{N,TimeDim}) where N =
 Base.size(x::EigenSeries) = (size(x.u,1),)
 Base.IndexStyle(::EigenSeries) = IndexLinear()
 Base.eigvals(x::EigenSeries) = x.λ
-Base.eigvecs(x::EigenSeries) = x.u
 
-update_constants(n::Int) = n/(n+1),1/(n+1)
-update_constants(f::Float64) = (1-f),f
-update(pca::EigenSpace,x::AbstractArray,c) = update(pca,vec(x),c)
-
-function update(pca::EigenSpace,x::AbstractVector,c)
-  u,λ,var = pca.u,pca.λ,pca.var
-  c_o,c_n = update_constants(c)
-
-  x_u = u'x
-  x_p = x - u*x_u
-  nx_p = norm(x_p)
-
-  d = length(λ)
-  Q = similar(u,d+1,d+1)
-  Q[1:d,1:d] .= c_o.*(Diagonal(λ) .+ c_n.*x_u.*x_u')
-  Q[1:d,d+1] .= Q[d+1,1:d] .= c_o*c_n .* nx_p.*x_u
-  Q[d+1,d+1] = c_o*c_n * nx_p^2
-
-  λc,v = eig(Q)
-  @assert all(iszero.(imag.(λ))) "Unexpected complex eigenvalues"
-  λ = real.(λc)
-  u = [u x_p./nx_p] * v
-
-  min_i = indmin(abs.(λ))
-  indices = vcat(1:min_i-1,min_i+1:d+1)
-
-  var = c_o.*var + c_n.*abs2.(x)
-  EigenSpace(u[:,indices],λ[indices],var)
-end
-Base.eigvals(pca::EigenSpace) = pca.λ
-Base.eigvecs(pca::EigenSpace) = pca.u
-Base.var(pca::EigenSpace) = pca.var
 
 # aproximate y in terms of eigenvectors of x
 function project(x::EigenSpace,y::EigenSpace)
