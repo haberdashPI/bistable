@@ -1,13 +1,15 @@
 using Unitful
 
-# TODO: make eigenspace time unit aware and rename it
-struct EigenSpace{U,L}
+abstract type Factors end
+abstract type FactorSeries{T} <: AbstractArray{T,1} end
+
+struct EigenSpace{U,L} <: Factors
   u::Matrix{U}
   λ::Vector{L}
   var::Vector{L}
 end
 ncomponents(x::EigenSpace) = size(x.u,2)
-nfeatures(x::EigenSpace) = size(x.u,1)
+nunits(x::EigenSpace) = size(x.u,1)
 
 function EigenSpace(u::Array,λ::Array{L},var::Array{L}) where L
   @assert size(u,2) == size(λ,1) "Mismatched number of eigenvectors and values."
@@ -20,9 +22,13 @@ EigenSpace(::Type{T},d::Number,n::Number) where T =
   EigenSpace([I; fill(zero(T),d-n,n)],fill(one(real(T)),n),ones(real(T),d))
 
 Base.show(io::IO,x::EigenSpace) = write(io,"EigenSpace(λ = ",string(x.λ),")")
+Base.eigvals(pca::EigenSpace) = pca.λ
+Base.var(pca::EigenSpace) = pca.var
+factors(pca::EigenSpace) = pca.u
+strengths(pca::EigenSpace) = pca.λ
 
 # TODO: use last index as time dimension
-struct EigenSeries{U,L} <: AbstractArray{EigenSpace{U,L},1}
+struct EigenSeries{U,L} <: FactorSeries{EigenSpace{U,L}}
   u::Array{U,3}
   λ::Array{L,2}
   var::Array{L,2}
@@ -40,7 +46,7 @@ struct EigenSeries{U,L} <: AbstractArray{EigenSpace{U,L},1}
   end
 end
 ncomponents(x::EigenSeries) = size(x.u,3)
-nfeatures(x::EigenSeries) = size(x.u,2)
+nunits(x::EigenSeries) = size(x.u,2)
 
 EigenSeries(::Type{T},t,d,n,delta) where T =
   EigenSeries(Array{T}(t,d,n),Array{real(T)}(t,n),Array{real(T)}(t,d),delta)
@@ -75,6 +81,8 @@ Base.size(x::EigenSeries) = (size(x.u,1),)
 Base.IndexStyle(::EigenSeries) = IndexLinear()
 Base.eigvals(x::EigenSeries) = x.λ
 
+factors(x::EigenSeries) = x.u
+strengths(x::EigenSeries) = mean(x.λ,1)
 
 # aproximate y in terms of eigenvectors of x
 function project(x::EigenSpace,y::EigenSpace)

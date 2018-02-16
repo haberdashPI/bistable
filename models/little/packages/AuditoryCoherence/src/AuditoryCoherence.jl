@@ -5,11 +5,12 @@ using Requires
 
 import AuditoryModel: Δt, Δf, times, freqs, scales, rates
 
-export adaptmi, drift, scale_weighting, ncomponents, nfeatures, CoherenceModel,
+export adaptmi, drift, scale_weighting, ncomponents, nunits, CoherenceModel,
     fusion_ratio, object_SNR, mask, scene_object_ratio,
     object_SNR2, ab_match, mean_spect, AdaptMI
 
 include("online_pca.jl")
+include("nmf.jl")
 include("adaptmi.jl")
 include("cortmi.jl")
 include("tempc.jl")
