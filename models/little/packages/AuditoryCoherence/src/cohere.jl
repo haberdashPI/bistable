@@ -26,7 +26,10 @@ end
   normalize::Bool = true
   maxiter::Int = 2000
   tol::Float64 = 1e-4
+  normalize_tc::Seconds{Float64} = 1s
 end
+nmf_tc(cohere::CoherenceModel{CoherenceNMF}) =
+  1 / floor(Int,cohere.method.normalize_tc/Δt(cohere.cort))
 
 Δt(cohere::CoherenceModel) = cohere.delta
 frame_length(cohere::CoherenceModel) =
@@ -167,17 +170,25 @@ function (cohere::CoherenceModel{CoherenceNMF})(x)
 
   if convergence_count > 0
     info("$(100round(convergence_count / length(windows),3))% of frames "*
-         " failed to converge to a solution.")
+         " failed to fully converge to a solution.")
   end
 
-  cohere.method.normalize ? normalize_components(C) : C
+  cohere.method.normalize ? normalize_components(C,nmf_tc(cohere)) : C
 end
 
-# fusion_signal(cohere::CoherenceModel,C::EigenSeries) =
-#   fusion_signal(cohere.cort(x),C)
-# function fusion_signal(cohere::CoherenceModel,C::EigenSeries)
-#   vec(first.(eigvals.(C)) ./ sum.(var.(C)))
-# end
+function mask(cohere::CoherenceModel,C::NMFSpace,
+              x::AbstractArray{T,4} where T;component=1)
+  @assert nunits(C) == prod(size(x,3,4))
+  y = copy(x)
+  c_ = factors(C)[:,component]
+  c = reshape(c_,length(scales(cohere)),:)
+  c ./= maximum(c)
+  @simd for ii in CartesianRange(size(x,1,2))
+    @inbounds y[ii,:,:] .= sqrt.(abs.(y[ii,:,:]) .* c) .*
+      exp.(angle.(y[ii,:,:])*im)
+  end
+  y
+end
 
 function mask(cohere::CoherenceModel,C::EigenSpace{<:Complex},
               x::AbstractArray{T,4} where T;component=1)
@@ -211,7 +222,7 @@ function mask(cohere::CoherenceModel,C::EigenSpace{<:Real},x::AbstractArray{T,4}
   y
 end
 
-function __map_mask(fn::Function,cohere::CoherenceModel,C::EigenSeries,
+function __map_mask(fn::Function,cohere::CoherenceModel,C::FactorSeries,
                     x::AbstractArray{T} where T,component)
   windows = enumerate(windowing(x,1;length=windowlen(cohere),
                                 minlength=min_windowlen(cohere),
@@ -231,7 +242,7 @@ function __map_mask(fn::Function,cohere::CoherenceModel,C::EigenSeries,
   y
 end
 
-function mean_spect(cohere::CoherenceModel,C::EigenSeries,x::AbstractArray{T,4};
+function mean_spect(cohere::CoherenceModel,C::FactorSeries,x::AbstractArray{T,4};
                     component=1) where T
   y = fill(real(zero(x[1])),size(x,1,4))
   norm = fill(zero(real(x[1])),size(x,1,4))

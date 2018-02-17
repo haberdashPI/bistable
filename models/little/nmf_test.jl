@@ -34,10 +34,8 @@ C = AuditoryCoherence.NMFSeries(W,H,0.025s,0.25s)
 
 rplot(cohere,C)
 
-# mean plot
-W,H = mean(C.W,1),mean(C.H,1)
-Ci = AuditoryCoherence.NMFSpace(squeeze(W,1),squeeze(H,1),C.delta)
-rplot(cohere,Ci)
+cohere = CoherenceModel(cort,3,window=500ms,method=:nmf,delta=250ms,
+                        minwindow=500ms,maxiter=10_000,tol=1e-4)
 
 x = @>(ab(120ms,120ms,1,6,500Hz,6),normpower,amplify(-10))
 sp = spect(x)
@@ -45,3 +43,28 @@ cr = cort(sp);
 C = cohere(cr);
 
 rplot(cohere,C)
+
+spC = mean_spect(cohere,C,cr)
+rplot(spect,spC)
+
+spC = mean_spect(cohere,C,cr,component=2)
+rplot(spect,spC)
+
+################################
+# now with synchronous tones
+
+cohere = CoherenceModel(cort,3,window=500ms,method=:nmf,delta=250ms,
+                        minwindow=500ms,maxiter=2_000,tol=1e-3)
+
+x = @>(ab(120ms,120ms,0,6,500Hz,6),normpower,amplify(-10))
+sp = spect(x)
+cr = cort(sp);
+C = cohere(cr);
+
+rplot(cohere,C)
+
+spC = mean_spect(cohere,C,cr)
+rplot(spect,spC)
+
+spC = mean_spect(cohere,C,cr,component=2)
+rplot(spect,spC)

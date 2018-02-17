@@ -73,32 +73,35 @@ Base.IndexStyle(::NMFSeries) = IndexLinear()
 factors(x::NMFSeries) = permutedims(x.H,[1,3,2])
 strengths(x::NMFSeries) = vec(mean(x.W,(1,2))) .* vec(mean(x.H,(1,3)))
 
-function bestordering(x,y)
-  @assert length(x) == length(y)
-  selected = collect(1:length(y))
-  for i in 1:length(y)-1
-    k = indmin(norm(x[i] .- y[j]) for j in selected[i:end])
-    selected[i],selected[i+k-1] = selected[i+k-1],selected[i]
-  end
-
-  selected
+function orderings(N)
+  insert!(array,x,i) = [j == i ? x : array[j < i ? j : j-1]
+                        for j in 1:length(array)+1]
+  if N == 0; [Int[]]
+  else [insert!(copy(o),N,i) for i in 1:N for o in orderings(N-1)] end
 end
 
+function bestordering(x,y)
+  @assert length(x) == length(y)
+  score(x,y,ordering) = norm(x .- y[ordering],2)
+  os = orderings(length(y))
+  i = indmin(score(x,y,o) for o in os)
 
-function normalize_components(C::NMFSeries)
+  os[i]
+end
+
+function normalize_components(C::NMFSeries,tc::Float64)
   K = ncomponents(C)
 
   # rearrange to maintain index for similar components
-  # TODO: take some short leaky average of the components
   Ĥ = C.H[1,:,:]
-  α = 0.1
+
   for t in 2:size(C.H,1)
     ordering = bestordering([Ĥ[k,:] for k in 1:K],
                             [C.H[t,k,:] for k in 1:K])
 
     C.H[t,:,:] = C.H[t,ordering,:]
     C.W[t,:,:] = C.W[t,:,ordering]
-    Ĥ .+= (1-α)Ĥ + α*C.H[t,:,:]
+    Ĥ .= (1-tc).*Ĥ .+ (tc).*C.H[t,:,:]
   end
 
   # rearrange so largest is first
