@@ -87,28 +87,6 @@ function freq_ticks(as::AuditorySpectrogram)
   fbreaks,findices
 end
 
-rplot(as::AuditorySpectrogram,data::Sound) = rplot(as,as(data))
-rplot(as::AuditorySpectrogram,data::AbstractVector) = rplot(as,as(data))
-function rplot(as::AuditorySpectrogram,data::Matrix)
-  ixs = CartesianRange(size(data))
-  at(ixs,i) = map(x -> x[i],ixs)
-
-  df = DataFrame(response = vec(data),
-                 time = vec(ustrip(times(as,data)[at(ixs,1)])),
-                 freq_bin = vec(at(ixs,2)))
-  fbreaks,findices = freq_ticks(as)
-  p = raster_plot(df,value=:response,x=:time,y=:freq_bin)
-R"""
-
-  library(ggplot2)
-
-  $p +
-    scale_y_continuous(breaks=$findices,labels=$fbreaks) +
-    ylab('Frequency (Hz)') + xlab('Time (s)')
-
-"""
-end
-
 # gplot(as::AuditorySpectrogram,data::AbstractVector) = gplot(as,as(data))
 # function gplot(as::AuditorySpectrogram,data::Matrix)
 #   ixs = CartesianRange(size(data))
