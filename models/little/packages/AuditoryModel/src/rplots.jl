@@ -100,7 +100,7 @@ end
 #   R"p"
 # end
 
-function collapsed_scale_plot(cort,data;name="response",range=nothing)
+function collapsed_scale_plot(cort,data;range=nothing)
   data = data[:,1,:,1]
   ixs = CartesianRange(size(data))
   at(ixs,i) = map(x -> x[i],ixs)
@@ -112,7 +112,7 @@ function collapsed_scale_plot(cort,data;name="response",range=nothing)
   sbreaks = 1:2:length(scales(cort))
   slabs = string.(round.(scales(cort)[sbreaks],2))
 
-  p = raster_plot(df,value=:response,x=:time,y=:scale_bin,name=name)
+  p = raster_plot(df,value=:response,x=:time,y=:scale_bin)
 
 R"""
 

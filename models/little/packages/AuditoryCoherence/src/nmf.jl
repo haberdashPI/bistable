@@ -21,6 +21,7 @@ Base.show(io::IO,x::NMFSpace) = write(io,"NMFSpace(k=$(ncomponents(x)))")
 
 factors(x::NMFSpace) = x.H'
 strengths(x::NMFSpace) = mean(x.W,1)
+Base.maximum(fn::typeof(abs),C::NMFSpace) = maximum(abs,C.W)
 
 struct NMFSeries <: FactorSeries{NMFSpace}
   W::Array{Float64,3}
@@ -89,7 +90,7 @@ function bestordering(x,y)
   os[i]
 end
 
-function normalize_components(C::NMFSeries,tc::Float64)
+function normalize_components!(C::NMFSeries,tc::Float64)
   K = ncomponents(C)
 
   # rearrange to maintain index for similar components
@@ -111,3 +112,5 @@ function normalize_components(C::NMFSeries,tc::Float64)
 
   C
 end
+
+Base.maximum(fn::typeof(abs),C::NMFSeries) = maximum(maximum.(abs,C))

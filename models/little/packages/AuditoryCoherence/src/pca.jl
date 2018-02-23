@@ -27,6 +27,8 @@ Base.var(pca::EigenSpace) = pca.var
 factors(pca::EigenSpace) = pca.u
 strengths(pca::EigenSpace) = pca.λ
 
+Base.maximum(fn::typeof(abs),pca::EigenSpace) = maximum(abs,pca.u)
+
 # TODO: use last index as time dimension
 struct EigenSeries{U,L} <: FactorSeries{EigenSpace{U,L}}
   u::Array{U,3}
@@ -122,3 +124,5 @@ function normalize_phase!(pcas::EigenSeries{<:Complex})
 
   pcas
 end
+
+Base.maximum(fn::typeof(abs),C::EigenSeries) = maximum(maximum.(abs,C))

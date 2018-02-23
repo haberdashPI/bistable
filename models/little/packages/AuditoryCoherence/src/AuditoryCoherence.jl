@@ -7,7 +7,7 @@ import AuditoryModel: Δt, Δf, times, freqs, scales, rates
 
 export adaptmi, drift, scale_weighting, ncomponents, nunits, CoherenceModel,
     fusion_ratio, object_SNR, mask, scene_object_ratio,
-    object_SNR2, ab_match, mean_spect, AdaptMI
+    object_SNR2, ab_match, mean_spect, mean_spect2, AdaptMI
 
 include("pca.jl")
 include("nmf.jl")

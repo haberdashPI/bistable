@@ -33,7 +33,7 @@ function raster_plot(df::DataFrame;value=:z,kwds...)
   end
 end
 
-function raster_plot__real(df::DataFrame;value=:z,x=:x,y=:y,name=string(value),
+function raster_plot__real(df::DataFrame;value=:z,x=:x,y=:y,
                            limits=extrema(real.(df[value])),real_suffix=:_real)
   value_r = Symbol(string(value,real_suffix))
   df = copy(df)
@@ -51,7 +51,7 @@ R"""
 
   ggplot($df,aes_string(x=$(string(x)),y=$(string(y)),fill=$(string(value_r)))) +
     geom_raster() +
-    scale_fill_gradientn(colors=$colormap,limits=$(collect(limits)),name=$name)
+    scale_fill_gradientn(colors=$colormap,limits=$(collect(limits)),name="x")
 
 """
 end
