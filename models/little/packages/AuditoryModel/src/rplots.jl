@@ -1,7 +1,10 @@
 using RCall
+using DataFrames
+
 export rplot, collapsed_scale_plot
 import PerceptualColourMaps: cmap
 import Colors: RGB
+import Colors
 
 R"library(ggplot2)"
 
@@ -66,21 +69,12 @@ R"""
 """
 end
 
-function aplot(data) =
-  @assert haskey(data,"kind") "Missing 'kind' metadata"
-  aplot(data,data["kind"])
-end
-
-aplot(data,as::AuditorySpectrogram) = rplot(as,audiospect(data,as))
-function aplot(data::ImageMetaAxis,as::AuditorySpectrogram)
-  @assert haskey(data,"kind") "Missing 'kind' metadata"
-  @assert as == data["kind"] "Metadata must match spectrogram parameters"
-
-  ixs = CartesianRange(size(data))
+function rplot(as::AuditorySpectrogram)
+  ixs = CartesianRange(size(as))
   at(ixs,i) = map(x -> x[i],ixs)
 
-  df = DataFrame(response = vec(data),
-                 time = vec(ustrip(times(as,data)[at(ixs,1)])),
+  df = DataFrame(response = vec(as),
+                 time = vec(ustrip(times(as)[at(ixs,1)])),
                  freq_bin = vec(at(ixs,2)))
   fbreaks,findices = freq_ticks(as)
   p = raster_plot(df,value=:response,x=:time,y=:freq_bin)
@@ -95,50 +89,87 @@ R"""
 """
 end
 
-rplot(cort::CorticalModel,y::AbstractVector;kwds...) = rplot(cort,cort(y);kwds...)
-rplot(cort::CorticalModel,y::AbstractMatrix;kwds...) = rplot(cort,cort(y);kwds...)
-
-function nearin(xin,xs)
-  _,inds = findmin(abs.(vec(xin) .- vec(xs)'),2)
-  cols = map(ii -> ii[2],CartesianRange((length(xin),length(xs))))
-  if length(inds) > 0
-    cols[inds[:,1]]
-  else
-    Array{Int}(0)
-  end
-end
-
-function findnear(x,nearby)
-  indices = sort(unique(nearin(filter(!isnan,nearby),
-                                filter(!isnan,x))))
-  if any(isnan.(nearby))
-    [NaN; x[indices]], [find(isnan,x); indices]
-  else
-    x[indices], indices
-  end
-end
-
-function rplot(cort::CorticalModel,y;rates=cort.rates,scales=cort.scales)
-  rates, rindices = findnear(cort.rates,rates)
-  scales, sindices = findnear(cort.scales,scales)
-
-  if rates != cort.rates || scales != cort.scales
-    @show rindices
-    @show sindices
-  end
-
-  y = y[:,rindices,sindices,:]
-
-  ixs = CartesianRange(size(y))
+function rplot(cort::CorticalRates;rates=rates(cort))
+  cort = cort[:,atvalue.(rates),:]
+  @show size(cort)
+  @show typeof(cort)
+  ixs = CartesianRange(size(cort))
   at(ixs,i) = map(x -> x[i],ixs)
 
-  df = DataFrame(response = vec(y),
-                 time = ustrip(vec(times(cort,y)[at(ixs,1)])),
-                 rate = vec(rates[at(ixs,2)]),
-                 scale = vec(scales[at(ixs,3)]),
+  df = DataFrame(response = vec(cort),
+                 time = ustrip.(vec(times(cort)[at(ixs,1)])),
+                 rate = ustrip.(vec(rates[at(ixs,2)])),
+                 freq_bin = vec(at(ixs,3)))
+
+  fbreaks,findices = freq_ticks(cort)
+  p = raster_plot(df,value=:response,x=:time,y=:freq_bin)
+
+R"""
+
+  library(ggplot2)
+
+  ratestr = function(x){
+    ifelse(!is.nan(x),sprintf("Rate: %5.2f Hz",x),"All Rates")
+  }
+
+  ordered_rates = function(x){
+    factor(ratestr(x),levels=ratestr($(ustrip.(sort(rates)))))
+  }
+
+  $p +
+    scale_y_continuous(breaks=$findices,labels=$fbreaks) +
+    ylab('Frequency (kHz)') + xlab('Time (s)') +
+    facet_grid(~ordered_rates(rate))
+
+"""
+end
+
+function rplot(cort::CorticalScales;scales=scales(cort))
+  cort = cort[:,atvalue.(scales),:]
+  ixs = CartesianRange(size(cort))
+  at(ixs,i) = map(x -> x[i],ixs)
+
+  df = DataFrame(response = vec(cort),
+                 time = ustrip.(vec(times(cort)[at(ixs,1)])),
+                 scale = ustrip.(vec(scales[at(ixs,2)])),
+                 freq_bin = vec(at(ixs,3)))
+
+  fbreaks,findices = freq_ticks(cort)
+  p = raster_plot(df,value=:response,x=:time,y=:freq_bin)
+
+R"""
+
+  library(ggplot2)
+
+  scalestr = function(x){
+    ifelse(!is.nan(x),sprintf("Scale: %3.2f cyc/oct",x),"All Scales")
+  }
+
+  ordered_scales = function(x){
+    factor(scalestr(x),levels=scalestr($(ustrip.(sort(scales)))))
+  }
+
+  $p +
+    scale_y_continuous(breaks=$findices,labels=$fbreaks) +
+    ylab('Frequency (kHz)') + xlab('Time (s)') +
+    facet_grid(ordered_scales(scale) ~ .)
+
+"""
+end
+
+
+function rplot(cort::Cortical;rates=rates(cort),scales=scales(cort))
+  cort = cort[:,atvalue.(rates),atvalue.(scales),:]
+  ixs = CartesianRange(size(cort))
+  at(ixs,i) = map(x -> x[i],ixs)
+
+  df = DataFrame(response = vec(cort),
+                 time = ustrip.(vec(times(cort)[at(ixs,1)])),
+                 rate = ustrip.(vec(rates[at(ixs,2)])),
+                 scale = ustrip.(vec(scales[at(ixs,3)])),
                  freq_bin = vec(at(ixs,4)))
 
-  fbreaks,findices = freq_ticks(cort.aspect)
+  fbreaks,findices = freq_ticks(cort)
   p = raster_plot(df,value=:response,x=:time,y=:freq_bin)
 
 R"""
@@ -153,10 +184,10 @@ R"""
   }
 
   ordered_scales = function(x){
-    factor(scalestr(x),levels=scalestr($(sort(scales))))
+    factor(scalestr(x),levels=scalestr($(ustrip.(sort(scales)))))
   }
   ordered_rates = function(x){
-    factor(ratestr(x),levels=ratestr($(sort(rates))))
+    factor(ratestr(x),levels=ratestr($(ustrip.(sort(rates)))))
   }
 
   $p +
@@ -167,71 +198,21 @@ R"""
 """
 end
 
-# function collapsed_scale_plot(cort,m,range=nothing)
-#   sm = m[:,1,:,1]
-#   iis = collect(CartesianRange(size(sm)))
-#   df = DataFrame(level = vec(sm),
-#                  time = vec(map(x -> ustrip(times(cort,m)[x[1]]),iis)),
-#                  scale = vec(map(x -> ustrip(scales(cort)[x[2]]),iis)))
+function collapsed_scale_plot(cort;range=nothing)
+  scaledim = axisdim(data(cort),Axis{:scale})
+  timedim = axisdim(data(cort),Axis{:time})
 
-#   @show unique(df[:scale])
-# R"""
-#   library(RColorBrewer)
-#   pal = brewer.pal(5,'Reds')[2:5]
-#   p = ggplot($df,aes(x=time,y=level,group=scale,
-#                  color=factor(round(scale,1)),linetype=factor(round(scale,1)))) +
-#     geom_line(color='black',linetype='solid',size=1.2) + geom_line() +
-#     scale_color_manual(values = rep(pal,each=3)[1:11],name="Scale") +
-#     scale_linetype_manual(values =
-#       rep(c("dotdash","longdash","solid"),4)[1:11],name="Scale")
-# """
-#   if range != nothing
-# R"""
-#       p = p + coord_cartesian(ylim=c($(first(range)),$(last(range))))
-# """
-#   end
-
-#   R"p"
-# end
-
-function collapsed_scale_plot(cort,data;range=nothing)
-  data = data[:,1,:,1]
-  ixs = CartesianRange(size(data))
+  dims = find(indexin(1:ndims(cort),[scaledim,timedim]) .== 0)
+  y = squeeze(mean(abs.(data(cort).data),dims),dims)
+  ixs = CartesianRange(size(y))
   at(ixs,i) = map(x -> x[i],ixs)
 
-  df = DataFrame(response = vec(data),
-                 time = vec(ustrip(times(cort,data)[at(ixs,1)])),
+  df = DataFrame(response = vec(y),
+                 time = vec(ustrip(times(cort)[at(ixs,1)])),
                  scale_bin = vec(at(ixs,2)))
 
   sbreaks = 1:2:length(scales(cort))
   slabs = string.(round.(scales(cort)[sbreaks],2))
-
-  p = raster_plot(df,value=:response,x=:time,y=:scale_bin)
-
-R"""
-
-  library(ggplot2)
-
-  $p +
-    scale_y_continuous(labels=$slabs,breaks=$sbreaks) +
-    ylab('Scale (cyc/oct)') + xlab('Time (s)')
-
-"""
-end
-
-
-function plot_scales2(cort,data::AbstractArray{<:Complex};name="response",
-                      range=nothing)
-  data = data[:,1,:,1]
-  ixs = CartesianRange(size(data))
-  at(ixs,i) = map(x -> x[i],ixs)
-
-  df = DataFrame(response = vec(data),
-                 time = vec(ustrip(times(cort,data)[at(ixs,1)])),
-                 scale_bin = vec(at(ixs,2)))
-
-  sbreaks = 1:2:length(scales(cort))
-  slabs = string.(round(scales(cort)[sbreaks],2))
 
   p = raster_plot(df,value=:response,x=:time,y=:scale_bin)
 

@@ -1,17 +1,12 @@
 module AuditoryModel
 using DataFrames
+using Unitful
+using Unitful: ms, s, Hz, kHz
 
-# flag to determine weather this package compiles with or without support for
-# MATLAB implementation of functions.
-const USING_MATLAB = false
+export ms, s, Hz, kHz
 
-export AuditorySpectrogram, freqs, times, scales, rates, findscales, findrates,
-  freq_ticks, rplot, frame_length, Δt, delta_t, Δf, delta_f, CorticalModel,
-  plot_scales, plot_scales2, Seconds, Hertz, TimeDim, FreqDim
-
-include("units.jl")
-include("plots.jl")
-include("audio_spect.jl")
+include("modelresult.jl")
+include("audiospect.jl")
 include("cortical.jl")
 
 # @require RCall include(joinpath(@__DIR__,"rplots.jl"))
