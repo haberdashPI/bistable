@@ -131,27 +131,24 @@ function cortical(y::AxisArray{T,3} where T,params::CParamRates)
 end
 
 function cortical(y::AbstractArray{T,4} where T,params::CParamAll)
-  channels = channels_computed(params.aspect)
-  f = Axis{:freq}(all_freqs(params.aspect)[channels])
+  f = Axis{:freq}(freqs(params.aspect))
   r = Axis{:rate}(params.rates)
   sc = Axis{:scale}(params.scales)
-  t = Axis{:time}(indices(y,1).*uconvert(s,1/params.aspect.fs))
+  t = Axis{:time}(times(params.aspect,y))
   Cortical(AxisArray(y,t,r,sc,f),params)
 end
 
 function cortical(y::AbstractArray{T,3} where T,params::CParamRates)
-  channels = channels_computed(params.aspect)
-  f = Axis{:freq}(all_freqs(params.aspect)[channels])
+  f = Axis{:freq}(freqs(params.aspect))
   r = Axis{:rate}(params.rates)
-  t = Axis{:time}(indices(y,1).*uconvert(s,1/params.aspect.fs))
+  t = Axis{:time}(times(params.aspect,y))
   Cortical(AxisArray(y,t,r,f),params)
 end
 
 function cortical(y::AbstractArray{T,3} where T,params::CParamScales)
-  channels = channels_computed(params.aspect)
-  f = Axis{:freq}(all_freqs(params.aspect)[channels])
+  f = Axis{:freq}(freqs(params.aspect))
   sc = Axis{:scale}(params.scales)
-  t = Axis{:time}(indices(y,1).*uconvert(s,1/params.aspect.fs))
+  t = Axis{:time}(times(params.aspect,y))
   Cortical(AxisArray(y,t,sc,f),params)
 end
 
@@ -201,6 +198,13 @@ Cortical(cr::AxisArray{T,4} where T,p::CParamScales) =
 
 # inverse of cortical rates and scales
 function audiospect(cr::Cortical;norm=0.9,progressbar=true)
+  @assert(rates(cr) == rates(cr.params),
+          "Missing rates, this is a slice of the original data."*
+          " Slice inversion is currently unsupported.")
+  @assert(scales(cr) == scales(cr.params),
+          "Missing scales, this is a slice of the original data."*
+          " Slice inversion is currently unsupported.")
+
   z_cum = FFTCum(cr)
 
   progress = progressbar ? cortical_progress(nrates(cr)*nscales(cr)) : missing
@@ -219,6 +223,10 @@ end
 
 # inverse of scales
 function audiospect(cr::CorticalScales;norm=0.9,progressbar=true)
+  @assert(scales(cr) == scales(cr.params),
+          "Missing scales, this is a slice of the original data."*
+          " Slice inversion is currently unsupported.")
+
   z_cum = FFTCum(cr)
 
   progress = progressbar ? cortical_progress(nscales(cr)) : missing
@@ -235,6 +243,9 @@ end
 
 # inverse of rates
 function audiospect(cr::CorticalRates;norm=0.9,progressbar=true)
+  @assert(rates(cr) == rates(cr.params),
+          "Missing rates, this is a slice of the original data."*
+          " Slice inversion is currently unsupported.")
   z_cum = FFTCum(cr)
 
   progress = progressbar ? cortical_progress(nrates(cr)) : missing

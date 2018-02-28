@@ -22,8 +22,6 @@ struct ASParams
   nonlinear::Float64
   octave_shift::Float64
   fs::typeof(1.0Hz)
-  min_freq::typeof(1.0Hz)
-  max_freq::typeof(1.0Hz)
 end
 
 struct AuditorySpectrogram{T} <: ModelResult{T,2}
@@ -35,16 +33,15 @@ params(x::AuditorySpectrogram) = x.params
 resultname(x::AuditorySpectrogram) = "Auditory Spectrogram"
 
 nfreqs(as::ASParams) = size(cochba,2)-1
-all_freqs(as::ASParams) =
-  440.0Hz * 2.0.^(((1:nfreqs(as)).-31)./24 .+ as.octave_shift)
-all_freqs(as::AuditorySpectrogram) = all_freqs(as.val["kind"])
-
-freqs(as::ModelResult) = freqs(data(as))
-times(as::ModelResult) = times(data(as))
-freqs(as::AxisArray) = axisvalues(axes(as,Axis{:freq}))[1]
-times(as::AxisArray) = axisvalues(axes(as,Axis{:time}))[1]
 nfreqs(x) = length(freqs(x))
+freqs(as::ASParams) = 440.0Hz * 2.0.^(((1:nfreqs(as)).-31)./24 .+ as.octave_shift)
+freqs(as::ModelResult) = freqs(data(as))
+freqs(as::AxisArray) = axisvalues(axes(as,Axis{:freq}))[1]
+
 ntimes(x) = length(times(x))
+times(as::ModelResult) = times(data(as))
+times(as::AxisArray) = axisvalues(axes(as,Axis{:time}))[1]
+times(p::ASParams,x::AbstractArray) = indices(x,1) .* Δt(p)
 
 delta_t(x) = Δt(x)
 delta_f(x) = Δf(x)
@@ -60,15 +57,11 @@ frame_length(as::ModelResult) = frame_length(as.params)
 Δf(as::ModelResult) = Δf(as.params)
 Sounds.samplerate(x::ModelResult) = samplerate(params(x))
 
-channels_computed(params::ASParams) =
-  find(f -> params.min_freq <= f <= params.max_freq,all_freqs(params))
-
 function ASParams(;fs=samplerate(),
-                  len=10,decay_tc=8,nonlinear=-2,octave_shift=-1,
-                  min_freq = -Inf*Hz,max_freq = Inf*Hz)
+                  len=10,decay_tc=8,nonlinear=-2,octave_shift=-1)
   @assert fs == fixed_fs*Hz "The only sample rate supported is $(fixed_fs)Hz"
 
-  ASParams(len,decay_tc,nonlinear,octave_shift,fs,min_freq,max_freq)
+  ASParams(len,decay_tc,nonlinear,octave_shift,fs)
 end
 
 function sigmoid(x::AbstractArray{T},fac::T) where T
@@ -105,9 +98,8 @@ function audiospect(x::AbstractArray,params::ASParams)
             "Presumed input to be a spectrogram but the "*
             "number of columns do not match the number of frequency channels.")
 
-    channels = channels_computed(params)
-    f = Axis{:freq}(all_freqs(params)[channels])
-    t = Axis{:time}(indices(x,1).*uconvert(s,1/params.fs))
+    f = Axis{:freq}(freqs(params))
+    t = Axis{:time}(times(params,x))
     AuditorySpectrogram(AxisArray(x,t,f),params)
   end
 end
@@ -126,7 +118,7 @@ function audiospect(x::AuditorySpectrogram,params::ASParams)
 end
 
 ####################
-# the actual comptuationa of a spectrogram
+# the actual computation of a spectrogram
 audiospect(x::Sound,params::ASParams) =
   audiospect_helper(vec(Array(convert(Sound{fixed_fs,eltype(x),1},x))),params)
 
@@ -224,11 +216,10 @@ function audiospect_helper(x::Vector{T},params::ASParams,
   if internal_call
     v5,y3_r
   else
-    channels = channels_computed(params)
-    f = Axis{:freq}(all_freqs(params)[channels])
-    t = Axis{:time}(indices(v5,1).*uconvert(s,1/params.fs))
+    f = Axis{:freq}(freqs(params))
+    t = Axis{:time}(times(params,v5))
 
-    AuditorySpectrogram(AxisArray(v5[:,channels],t,f),params)
+    AuditorySpectrogram(AxisArray(v5,t,f),params)
   end
 end
 
@@ -244,7 +235,9 @@ function Sounds.Sound(y_in::AuditorySpectrogram;max_iterations=typemax(Int),
 
   # expand y to include all frequencies
   y = zeros(eltype(y_in),size(y_in,1),M-1)
-  y[:,channels_computed(params)] = y_in
+  f_ixs = minimum(freqs(y_in)) .<= freqs(y_in.params) .<= maximum(freqs(y_in))
+  @assert sum(f_ixs) == size(y_in,2) "Unxpected frequency resolution."
+  y[:,f_ixs] = y_in
 
   # generate initial guess
   x = inv_guess(params,y)
@@ -308,7 +301,7 @@ end
 
 function inv_guess(params::ASParams,y::AbstractMatrix)
   # ?? the initial guess only uses the first 48 channels
-  f = ustrip.(uconvert.(Hz,all_freqs(params)))[1:48]
+  f = ustrip.(uconvert.(Hz,freqs(params)))[1:48]
   steps = 1:frame_length(params)*size(y,1)
   indices = ceil.(Int,steps / frame_length(params))
   t = steps ./ ustrip(uconvert(Hz,params.fs))
