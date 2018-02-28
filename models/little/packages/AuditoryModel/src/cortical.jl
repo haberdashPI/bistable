@@ -324,7 +324,7 @@ struct FFTCum{T}
 end
 
 function FFTCum(cr::Cortical)
-  dims = find_fft_dims(size(cr,1,4))
+  dims = find_fft_dims(size(cr,1,ndims(cr)))
   mult = 1 .+ (params(cr).rates != nothing,params(cr).scales != nothing)
   z = zeros(eltype(cr),dims .* mult)
 
