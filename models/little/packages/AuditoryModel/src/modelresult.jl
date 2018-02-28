@@ -45,14 +45,18 @@ end
 
 resultname(x::ModelResult) = string(typeof(x))
 
-function Base.show(io::IO,x::T) where T <: ModelResult
+function Base.show(io::IO,x::ModelResult{T,N}) where {T,N}
   write(io,resultname(x))
   write(io,":\n")
   showparams(io,params(x))
   write(io,"-------\n")
-  write(io,summary(data(x)))
+  write(io,"$(N)d $T data with axes: \n")
+  for ax in axes(data(x))
+    write(io,"$(AxisArrays.axisname(ax)): $(round(ustrip(ax.val[1]),2))"*
+          " - $(round(ustrip(ax.val[end]),2)) $(unit(ax.val[1]))\n")
+  end
 end
-Base.show(io::IO,::MIME"text/plain",x::T) where T <: ModelResult = show(io,x)
+Base.show(io::IO,::MIME"text/plain",x::ModelResult) = show(io,x)
 
 AxisArrays.axisdim(x::ModelResult,ax) = axisdim(data(x),ax)
 AxisArrays.axes(x::ModelResult,i...) = axes(data(x),i...)
