@@ -11,23 +11,23 @@ sig(x) = 1/(1+exp(-10(x-0.5)))
 # similar performance using just keyword arguments
 @with_kw struct AdaptMI{S,I}
   α::Float64 = 1.0
-  τ_y::Seconds{Float64} = 10ms
+  τ_y::typeof(1.0s) = 10ms
   shape_y::S = identity
 
   c_a::Float64 = 5
-  τ_a::Seconds{Float64} = 1.5s
+  τ_a::typeof(1.0s) = 1.5s
 
   c_e::Float64 = 0
-  τ_e::Seconds{Float64} = 300ms
+  τ_e::typeof(1.0s) = 300ms
 
   c_m::Float64 = 10
-  τ_m::Seconds{Float64} = 50ms
+  τ_m::typeof(1.0s) = 50ms
   W_m::I = inhibit_uniform
 
-  τ_σ::Seconds{Float64} = 100ms
+  τ_σ::typeof(1.0s) = 100ms
   c_σ::Float64 = 0.3
 
-  Δt::Seconds{Float64} = 1ms
+  Δt::typeof(1.0s) = 1ms
 end
 
 # efficient representation of W*y where W = (ones(n,n) - I)/(n-1) for all n

@@ -4,10 +4,10 @@ using NMF
 struct NMFSpace <: Factors
   W::Matrix{Float64}
   H::Matrix{Float64}
-  delta::Seconds{Float64}
+  delta::typeof(1.0s)
 
   function NMFSpace(W::Matrix{Float64},H::Matrix{Float64},
-                    delta::Seconds{Float64})
+                    delta::typeof(1.0s))
     @assert size(W,2) == size(H,1)
     new(W,H,delta)
   end
@@ -26,11 +26,11 @@ Base.maximum(fn::typeof(abs),C::NMFSpace) = maximum(abs,C.W)
 struct NMFSeries <: FactorSeries{NMFSpace}
   W::Array{Float64,3}
   H::Array{Float64,3}
-  delta::Seconds{Float64}
-  step::Seconds{Float64}
+  delta::typeof(1.0s)
+  step::typeof(1.0s)
 
   function NMFSeries(W::Array{Float64,3},H::Array{Float64,3},
-                     delta::Seconds{Float64},step::Seconds{Float64})
+                     delta::typeof(1.0s),step::typeof(1.0s))
     @assert size(W,3) == size(H,2)
     @assert size(W,1) == size(H,1)
     @assert delta <= step
@@ -66,7 +66,7 @@ function Base.setindex!(x::NMFSeries,v::NMFSpace,i::Int)
 end
 NMFSpace(x::NMFSeries) = NMFSpace(nslices(x),ncomponents(x),nunits(x))
 Base.getindex(x::NMFSeries,i::Int) = NMFSpace(x.W[i,:,:],x.H[i,:,:],x.delta)
-Base.getindex(x::NMFSeries,i::Quantity{N,TimeDim}) where N =
+Base.getindex(x::NMFSeries,i::Quantity{N}) where N =
   x[max(1,floor(Int,i / x.step))]
 Base.size(x::NMFSeries) = (size(x.W,1),)
 Base.IndexStyle(::NMFSeries) = IndexLinear()

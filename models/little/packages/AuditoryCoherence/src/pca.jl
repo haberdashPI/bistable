@@ -34,10 +34,10 @@ struct EigenSeries{U,L} <: FactorSeries{EigenSpace{U,L}}
   u::Array{U,3}
   λ::Array{L,2}
   var::Array{L,2}
-  delta::Seconds{Float64}
+  delta::typeof(1.0s)
 
   function EigenSeries(u::Array{U,3},λ::Array{L,2},var::Array{L,2},
-                       delta::Seconds{Float64}) where {U,L}
+                       delta::typeof(1.0s)) where {U,L}
     @assert(size(u,1) == size(λ,1) == size(var,1),
             "Time dimensions (dim 1) do not match.")
     @assert(size(u,3) == size(λ,2),
@@ -77,7 +77,7 @@ function Base.setindex!(x::EigenSeries,v::EigenSpace,i::Int)
 end
 EigenSpace(x::EigenSeries) = EigenSpace(size(x.u,2),size(x.u,3))
 Base.getindex(x::EigenSeries,i::Int) = EigenSpace(x.u[i,:,:],x.λ[i,:],x.var[i,:])
-Base.getindex(x::EigenSeries,i::Quantity{N,TimeDim}) where N =
+Base.getindex(x::EigenSeries,i::Quantity{N}) where N =
   x[max(1,floor(Int,i / x.delta))]
 Base.size(x::EigenSeries) = (size(x.u,1),)
 Base.IndexStyle(::EigenSeries) = IndexLinear()

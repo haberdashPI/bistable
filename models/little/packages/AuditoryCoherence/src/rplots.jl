@@ -44,7 +44,7 @@ function rplot(cohere::CoherenceModel,C::FactorSeries;
                  component = vec(at(4)),
                  component_title = rowtitle.(vec(at(4))))
 
-  fbreaks,findices = freq_ticks(cohere.cort.aspect)
+  fbreaks,findices = freq_ticks(cohere)
   p = raster_plot(df,value=:value,x=:time,y=:freq_bin)
 
 R"""
@@ -63,7 +63,7 @@ end
 function rplot(cohere::CoherenceModel,C::Factors;
                components=1:ncomponents(C),λ_digits=:automatic)
   u = factors(C)[:,components]
-  u = reshape(u,length(scales(cohere.cort)),:,size(u,2))
+  u = reshape(u,length(scales(cohere)),:,size(u,2))
 
   ii = CartesianRange(size(u))
   at(i) = vec(map(ii -> ii[i],ii))
@@ -76,9 +76,9 @@ function rplot(cohere::CoherenceModel,C::Factors;
                  component = at(3),
                  component_title = title.(at(3)))
 
-  sindices = 1:2:length(scales(cohere.cort))
-  sbreaks = round.(scales(cohere.cort)[sindices],2)
-  fbreaks,findices = freq_ticks(cohere.cort.aspect)
+  sindices = 1:2:length(scales(cohere))
+  sbreaks = round.(scales(cohere)[sindices],2)
+  fbreaks,findices = freq_ticks(cohere)
 
   p = raster_plot(df,value=:response,x=:scale_index,y=:freq_bin)
 

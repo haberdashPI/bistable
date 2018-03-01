@@ -8,7 +8,7 @@ import DSP.Filters.freqs
 import Sounds: Sound
 
 export freqs, times, nfreqs, ntimes, delta_t, delta_f, Δt, Δf, frame_length,
-  audiospect, Sound
+  audiospect, Sound, data, params, freq_ticks
 
 const cochba = h5open(joinpath(@__DIR__,"..","data","cochba.h5")) do file
   read(file,"/real") + read(file,"/imag")*im
@@ -16,7 +16,7 @@ end
 
 const fixed_fs = 8000
 
-struct ASParams
+struct ASParams <: Params
   len::Int
   decay_tc::Float64
   nonlinear::Float64
@@ -28,20 +28,21 @@ struct AuditorySpectrogram{T} <: ModelResult{T,2}
   val::AxisArray{T,2}
   params::ASParams
 end
-data(x::AuditorySpectrogram) = x.val
-params(x::AuditorySpectrogram) = x.params
+AxisArrays.AxisArray(x::AuditorySpectrogram) = x.val
+Params(x::AuditorySpectrogram) = x.params
 resultname(x::AuditorySpectrogram) = "Auditory Spectrogram"
-
+similar_helper(::AuditorySpectrogram,data,params) =
+  AuditorySpectrogram(data,params)
 nfreqs(as::ASParams) = size(cochba,2)-1
 nfreqs(x) = length(freqs(x))
 freqs(as::ASParams) = 440.0Hz * 2.0.^(((1:nfreqs(as)).-31)./24 .+ as.octave_shift)
-freqs(as::ModelResult) = freqs(data(as))
+freqs(as::ModelResult) = freqs(AxisArray(as))
 freqs(as::AxisArray) = axisvalues(axes(as,Axis{:freq}))[1]
 
 ntimes(x) = length(times(x))
-times(as::ModelResult) = times(data(as))
+times(as::ModelResult) = times(AxisArray(as))
 times(as::AxisArray) = axisvalues(axes(as,Axis{:time}))[1]
-times(p::ASParams,x::AbstractArray) = indices(x,1) .* Δt(p)
+times(p::Params,x::AbstractArray) = indices(x,1) .* Δt(p)
 
 delta_t(x) = Δt(x)
 delta_f(x) = Δf(x)
@@ -55,7 +56,7 @@ Sounds.samplerate(params::ASParams) = uconvert(Hz,params.fs)
 frame_length(as::ModelResult) = frame_length(as.params)
 Δt(as::ModelResult) = Δt(as.params)
 Δf(as::ModelResult) = Δf(as.params)
-Sounds.samplerate(x::ModelResult) = samplerate(params(x))
+Sounds.samplerate(x::ModelResult) = samplerate(Params(x))
 
 function ASParams(x;fs=samplerate(x),
                   len=10,decay_tc=8,nonlinear=-2,octave_shift=-1)

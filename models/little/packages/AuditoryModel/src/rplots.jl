@@ -89,7 +89,7 @@ R"""
 """
 end
 
-function rplot(cort::CorticalRates;rates=rates(cort))
+function rplot(cort::CorticalRates;rates=AuditoryModel.rates(cort))
   cort = cort[:,atvalue.(rates),:]
   @show size(cort)
   @show typeof(cort)
@@ -108,12 +108,13 @@ R"""
 
   library(ggplot2)
 
+  ratevals = $(ustrip.(rates))
   ratestr = function(x){
     ifelse(!is.nan(x),sprintf("Rate: %5.2f Hz",x),"All Rates")
   }
 
   ordered_rates = function(x){
-    factor(ratestr(x),levels=ratestr($(ustrip.(sort(rates)))))
+    factor(ratestr(x),levels=ratestr(ratevals))
   }
 
   $p +
@@ -124,7 +125,7 @@ R"""
 """
 end
 
-function rplot(cort::CorticalScales;scales=scales(cort))
+function rplot(cort::CorticalScales;scales=AuditoryModel.scales(cort))
   cort = cort[:,atvalue.(scales),:]
   ixs = CartesianRange(size(cort))
   at(ixs,i) = map(x -> x[i],ixs)
@@ -140,13 +141,13 @@ function rplot(cort::CorticalScales;scales=scales(cort))
 R"""
 
   library(ggplot2)
-
+  scalevals = $(ustrip.(scales))
   scalestr = function(x){
     ifelse(!is.nan(x),sprintf("Scale: %3.2f cyc/oct",x),"All Scales")
   }
 
   ordered_scales = function(x){
-    factor(scalestr(x),levels=scalestr($(ustrip.(sort(scales)))))
+    factor(scalestr(x),levels=scalestr(scalevals))
   }
 
   $p +
@@ -158,7 +159,8 @@ R"""
 end
 
 
-function rplot(cort::Cortical;rates=rates(cort),scales=scales(cort))
+function rplot(cort::Cortical;rates=AuditoryModel.rates(cort),
+               scales=AuditoryModel.scales(cort))
   cort = cort[:,atvalue.(rates),atvalue.(scales),:]
   ixs = CartesianRange(size(cort))
   at(ixs,i) = map(x -> x[i],ixs)
@@ -176,6 +178,8 @@ R"""
 
   library(ggplot2)
 
+  scalevals = $(ustrip.(scales))
+  ratevals = $(ustrip.(rates))
   scalestr = function(x){
     ifelse(!is.nan(x),sprintf("Scale: %3.2f cyc/oct",x),"All Scales")
   }
@@ -184,10 +188,10 @@ R"""
   }
 
   ordered_scales = function(x){
-    factor(scalestr(x),levels=scalestr($(ustrip.(sort(scales)))))
+    factor(scalestr(x),levels=scalestr(scalevals))
   }
   ordered_rates = function(x){
-    factor(ratestr(x),levels=ratestr($(ustrip.(sort(rates)))))
+    factor(ratestr(x),levels=ratestr(ratevals))
   }
 
   $p +
@@ -199,11 +203,11 @@ R"""
 end
 
 function collapsed_scale_plot(cort;range=nothing)
-  scaledim = axisdim(data(cort),Axis{:scale})
-  timedim = axisdim(data(cort),Axis{:time})
+  scaledim = axisdim(AxisArray(cort),Axis{:scale})
+  timedim = axisdim(AxisArray(cort),Axis{:time})
 
-  dims = find(indexin(1:ndims(cort),[scaledim,timedim]) .== 0)
-  y = squeeze(mean(abs.(data(cort).data),dims),dims)
+  dims = Tuple(find(indexin(1:ndims(cort),[scaledim,timedim]) .== 0))
+  y = squeeze(mean(abs.(AxisArray(cort).data),dims),dims)
   ixs = CartesianRange(size(y))
   at(ixs,i) = map(x -> x[i],ixs)
 
@@ -212,7 +216,7 @@ function collapsed_scale_plot(cort;range=nothing)
                  scale_bin = vec(at(ixs,2)))
 
   sbreaks = 1:2:length(scales(cort))
-  slabs = string.(round.(scales(cort)[sbreaks],2))
+  slabs = string.(round.(ustrip.(uconvert.(cycoct,scales(cort)))[sbreaks],2))
 
   p = raster_plot(df,value=:response,x=:time,y=:scale_bin)
 

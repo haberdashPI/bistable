@@ -10,12 +10,12 @@ export NMFC, NMFDirect, realpos
 realpos(x) = max(0,real(x))
 
 struct CoherenceModel{T}
-  cort::CorticalModel
+  cort::AuditoryModel.Params
   ncomponents::Int
-  window::Seconds{Float64}
-  minwindow::Seconds{Float64}
+  window::typeof(1.0s)
+  minwindow::typeof(1.0s)
   method::T
-  delta::Seconds{Float64}
+  delta::typeof(1.0s)
 end
 
 @with_kw struct CoherencePCA
@@ -36,21 +36,22 @@ end
   normalize::Bool = true
   maxiter::Int = 2000
   tol::Float64 = 1e-4
-  normalize_tc::Seconds{Float64} = 1s
+  normalize_tc::typeof(1.0s) = 1s
 end
 nmf_tc(cohere::CoherenceModel{CoherenceNMF{T}}) where T =
   1 / floor(Int,cohere.method.normalize_tc/Δt(cohere.cort))
 
-Δt(cohere::CoherenceModel) = cohere.delta
-frame_length(cohere::CoherenceModel) =
+AuditoryModel.Δt(cohere::CoherenceModel) = cohere.delta
+AuditoryModel.frame_length(cohere::CoherenceModel) =
   min(1,floor(Int,cohere.delta / Δt(cohere.cort)))
-times(cohere::CoherenceModel,x::AbstractArray) =
+AuditoryModel.times(cohere::CoherenceModel,x::AbstractArray) =
   times(cohere.cort,x)[min_windowlen(cohere):frame_length(cohere):end]
-times(cohere::CoherenceModel,C::FactorSeries) =
+AuditoryModel.times(cohere::CoherenceModel,C::FactorSeries) =
   ((0:length(C)-1).*frame_length(cohere) .+ min_windowlen(cohere)) .*
   Δt(cohere.cort)
-scales(cohere::CoherenceModel) = scales(cohere.cort)
-rates(cohere::CoherenceModel) = rates(cohere.cort)
+AuditoryModel.scales(cohere::CoherenceModel) = scales(cohere.cort)
+AuditoryModel.rates(cohere::CoherenceModel) = rates(cohere.cort)
+AuditoryModel.freqs(cohere::CoherenceModel) = freqs(cohere.cort)
 
 (cohere::CoherenceModel)(x::AbstractVector) = cohere(cohere.cort(x))
 (cohere::CoherenceModel)(x::AbstractMatrix) = cohere(cohere.cort(x))
@@ -65,9 +66,9 @@ function CoherenceModel(cort,ncomponents;window=1s,minwindow=window,
     :nmf => CoherenceNMF(;method_kwds...)
   end
 
-  CoherenceModel(cort,ncomponents,convert(Seconds{Float64},window),
-                 convert(Seconds{Float64},minwindow),method,
-                 convert(Seconds{Float64},delta))
+  CoherenceModel(cort,ncomponents,convert(typeof(1.0s),window),
+                 convert(typeof(1.0s),minwindow),method,
+                 convert(typeof(1.0s),delta))
 end
 
 windowing(x,dim;length=nothing,step=nothing,minlength=nothing) =

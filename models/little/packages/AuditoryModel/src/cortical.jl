@@ -10,7 +10,7 @@ next!(x::Missing) = nothing
 @dimension Sc "Sc" Scale
 @refunit cycoct "cyc/oct" CyclesPerOct Sc false
 
-struct CParams{R,S}
+struct CParams{R,S} <: Params
   aspect::ASParams
   rates::R
   scales::S
@@ -34,8 +34,9 @@ struct Cortical{T,N,R,S} <: ModelResult{T,N}
 end
 const CorticalScales{T,N,S} = Cortical{T,N,Void,S}
 const CorticalRates{T,N,R} = Cortical{T,N,R,Void}
-data(x::Cortical) = x.val
-params(x::Cortical) = x.params
+AxisArrays.AxisArray(x::Cortical) = x.val
+Params(x::Cortical) = x.params
+similar_helper(::Cortical,data,params) = Cortical(data,params)
 resultname(x::Cortical) = "Cortical Rates × Scales"
 resultname(x::CorticalRates) = "Cortical Rates"
 resultname(x::CorticalScales) = "Cortical Scales"
@@ -54,14 +55,14 @@ frame_length(x::Cortical) = frame_length(x.params.aspect)
 
 rates(x::CParams) = x.rates
 rates(x::CorticalScales) = typeof(1Hz)[]
-rates(x::Cortical) = rates(data(x))
+rates(x::Cortical) = rates(AxisArray(x))
 rates(x::ModelResult) = typeof(1Hz)[]
 rates(x::AxisArray) = axisvalues(axes(x,Axis{:rate}))[1]
 nrates(x) = length(rates(x))
 
 scales(x::CParams) = x.scales
 scales(x::CorticalRates) = typeof(1cycoct)[]
-scales(x::Cortical) = scales(data(x))
+scales(x::Cortical) = scales(AxisArray(x))
 scales(x::AxisArray) = axisvalues(axes(x,Axis{:scale}))[1]
 scales(x::ModelResult) = typeof(1cycoct)[]
 nscales(x) = length(scales(x))
@@ -215,10 +216,10 @@ function audiospect(cr::Cortical;norm=0.9,progressbar=true)
     end
   end
 
-  t = axes(data(cr),Axis{:time})
-  f = axes(data(cr),Axis{:freq})
+  t = axes(AxisArray(cr),Axis{:time})
+  f = axes(AxisArray(cr),Axis{:freq})
   AuditorySpectrogram(AxisArray(normalize!(z_cum,cr,norm),t,f),
-                      params(cr).aspect)
+                      Params(cr).aspect)
 end
 
 # inverse of scales
@@ -234,8 +235,8 @@ function audiospect(cr::CorticalScales;norm=0.9,progressbar=true)
     addfft!(z_cum,cr[:,si,:],[HS; zeros(HS)]')
     next!(progress)
   end
-  t = axes(data(cr),Axis{:time})
-  f = axes(data(cr),Axis{:freq})
+  t = axes(AxisArray(cr),Axis{:time})
+  f = axes(AxisArray(cr),Axis{:freq})
 
   AuditorySpectrogram(AxisArray(normalize!(z_cum,cr,norm),t,f),
                       cr.params.aspect)
@@ -253,8 +254,8 @@ function audiospect(cr::CorticalRates;norm=0.9,progressbar=true)
     addfft!(z_cum,cr[:,ri,:],HR)
     next!(progress)
   end
-  t = axes(data(cr),Axis{:time})
-  f = axes(data(cr),Axis{:freq})
+  t = axes(AxisArray(cr),Axis{:time})
+  f = axes(AxisArray(cr),Axis{:freq})
 
   AuditorySpectrogram(AxisArray(normalize!(z_cum,cr,norm),t,f),cr.params.aspect)
 end
@@ -325,7 +326,7 @@ end
 
 function FFTCum(cr::Cortical)
   dims = find_fft_dims(size(cr,1,ndims(cr)))
-  mult = 1 .+ (params(cr).rates != nothing,params(cr).scales != nothing)
+  mult = 1 .+ (Params(cr).rates != nothing,Params(cr).scales != nothing)
   z = zeros(eltype(cr),dims .* mult)
 
   FFTCum(z,zeros(z),zeros(real(eltype(z)),size(z)...),plan_fft(z))
@@ -383,7 +384,7 @@ function askind(H,len,maxi,kind,nonorm)
   end
 end
 
-function scale_filters(Y,x,params=params(x))
+function scale_filters(Y,x,params=Params(x))
   N_f = size(Y,ndims(Y)) >> 1
   smin,smax = extrema(scales(x))
   map(scales(x)) do scale
@@ -401,7 +402,7 @@ function scale_filter(scale,len,ts,kind)
   askind(H,len,indmax(H),kind,false)
 end
 
-function rate_filters(Y,x,params=params(x);use_conj=false)
+function rate_filters(Y,x,params=Params(x);use_conj=false)
   N_t = size(Y,1) >> 1
   rmin,rmax = extrema(abs.(rates(x)))
 
