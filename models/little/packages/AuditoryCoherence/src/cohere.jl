@@ -9,8 +9,7 @@ export NMFC, NMFDirect, realpos
 
 realpos(x) = max(0,real(x))
 
-abstract type CoherenceModelMethod end
-struct CoherenceModel{T} <: CoherenceModelMethod
+struct CoherenceModel{T}
   cort::CorticalModel
   ncomponents::Int
   window::Seconds{Float64}
