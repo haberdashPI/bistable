@@ -57,7 +57,7 @@ frame_length(as::ModelResult) = frame_length(as.params)
 Δf(as::ModelResult) = Δf(as.params)
 Sounds.samplerate(x::ModelResult) = samplerate(params(x))
 
-function ASParams(;fs=samplerate(),
+function ASParams(x;fs=samplerate(x),
                   len=10,decay_tc=8,nonlinear=-2,octave_shift=-1)
   @assert fs == fixed_fs*Hz "The only sample rate supported is $(fixed_fs)Hz"
 
@@ -82,7 +82,7 @@ end
 
 ########################################
 # auditory spectrogram
-audiospect(x::AbstractArray;params...) = audiospect(x,ASParams(;params...))
+audiospect(x::AbstractArray;params...) = audiospect(x,ASParams(x;params...))
 
 ####################
 # 'identity' conversions (something that's already basically a spectrogram)
