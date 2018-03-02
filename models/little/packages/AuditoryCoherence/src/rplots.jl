@@ -22,12 +22,32 @@ function titlefn(λ,λ_digits,components)
   end
 end
 
+function nearin(xin,xs)
+  _,inds = findmin(abs.(vec(xin) .- vec(xs)'),2)
+  cols = map(ii -> ii[2],CartesianRange((length(xin),length(xs))))
+  if length(inds) > 0
+    cols[inds[:,1]]
+  else
+    Array{Int}(0)
+  end
+end
+
+function findnear(x,nearby)
+  indices = sort(unique(nearin(filter(!isnan,nearby),
+                                filter(!isnan,x))))
+  if any(isnan.(nearby))
+    [NaN; x[indices]], [find(isnan,x); indices]
+  else
+    x[indices], indices
+  end
+end
+
 function rplot(cohere::CoherenceModel,C::FactorSeries;
                λ_digits=:automatic,
                components=1:ncomponents(C),
                scales=AuditoryModel.scales(cohere))
   nscales = length(AuditoryModel.scales(cohere))
-  scales,indices = AuditoryModel.findnear(AuditoryModel.scales(cohere),scales)
+  scales,indices = findnear(AuditoryModel.scales(cohere),scales)
 
   u = reshape(factors(C),length(C),nscales,:,ncomponents(C))
   u = u[:,indices,:,components]
@@ -39,7 +59,7 @@ function rplot(cohere::CoherenceModel,C::FactorSeries;
 
   df = DataFrame(value = vec(u),
                  time = vec(ustrip.(times(cohere,C)[at(1)])),
-                 scale = vec(round.(scales[at(2)],2)),
+                 scale = vec(round.(ustrip.(scales[at(2)]),2)),
                  freq_bin = vec(at(3)),
                  component = vec(at(4)),
                  component_title = rowtitle.(vec(at(4))))
@@ -48,7 +68,7 @@ function rplot(cohere::CoherenceModel,C::FactorSeries;
   p = raster_plot(df,value=:value,x=:time,y=:freq_bin)
 
 R"""
-  scalevals = $scales
+  scalevals = $(ustrip.(scales))
   scalestr = function(x){sprintf("'Scale: %3.2f cyc/oct'",x)}
   ordered_scales = function(x){
     factor(scalestr(x),levels=scalestr(scalevals))

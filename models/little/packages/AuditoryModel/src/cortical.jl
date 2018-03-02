@@ -53,6 +53,8 @@ cortical_progress(n) = Progress(desc="Cortical Model: ",n)
 
 frame_length(x::Cortical) = frame_length(x.params.aspect)
 
+freqs(x::CParams) = freqs(x.aspect)
+
 rates(x::CParams) = x.rates
 rates(x::CorticalScales) = typeof(1Hz)[]
 rates(x::Cortical) = rates(AxisArray(x))

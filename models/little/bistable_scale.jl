@@ -1,39 +1,62 @@
 push!(LOAD_PATH,"packages")
 using AuditoryModel
 using AuditoryCoherence
+using AxisArrays
 using RCall
 include("util/stim.jl")
 
 R"library(ggplot2)"
 R"library(cowplot)"
 quartz() = R"quartz()"
-dir = "../../plots/run_2018_02_06"
+dir = "../../plots/run_2018_02_28"
 isdir(dir) || mkdir(dir)
-
-spect = AuditorySpectrogram(len=25,min_freq = 250Hz,max_freq=1500Hz)
-cort = CorticalModel(spect,scales = 2.0.^linspace(-2,1.5,10))
-# cohere = CoherenceModel(cort,4,window=750ms,method=:pca,frame_len=600ms)
-cohere = CoherenceModel(cort,3,window=100ms,method=:nmf,delta=50ms,
-                        maxiter=200,tol=1e-3)
 
 x = @> ab(120ms,120ms,1,6,500Hz,6) normpower amplify(-20)
 
-sp = spect(x);
-cr = cort(sp);
+sparams = Dict(:len=>10)
+cparams = Dict(:scales => cycoct.*round.(2.0.^linspace(-1,2,9),1))
+sp = audiospect(x;sparams...)
+cs = cortical(sp;cparams...)
+
+params = AdaptMI(c_m=20,τ_m=200ms,W_m=scale_weighting(cs,0.5),
+                 c_a=0,τ_a=2s,shape_y = x -> max(0,x),
+                 Δt = Δt(cs));
+
+csa = similar(cs);
+
+time = Axis{:time}
+csa,a,m = (adaptmi(csa,params) do cr_t,t,dt_cr
+  cs[time(t)]
+end);
+
+p = rplot(csa,scales=[0.5,1.1,3.1].*cycoct);
+R"""
+ggsave($(joinpath(dir,"1_scale_mi.pdf")),$p)
+"""
+
+
+params = AdaptMI(c_m=5,τ_m=200ms,W_m=scale_weighting(cs,0.5),
+                 c_a=0,τ_a=2s,shape_y = x -> max(0,x),
+                 Δt = Δt(cs));
+
+time = Axis{:time}
+csa,a,m = (adaptmi(csa,params) do cr_t,t,dt_cr
+  cs[time(t)]
+end);
+
+rplot(csa)
+
+
+cohere = CoherenceModel(AuditoryModel.Params(cs),3,window=100ms,method=:nmf,delta=50ms,
+                        maxiter=200,tol=1e-3)
+
+
+
 C = cohere(cr);
 
 rplot(cohere,C)
 
 # GOAL: with MI only, make sure one of the scales wins out
-
-params = AdaptMI(c_m=20,τ_m=200ms,W_m=scale_weighting(cort,0.5),
-                 c_a=0,τ_a=2s,shape_y = x -> max(0,x),
-                 Δt = Δt(cort));
-
-cra = similar(cr);
-cra,a,m = (adaptmi(cra,params) do cr_t,t,dt_cr
-  cr[t,:,:,:]
-end);
 
 p = collapsed_scale_plot(cort,mean(abs.(cra),[2,4]))
 R"""
