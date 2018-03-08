@@ -97,17 +97,19 @@ const spect_rate = 24
 # TODO: implicity convert sound into cortical representation
 
 # cortical responses of rates and scales simultaneously
-function cortical(y::AbstractArray;progressbar=true,params...)
+function cortical(y::AbstractArray;params...)
   params = CParams(y;params...)
   cortical(y,params)
 end
 
-cortical(y::AbstractArray{T,2} where T,params::CParamAll) =
+cortical(y::AbstractVector,params::CParams) =
+  cortical(audiospect(y,params.aspect),params)
+cortical(y::AbstractMatrix,params::CParams) =
   cortical(audiospect(y,params.aspect),params)
 
 ####################
-# 'identity' functions: converts various arrays that already contain the computed
-# cortical representation
+# 'identity' functions: converts various arrays that already contain the
+# computed cortical representation
 function cortical(y::AxisArray{T,4} where T,params::CParamAll)
   @assert(nfreqs(x) == nfreqs(params),
           "Frequency channels of array and parameters do not match")
@@ -443,125 +445,4 @@ function rate_filter(rate,len,spect_len,kind,use_conj=false)
 	end
 
   HR
-end
-
-function old_cortical(s::AbstractMatrix,cm::CParams;progressbar=true)
-  rates = ustrip.(cm.rates)
-  scales = ustrip.(cm.scales)
-  N_t, N_f = map(n -> nextprod([2,3,5],n),size(s)) # TODO: change to [2,3,5]
-  N_r, N_s = length(rates), length(scales)
-
-  # spatial-frequency represention of the spectrogram (i.e. 2D fft of s).
-  S1 = fft(pad(s,(N_t,2N_f)),2)
-  S = fft(pad(S1[:,1:N_f],(2N_t,N_f)),1)
-  yt = s
-
-  t_ifft = plan_ifft(S,1)
-  f_ifft = plan_ifft(Array{eltype(s)}(size(s,1),2N_f),2)
-
-  S1 = S1[:,1:N_f]
-  s1_ifft = plan_ifft(S1,1)
-
-  cr = zeros(Complex{eltype(s)}, size(s,1), N_r, N_s, size(s,2))
-  rmin,rmax = extrema(abs.(rates))
-  smin,smax = extrema(scales)
-  progress = Progress(length(rates)*length(scales),
-                      desc="Cortical Simulation: ",
-                      dt = progressbar ? 1.0 : Inf)
-  for (ri,rate) in enumerate(rates)
-    z_t = if ismissing(rate)
-      # do not filter by rate
-      (t_ifft * S)[1:size(s,1),:]
-    else
-      HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
-                       cm.bandonly ? :band :
-                       abs(rate) == rmin ? :low :
-                       abs(rate) < rmax ? :band : :high)
-
-      # apply the rate filter
-      (t_ifft * (HR.*S))[1:size(s,1),:]
-    end
-
-    for (si,scale) in enumerate(scales)
-      if ismissing(scale)
-        # do not filter by scale
-        z = t_ifft * (HR .* S1)
-        cr[:, ri, si, :] = view(z,indices(s)...)
-      else
-	      HS = scale_filter(scale, N_f, spect_rate,
-                          cm.bandonly ? :band :
-                          scale == smin ? :low : scale < smax ? :band : :high)
-
-			  # apply the scale filter
-        z = f_ifft*(pad(z_t.*HS',size(z_t,1),2N_f))
-
-			  cr[:, ri, si, :] = view(z,indices(s)...)
-      end
-
-      next!(progress)
-		end
-  end
-
-  cr, S
-end
-
-function old_cortical_inv(cm::CParams,cr::AbstractArray{T,4};
-                          norm=0.9,progressbar=true) where T
-  rates = ustrip.(cm.rates)
-  scales = ustrip.(cm.scales)
-  N_t, N_f = map(n -> nextprod([2],n),size(cr,1,4)) # TODO: change to [2,3,5]
-  N_r, N_s = size(cr,2,3)
-
-  z = zeros(T,2N_t,2N_f)
-  z_cum = zeros(z)
-  h_cum = zeros(real(T),size(z)...)
-  st_fft = plan_fft(z_cum)
-
-  rmin,rmax = extrema(abs.(rates))
-  smin,smax = extrema(scales)
-  dt = progressbar ? 1.0 : Inf
-  progress = Progress(length(rates)*length(scales),
-                      desc="Cortical Inversion: ",
-                      dt = progressbar ? 1.0 : Inf)
-  for (ri,rate) in enumerate(rates)
-    if ismissing(rate)
-      next!(progresse)
-      continue
-    end
-	  # rate filtering
-    HR = rate_filter(rate, N_t, 1000 / cm.aspect.len,
-                     cm.bandonly ? :band :
-                     abs(rate) == rmin ? :low :
-                     abs(rate) < rmax ? :band : :high,
-                     true)
-
-    for (si,scale) in enumerate(scales)
-      if ismissing(rate)
-        next!(progress)
-        continue
-      end
-			# scale filtering
-			HS = scale_filter(scale, N_f, spect_rate,
-                        cm.bandonly ? :band :
-                        scale == smin ? :low : scale < smax ? :band : :high)
-
-      z[indices(cr,1),indices(cr,4)] = cr[:,ri,si,:]
-
-      Z = st_fft * z
-      h = HR.*[HS; zeros(HS)]'
-      h_cum .+= abs2.(h)
-      z_cum .+= h .* Z
-
-      next!(progress)
-    end
-  end
-
-  h_cum[:,1] .*= 2
-  old_sum = sum(h_cum[:,indices(cr,4)])
-  h_cum .= norm.*h_cum + (1 .- norm).*maximum(h_cum)
-  h_cum .*= old_sum ./ sum(h_cum[:,indices(cr,4)])
-  z_cum ./= h_cum
-
-  s = (st_fft \ z_cum)[indices(cr,1),indices(cr,4)]
-  max.(real.(2.*s),0)
 end

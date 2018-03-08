@@ -42,7 +42,8 @@ function findnear(x,nearby)
   end
 end
 
-function rplot(cohere::CoherenceModel,C::FactorSeries;
+function rplot(cohere::CoherenceModel,C::FactorSeries,
+               cort::AuditoryModel.ModelResult;
                λ_digits=:automatic,
                components=1:ncomponents(C),
                scales=AuditoryModel.scales(cohere))
@@ -64,7 +65,7 @@ function rplot(cohere::CoherenceModel,C::FactorSeries;
                  component = vec(at(4)),
                  component_title = rowtitle.(vec(at(4))))
 
-  fbreaks,findices = freq_ticks(cohere)
+  fbreaks,findices = freq_ticks(cort)
   p = raster_plot(df,value=:value,x=:time,y=:freq_bin)
 
 R"""

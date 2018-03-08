@@ -184,7 +184,7 @@ function adaptmi(update,y,params)
 
     yr_t,a_t,e_t,m_t = @approx (y_t,a_t,e_t,m_t) begin
       y_t .*= α
-      y_t .-= (y_t.*c_a.*a_t .- c_e.*e_t .+ c_m.*m_t)
+      y_t .-= (y_t.*c_a.*a_t .- c_e.*e_t .+ y_t.*c_m.*m_t)
       yp_t = shape_y.(y_t)
       a_t .+= (yp_t .- a_t).*dt_a
       e_t .+= (yp_t .- e_t).*dt_e

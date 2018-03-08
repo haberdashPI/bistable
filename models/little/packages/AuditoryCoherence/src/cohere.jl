@@ -4,6 +4,7 @@ using Match
 using Parameters
 using ProgressMeter
 using Parameters
+using AxisArrays
 
 export NMFC, NMFDirect, realpos
 
@@ -38,17 +39,18 @@ end
   tol::Float64 = 1e-4
   normalize_tc::typeof(1.0s) = 1s
 end
-nmf_tc(cohere::CoherenceModel{CoherenceNMF{T}}) where T =
-  1 / floor(Int,cohere.method.normalize_tc/Δt(cohere.cort))
+nmf_tc(cohere::CoherenceModel{CoherenceNMF{T}},x) where T =
+  1 / floor(Int,cohere.method.normalize_tc/Δt(x))
 
 AuditoryModel.Δt(cohere::CoherenceModel) = cohere.delta
-AuditoryModel.frame_length(cohere::CoherenceModel) =
-  min(1,floor(Int,cohere.delta / Δt(cohere.cort)))
-AuditoryModel.times(cohere::CoherenceModel,x::AbstractArray) =
-  times(cohere.cort,x)[min_windowlen(cohere):frame_length(cohere):end]
+AuditoryModel.frame_length(cohere::CoherenceModel,x=cohere.cort) =
+  min(1,floor(Int,cohere.delta / Δt(x)))
+AuditoryModel.times(cohere::CoherenceModel,x=cohere.cort) =
+  times(cohere.cort,x)[min_windowlen(cohere):frame_length(cohere,x):end]
 AuditoryModel.times(cohere::CoherenceModel,C::FactorSeries) =
-  ((0:length(C)-1).*frame_length(cohere) .+ min_windowlen(cohere)) .*
-  Δt(cohere.cort)
+  ((0:length(C)-1).*frame_length(cohere,cohere.cort) .+
+   min_windowlen(cohere,cohere.cort)) .*
+   Δt(cohere.cort)
 AuditoryModel.scales(cohere::CoherenceModel) = scales(cohere.cort)
 AuditoryModel.rates(cohere::CoherenceModel) = rates(cohere.cort)
 AuditoryModel.freqs(cohere::CoherenceModel) = freqs(cohere.cort)
@@ -64,6 +66,7 @@ function CoherenceModel(cort,ncomponents;window=1s,minwindow=window,
     :pca => CoherencePCA(;method_kwds...)
     :real_pca => CoherenceRealPCA(;method_kwds...)
     :nmf => CoherenceNMF(;method_kwds...)
+    :tracking => CoherenceTrack(;method_kwds...)
   end
 
   CoherenceModel(cort,ncomponents,convert(typeof(1.0s),window),
@@ -74,19 +77,23 @@ end
 windowing(x,dim;length=nothing,step=nothing,minlength=nothing) =
   (max(1,t-length+1):t for t in indices(x,dim)[minlength:step:end])
 
-windowlen(cohere::CoherenceModel) = round(Int,cohere.window/Δt(cohere.cort))
-min_windowlen(cohere::CoherenceModel) =
-  round(Int,cohere.minwindow / Δt(cohere.cort))
-nunits(cohere::CoherenceModel,x) = prod(size(x,3,4))
+windowlen(cohere::CoherenceModel,x) = round(Int,cohere.window/Δt(x))
+min_windowlen(cohere::CoherenceModel,x) =
+  round(Int,cohere.minwindow / Δt(x))
+function nunits(cohere::CoherenceModel,x)
+  mapreduce(*,axes(x)) do ax
+    isa(ax,Axis{:time}) || isa(ax,Axis{:rate}) ? 1 : length(ax)
+  end
+end
 ncomponents(cohere::CoherenceModel) = cohere.ncomponents
 
 # alternative: I could have a different
 # set of eigenseries for each time scale
 Base.CartesianRange(x::Int) = CartesianRange((x,))
 function (cohere::CoherenceModel{CoherencePCA})(x)
-  windows = enumerate(windowing(x,1;length=windowlen(cohere),
-                                minlength=min_windowlen(cohere),
-                                step=frame_length(cohere)))
+  windows = enumerate(windowing(x,1;length=windowlen(cohere,x),
+                                minlength=min_windowlen(cohere,x),
+                                step=frame_length(cohere,x)))
   C = EigenSeries(eltype(x),length(windows),nunits(cohere,x),
                   ncomponents(cohere),Δt(cohere))
 
@@ -112,9 +119,9 @@ end
 
 function (cohere::CoherenceModel{CoherenceRealPCA})(x)
   n_phases = cohere.method.n_phases
-  windows = enumerate(windowing(x,1;length=windowlen(cohere),
-                                minlength=min_windowlen(cohere),
-                                step=frame_length(cohere)))
+  windows = enumerate(windowing(x,1;length=windowlen(cohere,),
+                                minlength=min_windowlen(cohere,x),
+                                step=frame_length(cohere,x)))
   C = EigenSeries(real(eltype(x)),length(windows),nunits(cohere,x),
                   ncomponents(cohere),Δt(cohere))
 
@@ -147,12 +154,12 @@ function (cohere::CoherenceModel{CoherenceRealPCA})(x)
 end
 
 function (cohere::CoherenceModel{CoherenceNMF{NMFDirect}})(x)
-  windows = enumerate(windowing(x,1;length=windowlen(cohere),
-                                minlength=min_windowlen(cohere),
-                                step=frame_length(cohere)))
+  windows = enumerate(windowing(x,1;length=windowlen(cohere,x),
+                                minlength=min_windowlen(cohere,x),
+                                step=frame_length(cohere,x)))
 
-  C = NMFSeries(length(windows),windowlen(cohere)*length(rates(cohere)),
-                nunits(cohere,x),ncomponents(cohere),Δt(cohere.cort),Δt(cohere))
+  C = NMFSeries(length(windows),windowlen(cohere,x)*length(rates(x)),
+                nunits(cohere,x),ncomponents(cohere),Δt(x),Δt(x))
   convergence_count = 0
   # Winit,Hinit = fill(0.0,(0,0)),fill(0.0,(0,0))
   # method = NMF.ALSPGrad{Float64}(tol=cohere.method.tol,
@@ -178,7 +185,7 @@ function (cohere::CoherenceModel{CoherenceNMF{NMFDirect}})(x)
                                key=object_id(C))
 
     # Winit,Hinit = solution.W,solution.H
-    C[i] = NMFSpace(solution.W,solution.H,Δt(cohere.cort))
+    C[i] = NMFSpace(solution.W,solution.H,Δt(x))
   end
 
   if convergence_count > 0
@@ -186,13 +193,13 @@ function (cohere::CoherenceModel{CoherenceNMF{NMFDirect}})(x)
          " failed to fully converge to a solution.")
   end
 
-  cohere.method.normalize ? normalize_components!(C,nmf_tc(cohere)) : C
+  cohere.method.normalize ? normalize_components!(C,nmf_tc(cohere,x)) : C
 end
 
 function (cohere::CoherenceModel{CoherenceNMF{NMFC}})(x)
   C = NMFSeries(size(x,1),nunits(cohere,x)*length(rates(cohere)),
-                nunits(cohere,x),ncomponents(cohere),Δt(cohere.cort),
-                Δt(cohere.cort))
+                nunits(cohere,x),ncomponents(cohere),Δt(x),
+                Δt(x))
   convergence_count = 0
   Winit,Hinit = fill(0.0,(0,0)),fill(0.0,(0,0))
   nonlinear = cohere.method.submethod.nonlinear
@@ -217,7 +224,7 @@ function (cohere::CoherenceModel{CoherenceNMF{NMFC}})(x)
                                key=object_id(C))
 
     Winit,Hinit = solution.W,solution.H
-    C[t] = NMFSpace(solution.W,solution.H,Δt(cohere.cort))
+    C[t] = NMFSpace(solution.W,solution.H,Δt(x))
   end
 
   if convergence_count > 0
@@ -225,7 +232,7 @@ function (cohere::CoherenceModel{CoherenceNMF{NMFC}})(x)
          " failed to fully converge to a solution.")
   end
 
-  cohere.method.normalize ? normalize_components(C,nmf_tc(cohere)) : C
+  cohere.method.normalize ? normalize_components(C,nmf_tc(cohere,x)) : C
 end
 
 function mask(cohere::CoherenceModel,C::NMFSpace,
@@ -276,15 +283,15 @@ end
 
 function __map_mask(fn::Function,cohere::CoherenceModel,C::FactorSeries,
                     x::AbstractArray{T} where T,component)
-  windows = enumerate(windowing(x,1;length=windowlen(cohere),
-                                minlength=min_windowlen(cohere),
-                                step=frame_length(cohere)))
+  windows = enumerate(windowing(x,1;length=windowlen(cohere,x),
+                                minlength=min_windowlen(cohere,x),
+                                step=frame_length(cohere,x)))
   y = zeros(length(windows))
   max_C = maximum(abs,C)
   @showprogress "Calculating Mask: " for (i,w_inds) in windows
     window = x[w_inds,:,:,:]
     m = mask(cohere,C[i],window,component=component,maxvalue=max_C)
-    masked = inv(cohere.cort,m)
+    masked = audiospect(m,AudiotryModel.Params(x))
 
     masked ./= maximum(abs.(masked))
     window ./= maximum(abs.(window))
@@ -296,9 +303,9 @@ end
 
 function mean_spect2(cohere::CoherenceModel,C::NMFSeries,
                      x::AbstractArray{T,4};component=1) where T
-  windows = enumerate(windowing(x,1;length=windowlen(cohere),
-                                minlength=min_windowlen(cohere),
-                                step=frame_length(cohere)))
+  windows = enumerate(windowing(x,1;length=windowlen(cohere,x),
+                                minlength=min_windowlen(cohere,x),
+                                step=frame_length(cohere,x)))
   y = fill(zero(x[1]),size(x))
   norm = fill(real(zero(x[1])),size(x))
   @showprogress "Masking: " for (i,w_inds) in windows
