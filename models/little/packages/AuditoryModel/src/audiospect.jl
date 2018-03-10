@@ -24,7 +24,7 @@ struct ASParams <: Params
   fs::typeof(1.0Hz)
 end
 
-struct AuditorySpectrogram{T} <: ModelResult{T,2}
+struct AuditorySpectrogram{T} <: Result{T,2}
   val::AxisArray{T,2}
   params::ASParams
 end
@@ -33,14 +33,16 @@ Params(x::AuditorySpectrogram) = x.params
 resultname(x::AuditorySpectrogram) = "Auditory Spectrogram"
 similar_helper(::AuditorySpectrogram,data,params) =
   AuditorySpectrogram(data,params)
+
 nfreqs(as::ASParams) = size(cochba,2)-1
 nfreqs(x) = length(freqs(x))
+
 freqs(as::ASParams) = 440.0Hz * 2.0.^(((1:nfreqs(as)).-31)./24 .+ as.octave_shift)
-freqs(as::ModelResult) = freqs(AxisArray(as))
+freqs(as::Result) = freqs(AxisArray(as))
 freqs(as::AxisArray) = axisvalues(axes(as,Axis{:freq}))[1]
 
 ntimes(x) = length(times(x))
-times(as::ModelResult) = times(AxisArray(as))
+times(as::Result) = times(AxisArray(as))
 times(as::AxisArray) = axisvalues(axes(as,Axis{:time}))[1]
 times(p::Params,x::AbstractArray) = indices(x,1) .* Δt(p)
 
@@ -52,10 +54,10 @@ frame_length(params::ASParams) = floor(Int,Δt(params) * params.fs)
 Δf(params::ASParams) = (1 / 24)*Hz
 Sounds.samplerate(params::ASParams) = uconvert(Hz,params.fs)
 
-frame_length(as::ModelResult) = frame_length(as.params)
-Δt(as::ModelResult) = Δt(as.params)
-Δf(as::ModelResult) = Δf(as.params)
-Sounds.samplerate(x::ModelResult) = samplerate(Params(x))
+frame_length(as::Result) = frame_length(as.params)
+Δt(as::Result) = Δt(as.params)
+Δf(as::Result) = Δf(as.params)
+Sounds.samplerate(x::Result) = samplerate(Params(x))
 
 function ASParams(x;fs=samplerate(x),delta_t=10ms,
                   Δt=delta_t,decay_tc=8,nonlinear=-2,octave_shift=-1)

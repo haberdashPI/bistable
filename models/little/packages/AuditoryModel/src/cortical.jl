@@ -28,7 +28,7 @@ const CParamScales{S} = CParams{Void,S}
 const CParamRates{R} = CParams{R,Void}
 const CParamAll = CParams{R,S} where {R <: AbstractArray,S <: AbstractArray}
 
-struct Cortical{T,N,R,S} <: ModelResult{T,N}
+struct Cortical{T,N,R,S} <: Result{T,N}
   val::AxisArray{T,N}
   params::CParams{R,S}
 end
@@ -58,7 +58,7 @@ freqs(x::CParams) = freqs(x.aspect)
 rates(x::CParams) = x.rates
 rates(x::CorticalScales) = typeof(1Hz)[]
 rates(x::Cortical) = rates(AxisArray(x))
-rates(x::ModelResult) = typeof(1Hz)[]
+rates(x::Result) = typeof(1Hz)[]
 rates(x::AxisArray) = axisvalues(axes(x,Axis{:rate}))[1]
 nrates(x) = length(rates(x))
 
@@ -66,7 +66,7 @@ scales(x::CParams) = x.scales
 scales(x::CorticalRates) = typeof(1cycoct)[]
 scales(x::Cortical) = scales(AxisArray(x))
 scales(x::AxisArray) = axisvalues(axes(x,Axis{:scale}))[1]
-scales(x::ModelResult) = typeof(1cycoct)[]
+scales(x::Result) = typeof(1cycoct)[]
 nscales(x) = length(scales(x))
 
 Δt(c::CParams) = Δt(c.aspect)
@@ -159,7 +159,7 @@ end
 
 ####################
 # actual cortical computation
-function cortical(y::ModelResult,params::CParamAll)
+function cortical(y::Result,params::CParamAll)
   progress = cortical_progress(nrates(params)+1)
   cs = cortical(y,asscales(params),missing)
   next!(progress)
@@ -167,7 +167,7 @@ function cortical(y::ModelResult,params::CParamAll)
 end
 
 # cortical responses of rates
-function cortical(y::ModelResult,params::CParamRates,
+function cortical(y::Result,params::CParamRates,
                   progress=cortical_progress(nrates(params)))
   fir = FIRFiltering(y,Axis{:time})
 
@@ -184,7 +184,7 @@ Cortical(cr::AxisArray{T,4} where T,p::CParamRates) =
 
 # cortical responses of scales
 vecperm(x::AbstractVector,n) = reshape(x,fill(1,n-1)...,:)
-function cortical(y::ModelResult,params::CParamScales,
+function cortical(y::Result,params::CParamScales,
                   progress=cortical_progress(nscales(params)))
   @assert isempty(scales(y)) "Scales already analyzed"
   fir = FIRFiltering(y,Axis{:freq})
