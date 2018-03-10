@@ -71,9 +71,11 @@ nscales(x) = length(scales(x))
 const default_rates = sort([-2.^(1:0.5:5); 2.^(1:0.5:5)]).*Hz
 const default_scales = (2.^(-2:0.5:3)).*cycoct
 
-CParams(x::AbstractArray;rates=nothing,scales=nothing,bandonly=false,params...) =
+CParams(x::AbstractArray;rates=nothing,scales=nothing,
+        bandonly=false,params...) =
   CParams(ASParams(params),rates,scales,bandonly)
-CParams(x::AuditorySpectrogram;rates=nothing,scales=nothing,bandonly=false) =
+CParams(x::AuditorySpectrogram;rates=nothing,scales=nothing,
+        bandonly=false) =
   CParams(x.params,rates,scales,bandonly)
 function CParams(x::CorticalRates;rates=nothing,scales=nothing,
                  bandonly=false,params...)
