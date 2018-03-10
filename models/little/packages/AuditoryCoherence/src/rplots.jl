@@ -3,8 +3,6 @@ import AuditoryModel: rplot, raster_plot
 export rplot, scale_plot
 R"library(ggplot2)"
 
-rplot(cohere::CoherenceModel,x::Sound;kwds...) = rplot(cohere,cohere(x);kwds...)
-
 function titlefn(λ,λ_digits,components)
   digits = λ_digits != :automatic ?  λ_digits :
     min(-floor(Int,log10(λ[minimum(components)]))+2,
@@ -42,34 +40,29 @@ function findnear(x,nearby)
   end
 end
 
-function rplot(cohere::CoherenceModel,C::FactorSeries,
-               cort::AuditoryModel.ModelResult;
-               λ_digits=:automatic,
-               components=1:ncomponents(C),
-               scales=AuditoryModel.scales(cohere))
-  nscales = length(AuditoryModel.scales(cohere))
-  scales,indices = findnear(AuditoryModel.scales(cohere),scales)
+function rplot(C::Coherence{M,T,4} where {M,T};λ_digits=:automatic)
+  @assert axisdim(C,Axis{:time}) == 1
+  @assert axisdim(C,Axis{:scale}) == 2
+  @assert axisdim(C,Axis{:freq}) == 3
+  @assert axisdim(C,Axis{:component}) == 4
 
-  u = reshape(factors(C),length(C),nscales,:,ncomponents(C))
-  u = u[:,indices,:,components]
-
-  ii = CartesianRange(size(u))
+  ii = CartesianRange(size(C))
   at(i) = map(ii -> ii[i],ii)
 
-  rowtitle = titlefn(strengths(C),λ_digits,components)
+  rowtitle = titlefn(component_means(C),λ_digits,indices(C,4))
 
-  df = DataFrame(value = vec(u),
-                 time = vec(ustrip.(times(cohere,C)[at(1)])),
-                 scale = vec(round.(ustrip.(scales[at(2)]),2)),
+  df = DataFrame(value = vec(C),
+                 time = vec(ustrip.(times(C)[at(1)])),
+                 scale = vec(round.(ustrip.(scales(C)[at(2)]),2)),
                  freq_bin = vec(at(3)),
                  component = vec(at(4)),
                  component_title = rowtitle.(vec(at(4))))
 
-  fbreaks,findices = freq_ticks(cort)
+  fbreaks,findices = freq_ticks(C)
   p = raster_plot(df,value=:value,x=:time,y=:freq_bin)
 
 R"""
-  scalevals = $(ustrip.(scales))
+  scalevals = $(ustrip.(scales(C)))
   scalestr = function(x){sprintf("'Scale: %3.2f cyc/oct'",x)}
   ordered_scales = function(x){
     factor(scalestr(x),levels=scalestr(scalevals))
@@ -81,6 +74,7 @@ R"""
 """
 end
 
+#=
 function rplot(cohere::CoherenceModel,C::Factors;
                components=1:ncomponents(C),λ_digits=:automatic)
   u = factors(C)[:,components]
@@ -170,3 +164,4 @@ R"""
   ggplot($df,aes(x=index,y=value)) + geom_bar(stat='identity')
 """
 end
+=#

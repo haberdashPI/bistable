@@ -6,9 +6,6 @@ using Unitful: s, ms, ustrip
 # e.g. with:
 sig(x) = 1/(1+exp(-10(x-0.5)))
 
-# TODO: because of some of the performance issues with keyword arguments, I use
-# a params object.  However, once julia v1.0 hits, I should be able to get
-# similar performance using just keyword arguments
 @with_kw struct AdaptMI{S,I}
   α::Float64 = 1.0
   τ_y::typeof(1.0s) = 10ms
@@ -34,16 +31,6 @@ end
 function inhibit_uniform(y)
   x = (sum(y) .- vec(y)) ./ max(1,length(y)-1)
   reshape(x,size(y)...)
-end
-
-# by default a call to adaptmi updates y_t at each time step so that it
-# incrementally approaches the current value of x_t
-function adaptmi(x::AbstractArray{T},params=AdaptMI()) where T
-  adaptmi(similar(x),params) do y_t,t,dt
-    I = CartesianRange(size(y_t))
-    for ii in I; y_t[ii] += (x[t,ii] - y_t[ii])*dt; end
-    y_t
-  end
 end
 
 ########################################
@@ -102,16 +89,7 @@ end
 
 __approx(f,args...) = f(args...)
 approx_similar(x) = similar(x)
-empty_timeslice(y) = zeros(eltype(y),size(y)[2:end]...)
-approx_empty_timeslice(y) = empty_timeslice(y)
-time_indices(y) = indices(y,1)
-function get_timeslice(y,t)
-  y[t,collect(CartesianRange(size(y,2:ndims(y)...)))]
-end
-function set_timeslice!(y,t,y_t)
-  for ii in CartesianRange(size(y_t)); y[t,ii] = y_t[ii]; end
-  y_t
-end
+approx_zeros(x,dims...) = zeros(x,dims...)
 
 ########################################
 # complex number implementation
@@ -133,31 +111,20 @@ function withangle(angle,y)
 end
 approx_similar(x::AbstractArray{<:Complex{T}}) where T =
   similar(x,T)
-approx_empty_timeslice(y::AbstractArray{<:Complex{T}}) where T =
-  zeros(T,size(y)[2:end]...)
-
-##############################
-# implementation for EigenSeries
-# - each time slice is an EigenSpace
-# - to approximate f(x,ys...)  we project all secondary eigenspaces ys onto the
-#   eigenspace x and then perform the operation over the resulting eigenvalues
-empty_timeslice(y::EigenSeries) = EigenSpace(y)
-time_indices(x::EigenSeries) = indices(x.u,1)
-set_timeslice!(x::EigenSeries,t,slice) = x[t] = slice
-get_timeslice(x::EigenSeries,t) = x[t]
-
-function __approx(f,x::EigenSpace,ys::EigenSpace...)
-  λ = f(x.λ,(project(x,y).λ for y in ys)...)
-  eigenspaces(x,λ)
-end
-# transform eigenvalues into eigenspace
-eigenspaces(x,λ::Vector) = EigenSpace(x.u,λ,x.var)
-# transform tuple of eigenvalues into tuple of eigenspaces
-eigenspaces(x,λs::Tuple) = map(λ -> EigenSpace(x.u,λ,x.var),λs)
+approx_zeros(y::AbstractArray{<:Complex{T}}) where T =
+  zeros(eltype(y),size(y)...)
+approx_zeros(y::AbstractArray{<:Complex{T}},dims...) where T =
+  zeros(eltype(y),dims...)
 
 ################################################################################
 # genertic adaptation and mutual-inhibition operation
-function adaptmi(update,y,params)
+adaptmi(x;kw...) = adaptmi(x,AdaptMI(;kw...))
+function adaptmi(x,params)
+  @assert :time ∈ axisnames(x)
+  time = Axis{:time}
+
+  y = similar(x)
+
   α = params.α
   τ_y = params.τ_y; shape_y = params.shape_y
   τ_a = params.τ_a; c_a = params.c_a
@@ -169,18 +136,18 @@ function adaptmi(update,y,params)
   e = approx_similar(y) # a = adaptation
   m = approx_similar(y) # m = mutual inhibition
 
-  yr_t = empty_timeslice(y)
-  a_t = approx_empty_timeslice(y)
-  e_t = approx_empty_timeslice(y)
-  m_t = approx_empty_timeslice(y)
+  yr_t = zeros(y[time(1)])
+  a_t = approx_zeros(yr_t)
+  e_t = approx_zeros(yr_t)
+  m_t = approx_zeros(yr_t)
 
   dt_y = eltype(a_t)(Δt / τ_y)
   dt_a = eltype(a_t)(Δt / τ_a)
   dt_e = eltype(e_t)(Δt / τ_e)
   dt_m = eltype(a_t)(Δt / τ_m)
 
-  @showprogress "Adapt/Inhibit: " for t in time_indices(y)
-    y_t = update(yr_t,t,dt_y)
+  @showprogress "Adapt/Inhibit: " for t in indices(times(y),1)
+    y_t = x[time(t)]
 
     yr_t,a_t,e_t,m_t = @approx (y_t,a_t,e_t,m_t) begin
       y_t .*= α
@@ -193,10 +160,10 @@ function adaptmi(update,y,params)
       yp_t,a_t,e_t,m_t
     end
 
-    set_timeslice!(y,t,yr_t)
-    set_timeslice!(a,t,a_t)
-    set_timeslice!(e,t,e_t)
-    set_timeslice!(m,t,m_t)
+    y[time(t)] = yr_t
+    a[time(t)] = a_t
+    e[time(t)] = e_t
+    m[time(t)] = m_t
   end
   y,a,e,m
 end
@@ -206,12 +173,13 @@ end
 
 function drift(x,params=AdaptMI())
   τ_σ, c_σ, Δt = params.τ_σ, params.c_σ, params.Δt
+  time = Axis{:time}
 
   y = similar(x)
-  σ_t = approx_empty_timeslice(x)
+  σ_t = zeros(y[time(1)])
   dims = size(σ_t)
   @showprogress "Drift: " for t in time_indices(x)
-    y_t = get_timeslice(x,t)
+    y_t = x[time(t)]
     y_t,σ_t = @approx (y_t,σ_t) begin
       σ_t .+= -σ_t.*(Δt/τ_σ) .+ randn(dims).*(c_σ*sqrt(2Δt/τ_σ))
       y_t .+= σ_t
@@ -219,7 +187,7 @@ function drift(x,params=AdaptMI())
       y_t,σ_t
     end
 
-    set_timeslice!(y,t,y_t)
+    y[time(t)] = y_t
   end
   y
 end

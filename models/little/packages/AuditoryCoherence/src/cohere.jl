@@ -1,4 +1,5 @@
 using Sounds
+using MacroTools
 using RCall
 using Match
 using Parameters
@@ -6,330 +7,154 @@ using ProgressMeter
 using Parameters
 using AxisArrays
 
-export NMFC, NMFDirect, realpos
+export cohere, component, mask, ncomponents, components, component_means
 
-realpos(x) = max(0,real(x))
-
-struct CoherenceModel{T}
-  cort::AuditoryModel.Params
+abstract type CoherenceMethod end
+struct CParams{M,P} <: AuditoryModel.Params
+  cort::P
   ncomponents::Int
   window::typeof(1.0s)
   minwindow::typeof(1.0s)
-  method::T
   delta::typeof(1.0s)
+  method::M
 end
 
-@with_kw struct CoherencePCA
-  normalize::Bool = true
+struct Coherence{M,T,N} <: AuditoryModel.Result{T,N}
+  val::AxisArray{T,N}
+  params::CParams{M}
 end
-@with_kw struct CoherenceRealPCA
-  n_phases::Int = 12
-  normalize::Bool = true
+AuditoryModel.Params(x::Coherence) = x.params
+AxisArrays.AxisArray(x::Coherence) = x.val
+AuditoryModel.resultname(x::Coherence) = "Coherence Components"
+AuditoryModel.similar_helper(::Coherence,val,params) = Coherence(val,params)
+AuditoryModel.Δt(as::CParams) = as.delta
+
+struct CoherenceComponent{M,T,N} <: AuditoryModel.Result{T,N}
+  val::AxisArray{T,N}
+  params::CParams{M}
 end
+AuditoryModel.Params(x::CoherenceComponent) = x.params
+AxisArrays.AxisArray(x::CoherenceComponent) = x.val
+AuditoryModel.resultname(x::CoherenceComponent) = "Single Coherence Component"
+AuditoryModel.similar_helper(::CoherenceComponent,val,params) =
+  CoherenceComponent(val,params)
 
-struct NMFDirect end
-@with_kw struct NMFC
-  nonlinear = realpos
-end
+function AuditoryModel.
+  modelwrap(x::A,newval::AxisArray{T}) where {T,M,A <: Coherence{M,T}}
 
-@with_kw struct CoherenceNMF{M}
-  submethod::M = NMFDirect()
-  normalize::Bool = true
-  maxiter::Int = 2000
-  tol::Float64 = 1e-4
-  normalize_tc::typeof(1.0s) = 1s
-end
-nmf_tc(cohere::CoherenceModel{CoherenceNMF{T}},x) where T =
-  1 / floor(Int,cohere.method.normalize_tc/Δt(x))
-
-AuditoryModel.Δt(cohere::CoherenceModel) = cohere.delta
-AuditoryModel.frame_length(cohere::CoherenceModel,x=cohere.cort) =
-  min(1,floor(Int,cohere.delta / Δt(x)))
-AuditoryModel.times(cohere::CoherenceModel,x=cohere.cort) =
-  times(cohere.cort,x)[min_windowlen(cohere):frame_length(cohere,x):end]
-AuditoryModel.times(cohere::CoherenceModel,C::FactorSeries) =
-  ((0:length(C)-1).*frame_length(cohere,cohere.cort) .+
-   min_windowlen(cohere,cohere.cort)) .*
-   Δt(cohere.cort)
-AuditoryModel.scales(cohere::CoherenceModel) = scales(cohere.cort)
-AuditoryModel.rates(cohere::CoherenceModel) = rates(cohere.cort)
-AuditoryModel.freqs(cohere::CoherenceModel) = freqs(cohere.cort)
-
-(cohere::CoherenceModel)(x::AbstractVector) = cohere(cohere.cort(x))
-(cohere::CoherenceModel)(x::AbstractMatrix) = cohere(cohere.cort(x))
-
-function CoherenceModel(cort,ncomponents;window=1s,minwindow=window,
-                        method=:pca,delta=10ms,
-                        normalize_phase=true,method_kwds...)
-
-  method = @match method begin
-    :pca => CoherencePCA(;method_kwds...)
-    :real_pca => CoherenceRealPCA(;method_kwds...)
-    :nmf => CoherenceNMF(;method_kwds...)
-    :tracking => CoherenceTrack(;method_kwds...)
+  axnames = axisnames(newval)
+  if setdiff(axisnames(x),axisnames(newval)) == [:component]
+    CoherenceComponent(newval,AuditoryModel.Params(x))
+  else
+    newval
   end
+end
 
-  CoherenceModel(cort,ncomponents,convert(typeof(1.0s),window),
-                 convert(typeof(1.0s),minwindow),method,
-                 convert(typeof(1.0s),delta))
+function Coherence(x::Coherence,p::CParams)
+  @assert x.params == p "Coherence parameters do not match"
+  x
+end
+
+function Coherence(x::AbstractArray,p::CParams)
+  @assert nfreqs(p.cort) == nfreqs(x) "Frequency channels do not match"
+  Coherence(x,p)
+end
+
+ncomponents(x::CParams) = x.ncomponents
+ncomponents(x::AuditoryModel.Result) = length(components(x))
+components(x::CParams) = 1:ncomponents(x)
+components(x::AuditoryModel.Result) = components(AxisArray(x))
+components(x::AxisArray) = axisvalues(axes(x,Axis{:component}))[1]
+
+component(x::Coherence,n) = x[Axis{:component}(n)]
+
+function component_means(C)
+  mdims = filter(x -> x != axisdim(C,Axis{:component}),1:ndims(C))
+  vec(mean(C,mdims))
+end
+
+AuditoryModel.frame_length(params::CParams,x) =
+  min(1,floor(Int,params.delta / Δt(x)))
+
+function CParams(x;ncomponents=1,window=1s,minwindow=window,
+                  method=:nmf,delta=10ms,
+                  normalize_phase=true,method_kwds...)
+  method = CoherenceMethod(Val{method},method_kwds)
+
+  CParams(AuditoryModel.Params(x),ncomponents,
+          convert(typeof(1.0s),window),
+          convert(typeof(1.0s),minwindow),
+          convert(typeof(1.0s),delta),
+          method)
 end
 
 windowing(x,dim;length=nothing,step=nothing,minlength=nothing) =
   (max(1,t-length+1):t for t in indices(x,dim)[minlength:step:end])
 
-windowlen(cohere::CoherenceModel,x) = round(Int,cohere.window/Δt(x))
-min_windowlen(cohere::CoherenceModel,x) =
-  round(Int,cohere.minwindow / Δt(x))
-function nunits(cohere::CoherenceModel,x)
+windowlen(params::CParams,x) = round(Int,params.window/Δt(x))
+min_windowlen(params::CParams,x) =
+  round(Int,params.minwindow / Δt(x))
+function nunits(params::CParams,x)
   mapreduce(*,axes(x)) do ax
     isa(ax,Axis{:time}) || isa(ax,Axis{:rate}) ? 1 : length(ax)
   end
 end
-ncomponents(cohere::CoherenceModel) = cohere.ncomponents
+ncomponents(params::CParams) = params.ncomponents
 
-# alternative: I could have a different
-# set of eigenseries for each time scale
-Base.CartesianRange(x::Int) = CartesianRange((x,))
-function (cohere::CoherenceModel{CoherencePCA})(x)
-  windows = enumerate(windowing(x,1;length=windowlen(cohere,x),
-                                minlength=min_windowlen(cohere,x),
-                                step=frame_length(cohere,x)))
-  C = EigenSeries(eltype(x),length(windows),nunits(cohere,x),
-                  ncomponents(cohere),Δt(cohere))
+cohere(x::AuditoryModel.Result;params...) = cohere(x,CParams(x;params...))
 
-  @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
-    window = x[w_inds,:,:,:]
-    x_t = reshape(window,prod(size(window,1,2)),:)
+function cohere(x::AbstractArray{T},params::CParams) where T
+  @assert axisdim(x,Axis{:time}) == 1
+  @assert axisdim(x,Axis{:rate}) == 2
 
-    n = min(size(x_t,1),ncomponents(cohere))
-    sv, = svds(x_t,nsv=n)
-
-    λ = zeros(eltype(x),ncomponents(cohere))
-    u = zeros(eltype(x),size(x_t,2),ncomponents(cohere))
-
-    λ[1:n] = sv[:S].^2 ./ size(x_t,1)
-
-    u[:,1:n] = sv[:V]
-    var = mean(abs2.(x_t),1)
-    C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
+  # if we already have components, just wrap up the values with
+  # parameters (since we've already computed components)
+  if :component in axisnames(x)
+    return Coherence(x,params)
   end
 
-  mehtod.normalize ? normalize_phase!(C) : C
-end
+  windows = windowing(x,1;length=windowlen(params,x),
+                      minlength=min_windowlen(params,x),
+                      step=frame_length(params,x))
 
-function (cohere::CoherenceModel{CoherenceRealPCA})(x)
-  n_phases = cohere.method.n_phases
-  windows = enumerate(windowing(x,1;length=windowlen(cohere,),
-                                minlength=min_windowlen(cohere,x),
-                                step=frame_length(cohere,x)))
-  C = EigenSeries(real(eltype(x)),length(windows),nunits(cohere,x),
-                  ncomponents(cohere),Δt(cohere))
+  K = ncomponents(params)
+  C_data = zeros(eltype(params.method,x),length(windows),size(x)[3:end]...,K)
+  C = AxisArray(C_data,
+                Axis{:time}(times(x)[map(last,windows)]),
+                axes(x)[3:end]...,
+                Axis{:component}(1:K))
 
-  @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
-    window = x[w_inds,:,:,:]
-    xc_t = reshape(window,prod(size(window,1,2)),:)
+  with_method(params.method,K) do extract
+    progress = Progress(length(windows),desc="Temporal Coherence Analysis: ")
+    for (i,w_inds) in enumerate(windows)
+      components = extract(x[Axis{:time}(w_inds)])
+      C[i,indices(components)...] = components
 
-    # expand the representation, to have n_phase
-    # real filters
-    xp_t = Array{real(eltype(xc_t))}((size(xc_t,1),n_phases,size(xc_t,2)))
-    for (j,phase) in enumerate(linspace(-π,π,n_phases+1)[1:end-1])
-      xp_t[:,j,:] = real.(xc_t .* exp.(phase.*im))
+      next!(progress)
     end
-    x_t = reshape(xp_t,:,size(xc_t,2))
-
-    n = min(size(x_t,1),ncomponents(cohere))
-    sv, = svds(x_t,nsv=n)
-
-    λ = zeros(eltype(x),ncomponents(cohere))
-    u = zeros(eltype(x),size(x_t,2),ncomponents(cohere))
-
-    λ[1:n] = sv[:S].^2 ./ size(x_t,1)
-
-    u[:,1:n] = sv[:V]
-    var = squeeze(mean(abs2.(x_t),1),1)
-    C[i] = EigenSpace(sv[:V],(sv[:S]).^2 / size(x_t,1),var)
   end
 
-  method.normalize ? normalize_phase!(C) : C
+  Coherence(C,params)
 end
 
-function (cohere::CoherenceModel{CoherenceNMF{NMFDirect}})(x)
-  windows = enumerate(windowing(x,1;length=windowlen(cohere,x),
-                                minlength=min_windowlen(cohere,x),
-                                step=frame_length(cohere,x)))
+function mask(cr::AbstractArray,C::CoherenceComponent)
+  @assert axisdim(cr,Axis{:time}) == 1
+  @assert axisdim(cr,Axis{:rate}) == 2
+  @assert size(cr)[3:end...] == size(C)[2:end...] "Dimension mismatch"
 
-  C = NMFSeries(length(windows),windowlen(cohere,x)*length(rates(x)),
-                nunits(cohere,x),ncomponents(cohere),Δt(x),Δt(x))
-  convergence_count = 0
-  # Winit,Hinit = fill(0.0,(0,0)),fill(0.0,(0,0))
-  # method = NMF.ALSPGrad{Float64}(tol=cohere.method.tol,
-  #                                maxiter=cohere.method.maxiter)
+  params = AuditoryModel.Parmas(C)
 
-  @showprogress "Temporal Coherence Analysis: " for (i,w_inds) in windows
-    window = x[w_inds,:,:,:]
-    x_t = reshape(window,prod(size(window,1,2)),:)
-
-    k = min(size(x_t,1),ncomponents(cohere))
-
-    # if isempty(Winit)
-    #   Winit,Hinit = NMF.nndsvd(abs.(x_t),k)
-    # end
-
-    # solution = NMF.solve!(method,abs.(x_t),Winit,Hinit)
-    solution = nnmf(abs.(x_t) .+ cohere.method.tol/2,k,init=:nndsvd,
-                    tol=cohere.method.tol,
-                    maxiter=cohere.method.maxiter)
-
-    convergence_count += !solution.converged
-    solution.converged || warn("NMF failed to converge.",once=true,
-                               key=object_id(C))
-
-    # Winit,Hinit = solution.W,solution.H
-    C[i] = NMFSpace(solution.W,solution.H,Δt(x))
-  end
-
-  if convergence_count > 0
-    info("$(100round(convergence_count / length(windows),3))% of frames "*
-         " failed to fully converge to a solution.")
-  end
-
-  cohere.method.normalize ? normalize_components!(C,nmf_tc(cohere,x)) : C
-end
-
-function (cohere::CoherenceModel{CoherenceNMF{NMFC}})(x)
-  C = NMFSeries(size(x,1),nunits(cohere,x)*length(rates(cohere)),
-                nunits(cohere,x),ncomponents(cohere),Δt(x),
-                Δt(x))
-  convergence_count = 0
-  Winit,Hinit = fill(0.0,(0,0)),fill(0.0,(0,0))
-  nonlinear = cohere.method.submethod.nonlinear
-
-  @showprogress "Temporal Coherence Analysis: " for t in 1:size(x,1)
-    x_t = reshape(x[t,:,:,:],size(x,2),:)
-    Ci = Array{eltype(x_t)}(size(x,2),nunits(cohere,x),nunits(cohere,x))
-    for r in 1:size(x_t,1) Ci[r,:,:] = x_t[r,:] .* x_t[r,:]' end
-    Cir = reshape(Ci,:,nunits(cohere,x))
-
-    k = min(size(Ci,1),ncomponents(cohere))
-
-    if isempty(Winit)
-      Winit,Hinit = NMF.nndsvd(nonlinear.(Cir),k)
-    end
-
-    solution = nnmf(nonlinear.(Cir),k;tol=cohere.method.tol,
-                    maxiter=cohere.method.maxiter)
-
-    convergence_count += !solution.converged
-    solution.converged || warn("NMF failed to converge.",once=true,
-                               key=object_id(C))
-
-    Winit,Hinit = solution.W,solution.H
-    C[t] = NMFSpace(solution.W,solution.H,Δt(x))
-  end
-
-  if convergence_count > 0
-    info("$(100round(convergence_count / size(x,1),3))% of frames "*
-         " failed to fully converge to a solution.")
-  end
-
-  cohere.method.normalize ? normalize_components(C,nmf_tc(cohere,x)) : C
-end
-
-function mask(cohere::CoherenceModel,C::NMFSpace,
-              x::AbstractArray{T,4} where T;component=1,maxvalue=maximum(abs,C))
-  @assert nunits(C) == prod(size(x,3,4))
-  y = copy(x)
-  c_ = factors(C)[:,component]
-  c = reshape(c_,length(scales(cohere)),:)
-  c ./= maxvalue
-  @simd for ii in CartesianRange(size(x,1,2))
-    @inbounds y[ii,:,:] .= sqrt.(abs.(y[ii,:,:]) .* c) .*
-      exp.(angle.(y[ii,:,:])*im)
-  end
-  y
-end
-
-function mask(cohere::CoherenceModel,C::EigenSpace{<:Complex},
-              x::AbstractArray{T,4} where T;component=1,maxvalue=maximum(abs,C))
-  @assert nunits(C) == prod(size(x,3,4))
-  y = copy(x)
-  pc_ = eigvecs(C)[:,component]
-  pc = reshape(pc_,length(scales(cohere)),:)
-  pc ./= maxvalue
-  @simd for ii in CartesianRange(size(x,1,2))
-    @inbounds y[ii,:,:] .= sqrt.(abs.(y[ii,:,:]) .* max.(0,real.(pc))) .*
-      exp.(angle.(y[ii,:,:])*im)
-  end
-  y
-end
-
-function mask(cohere::CoherenceModel,C::EigenSpace{<:Real},x::AbstractArray{T,4};
-              component=1,maxvalue=maximum(abs,C)) where T
-  m = if component == :max
-    eigvecs(C)[:,indmax(eigvals(C))]
-  else
-    eigvecs(C)[:,component]
-  end
-  m ./= maxvalue
-  m .= max.(0,m)
-  mr = reshape(m,size(x,3,4)...)
-
-  y = similar(x)
-  for ii in CartesianRange(size(x,1,2))
-    y[ii,:,:] = mr.*x[ii,:,:]
-  end
-  y
-end
-
-function __map_mask(fn::Function,cohere::CoherenceModel,C::FactorSeries,
-                    x::AbstractArray{T} where T,component)
-  windows = enumerate(windowing(x,1;length=windowlen(cohere,x),
-                                minlength=min_windowlen(cohere,x),
-                                step=frame_length(cohere,x)))
-  y = zeros(length(windows))
-  max_C = maximum(abs,C)
-  @showprogress "Calculating Mask: " for (i,w_inds) in windows
-    window = x[w_inds,:,:,:]
-    m = mask(cohere,C[i],window,component=component,maxvalue=max_C)
-    masked = audiospect(m,AudiotryModel.Params(x))
-
-    masked ./= maximum(abs.(masked))
-    window ./= maximum(abs.(window))
-    y[i] = fn(i,w_inds,masked,window)
-  end
-
-  y
-end
-
-function mean_spect2(cohere::CoherenceModel,C::NMFSeries,
-                     x::AbstractArray{T,4};component=1) where T
-  windows = enumerate(windowing(x,1;length=windowlen(cohere,x),
-                                minlength=min_windowlen(cohere,x),
-                                step=frame_length(cohere,x)))
-  y = fill(zero(x[1]),size(x))
-  norm = fill(real(zero(x[1])),size(x))
+  windows = enumerate(windowing(x,1;length=windowlen(params,x),
+                                minlength=min_windowlen(params,x),
+                                step=frame_length(params,x)))
+  y = zero(cr)
+  norm = fill(real(zero(eltype(cr))),size(cr))
   @showprogress "Masking: " for (i,w_inds) in windows
-    c = factors(C[i])[:,component]
-    y[w_inds,:,:,:] .+= reshape(c,1,1,length(scales(cohere)),:)
-    norm[w_inds,:,:,:] += 1
+    c = C[Axis{:time}(i)]
+    y[Axis{:time}(w_inds)] .+= reshape(c,1,1,size(c)...)
+    norm[Axis{:time}(w_inds)] += 1
   end
   y ./= norm
   y ./= maximum(abs,y)
   y .= sqrt.(abs.(x) .* y) .* exp.(angle.(x).*im)
-
-  inv(cohere.cort,y)
-end
-
-function mean_spect(cohere::CoherenceModel,C::FactorSeries,
-                    x::AbstractArray{T,4};component=1) where T
-  y = fill(real(zero(x[1])),size(x,1,4))
-  norm = fill(zero(real(x[1])),size(x,1,4))
-  dummy = __map_mask(cohere,C,x,component) do i,w_inds,masked,window
-    y[w_inds,:] .+= masked
-    norm[w_inds,:] .+= 1.0
-
-    0.0
-  end
-
-  y ./ max.(1e-10,norm)
 end
