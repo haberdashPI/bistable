@@ -11,5 +11,7 @@ include("cortical.jl")
 
 # @require RCall include(joinpath(@__DIR__,"rplots.jl"))
 include(joinpath(@__DIR__,"rplots.jl"))
+# @require VegaLite include(joinpath(@__DIR__,"rplots.jl"))
+# include(joinpath(@__DIR__,"vplots.jl"))
 
 end
