@@ -17,7 +17,7 @@ end
 const fixed_fs = 8000
 
 struct ASParams <: Params
-  len::Int
+  Δt::typeof(1.0s)
   decay_tc::Float64
   nonlinear::Float64
   octave_shift::Float64
@@ -47,9 +47,8 @@ times(p::Params,x::AbstractArray) = indices(x,1) .* Δt(p)
 delta_t(x) = Δt(x)
 delta_f(x) = Δf(x)
 
-frame_length(params::ASParams) =
-  round(Int,params.len * 2^(4+params.octave_shift))
-Δt(params::ASParams) = uconvert(s,frame_length(params) / params.fs)
+frame_length(params::ASParams) = floor(Int,Δt(params) * params.fs)
+Δt(params::ASParams) = params.Δt
 Δf(params::ASParams) = (1 / 24)*Hz
 Sounds.samplerate(params::ASParams) = uconvert(Hz,params.fs)
 
@@ -58,11 +57,18 @@ frame_length(as::ModelResult) = frame_length(as.params)
 Δf(as::ModelResult) = Δf(as.params)
 Sounds.samplerate(x::ModelResult) = samplerate(Params(x))
 
-function ASParams(x;fs=samplerate(x),
-                  len=10,decay_tc=8,nonlinear=-2,octave_shift=-1)
+function ASParams(x;fs=samplerate(x),delta_t=10ms,
+                  Δt=delta_t,decay_tc=8,nonlinear=-2,octave_shift=-1)
   @assert fs == fixed_fs*Hz "The only sample rate supported is $(fixed_fs)Hz"
 
-  ASParams(len,decay_tc,nonlinear,octave_shift,fs)
+  p = ASParams(Δt,decay_tc,nonlinear,octave_shift,fs)
+
+  recommended_length = 2^(4+p.octave_shift)
+  if frame_length(p) < recommended_length
+    warn("It's recommended that you have a frame length of at least,"*
+         " $recommended_length samples, but you have $(frame_length(p)).")
+  end
+  p
 end
 
 function sigmoid(x::AbstractArray{T},fac::T) where T
