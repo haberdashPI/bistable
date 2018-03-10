@@ -26,7 +26,7 @@ function scale_weighting(cort,σ=1)
 end
 
 function scale_weighting2(cort,σ)
-  s = log.(ustrip.(uconvert.(cycoct,scales(cort))))
+  s = log.(ustrip.(scales(cort)))
   W = @. 1 - exp(-(s - s')^2 / (σ^2*log(2)))
   W ./= sum(W,2)
 
