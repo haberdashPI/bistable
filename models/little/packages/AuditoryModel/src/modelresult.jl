@@ -42,23 +42,39 @@ end
 
 function showparams(io,x)
   for field in fieldnames(x)
-    write(io,"$field = ")
-    show(io,getfield(x,field))
-    write(io,"\n")
+    showfield(io,field,getfield(x,field))
   end
 end
 
-resultname(x::ModelResult) = string(typeof(x))
+function showfield(io,field,value)
+  write(io,"$field = ")
+  show(io,value)
+  write(io,"\n")
+end
+
+function showfield(io,field,value::Params)
+  showparams(io,value)
+end
+
+resultname(x::Result) = string(typeof(x))
 
 function Base.show(io::IO,x::Result{T,N}) where {T,N}
-  write(io,resultname(x))
-  write(io,":\n")
-  showparams(io,Params(x))
-  write(io,"-------\n")
-  write(io,"$(N)d $T data with axes: \n")
-  for ax in axes(AxisArray(x))
-    write(io,"$(AxisArrays.axisname(ax)): $(round(ustrip(ax.val[1]),2))"*
-          " - $(round(ustrip(ax.val[end]),2)) $(unit(ax.val[1]))\n")
+  if get(io, :compact, false)
+    write(io,"<")
+    write(io,resultname(x))
+    write(io,": ")
+    write(io,"$(N)d $T data")
+    write(io,">")
+  else
+    write(io,resultname(x))
+    write(io,":\n")
+    showparams(io,Params(x))
+    write(io,"-------\n")
+    write(io,"$(N)d $T data with axes: \n")
+    for ax in axes(AxisArray(x))
+      write(io,"$(AxisArrays.axisname(ax)): $(round(ustrip(ax.val[1]),2))"*
+            " - $(round(ustrip(ax.val[end]),2)) $(unit(ax.val[1]))\n")
+    end
   end
 end
 Base.show(io::IO,::MIME"text/plain",x::Result) = show(io,x)
