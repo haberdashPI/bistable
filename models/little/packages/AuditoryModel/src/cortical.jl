@@ -56,17 +56,13 @@ frame_length(x::Cortical) = frame_length(x.params.aspect)
 freqs(x::CParams) = freqs(x.aspect)
 
 rates(x::CParams) = x.rates
-rates(x::CorticalScales) = typeof(1Hz)[]
-rates(x::Cortical) = rates(AxisArray(x))
-rates(x::Result) = typeof(1Hz)[]
+rates(x::Result) = rates(AxisArray(x))
 rates(x::AxisArray) = axisvalues(axes(x,Axis{:rate}))[1]
 nrates(x) = length(rates(x))
 
 scales(x::CParams) = x.scales
-scales(x::CorticalRates) = typeof(1cycoct)[]
-scales(x::Cortical) = scales(AxisArray(x))
+scales(x::Result) = scales(AxisArray(x))
 scales(x::AxisArray) = axisvalues(axes(x,Axis{:scale}))[1]
-scales(x::Result) = typeof(1cycoct)[]
 nscales(x) = length(scales(x))
 
 Δt(c::CParams) = Δt(c.aspect)
@@ -121,7 +117,7 @@ end
 function cortical(y::AxisArray{T,3} where T,params::CParamScales)
   @assert(nfreqs(x) == nfreqs(params),
           "Frequency channels of array and parameters do not match")
-  @assert isempty(nrates(y)) "Unexpectd rate dimension"
+  @assert :rate ∉ axisnames(y) "Unexpectd rate dimension"
   @assert indexin(scales(x),scales(params)) .> 0 "Missing scales in parameters"
   Cortical(y,params)
 end
@@ -131,7 +127,7 @@ function cortical(y::AxisArray{T,3} where T,params::CParamRates)
   @assert(nfreqs(x) == nfreqs(params),
           "Frequency channels of array and parameters do not match")
   @assert indexin(rates(x),rates(params)) .> 0 "Missing rates in parameters"
-  @assert isempty(nscales(y)) "Unexpectd scale dimension"
+  @assert :scale ∉ axisnames(y) "Unexpectd scale dimension"
   Cortical(y,params)
 end
 
@@ -186,7 +182,7 @@ Cortical(cr::AxisArray{T,4} where T,p::CParamRates) =
 vecperm(x::AbstractVector,n) = reshape(x,fill(1,n-1)...,:)
 function cortical(y::Result,params::CParamScales,
                   progress=cortical_progress(nscales(params)))
-  @assert isempty(scales(y)) "Scales already analyzed"
+  @assert :scale ∉ axisnames(y) "Scales already analyzed"
   fir = FIRFiltering(y,Axis{:freq})
 
   cs = initcr(y,params)
