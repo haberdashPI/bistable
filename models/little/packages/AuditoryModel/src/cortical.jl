@@ -411,7 +411,7 @@ function rate_filters(Y,x,params=Params(x);use_conj=false)
   rmin,rmax = extrema(abs.(rates(x)))
 
   map(rates(x)) do rate
-    rate_filter(ustrip(uconvert(Hz,rate)), N_t, 1000 / params.aspect.len,
+    rate_filter(ustrip(uconvert(Hz,rate)), N_t, Δt(params.aspect),
                 params.bandonly ? :band :
                 abs(rate) == rmin ? :low :
                 abs(rate) < rmax ? :band : :high,use_conj)
@@ -419,8 +419,8 @@ function rate_filters(Y,x,params=Params(x);use_conj=false)
 end
 
 # create the temporal-rate filter (filter along temporal axis)
-function rate_filter(rate,len,spect_len,kind,use_conj=false)
-  t = (0:len-1)./spect_len .* abs(rate)
+function rate_filter(rate,len,Δt,kind,use_conj=false)
+  t = (0:len-1).*ustrip(Δt)
   h = @. abs(rate) * sin(2π*t) * t^2 * exp(-3.5t)
   h .-= mean(h)
 
