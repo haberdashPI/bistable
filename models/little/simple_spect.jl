@@ -107,7 +107,7 @@ p2 = rplot(spect,sp)
 cort = CorticalModel(spect,scales = [1,4],bandonly=true) # 3 ?
 cohere = CoherenceModel(cort,6,window=750ms,method=:pca,delta=50ms)
 
-x = @>(ab(120ms,120ms,1,6,500Hz,6),normpower,amplify(-10))
+x = ab(120ms,120ms,1,6,500Hz,6) |> normpower |> amplify(-10dB)
 sp = spect(x)
 cr = cort(sp);
 Cr = cohere(cr);
@@ -149,7 +149,7 @@ rplot(cohere,C)
 ########################################
 # complex valued components with real stimulis
 
-x = @>(ab(120ms,120ms,1,6,500Hz,6),normpower,amplify(-10))
+x = ab(120ms,120ms,1,6,500Hz,6) |> normpower |> amplify(-10dB)
 sp = spect(x)
 cr = cort(sp);
 
@@ -159,7 +159,7 @@ Cr = cohere(cr);
 p1 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p2 = rplot(spect,sp)
 
-x = @>(ab(120ms,120ms,1,6,500Hz,6,:without_b),normpower,amplify(-10))
+x = ab(120ms,120ms,1,6,500Hz,6,:without_b) |> normpower |> amplify(-10dB)
 sp = spect(x);
 cr = cort(sp);
 
@@ -169,7 +169,7 @@ Cr = cohere(cr);
 p3 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p4 = rplot(spect,sp)
 
-x = @>(ab(120ms,120ms,0,6,500Hz,6),normpower,amplify(-10))
+x = ab(120ms,120ms,0,6,500Hz,6) |> normpower |> amplify(-10dB)
 sp = spect(x)
 cr = cort(sp);
 
@@ -194,7 +194,7 @@ save_plot($(joinpath(dir,"3_realstim_complex_valued_components.pdf")),p,
 ########################################
 # real valued components with real stimulis
 
-x = @>(ab(120ms,120ms,1,6,500Hz,6),normpower,amplify(-10))
+x = ab(120ms,120ms,1,6,500Hz,6) |> normpower |> amplify(-10dB)
 sp = spect(x)
 cr = cort(sp);
 
@@ -205,7 +205,7 @@ Cr = cohere(cr);
 p1 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p2 = rplot(spect,sp)
 
-x = @>(ab(120ms,120ms,1,6,500Hz,6,:without_b),normpower,amplify(-10))
+x = ab(120ms,120ms,1,6,500Hz,6,:without_b) |> normpower |> amplify(-10dB)
 sp = spect(x);
 cr = cort(sp);
 
@@ -216,7 +216,7 @@ Cr = cohere(cr);
 p3 = rplot(cohere,Cr,scales=[0.25,0.5,1,2]);
 p4 = rplot(spect,sp)
 
-x = @>(ab(120ms,120ms,0,6,500Hz,6),normpower,amplify(-10))
+x = ab(120ms,120ms,0,6,500Hz,6) |> normpower |> amplify(-10dB)
 sp = spect(x)
 cr = cort(sp);
 
@@ -268,7 +268,7 @@ save_plot($(joinpath(dir,"5_alter_ab_complex_masked.pdf")),p,
   base_aspect_ratio=3,nrow=2,ncol=1)
 """
 
-x = @>(ab(120ms,120ms,1,6,500Hz,6),normpower,amplify(-10))
+x = ab(120ms,120ms,1,6,500Hz,6) |> normpower |> amplify(-10dB)
 sp = spect(x)
 cr = cort(sp);
 C = cohere(cr)

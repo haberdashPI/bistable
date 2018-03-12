@@ -16,9 +16,9 @@ spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=10,
 cort = CorticalModel(spect,rates=sort([-2.^(-1:0.5:5); 2.^(-1:0.5:5)]))
 tempc = TCAnalysis(cort,4,window=600ms,method=(:real_pca,8),frame_len=500ms)
 
-x_a = @> ab(120ms,120ms,1,10,500Hz,6,:without_a) normpower amplify(-20)
-x_b = @> ab(120ms,120ms,1,10,500Hz,6,:without_b) normpower amplify(-20)
-x = @> ab(120ms,120ms,1,10,500Hz,6) normpower amplify(-20)
+x_a = ab(120ms,120ms,1,10,500Hz,6,:without_a) |> normpower |> amplify(-20dB)
+x_b = ab(120ms,120ms,1,10,500Hz,6,:without_b) |> normpower |> amplify(-20dB)
+x = ab(120ms,120ms,1,10,500Hz,6) |> normpower |> amplify(-20dB)
 
 sp = spect(x);
 cr = cort(sp);
@@ -48,7 +48,7 @@ save_plot($(joinpath(dir,"1_real_masks_df6.pdf")),p,
 """
 
 # how do they respond to varying Δf
-sp12 = @> ab(120ms,120ms,1,10,500Hz,12) normpower amplify(-20) spect
+sp12 = ab(120ms,120ms,1,10,500Hz,12) |> normpower |> amplify(-20dB) |> spect
 C12 = tempc(sp12)
 p1 = rplot(tempc,C12[3s],n=3,showvar=false)
 
@@ -72,7 +72,7 @@ save_plot($(joinpath(dir,"2_real_masks_df12.pdf")),p,
   base_aspect_ratio=2,nrow=4)
 """
 
-sp1 = @> ab(120ms,120ms,1,10,500Hz,1) normpower amplify(-20) spect
+sp1 = ab(120ms,120ms,1,10,500Hz,1) |> normpower |> amplify(-20dB) |> spect
 C1 = tempc(sp1)
 p1 = rplot(tempc,C1[3s],n=3,showvar=false)
 
@@ -97,13 +97,13 @@ save_plot($(joinpath(dir,"3_real_masks_df1.pdf")),p,
 """
 
 # how do they respond to varying Δd
-sp60 = @> ab(60ms,60ms,1,20,500Hz,6) normpower amplify(-20) spect
+sp60 = ab(60ms,60ms,1,20,500Hz,6) |> normpower |> amplify(-20dB) |> spect
 C60 = tempc(sp60)
 p1 = rplot(tempc,C60[3s],n=3,showvar=false)
 
 p2 = rplot(tempc,C[3s],λ_digits=3,showvar=false,n=3)
 
-sp240 = @> ab(240ms,240ms,1,5,500Hz,6) normpower amplify(-20) spect
+sp240 = ab(240ms,240ms,1,5,500Hz,6) |> normpower |> amplify(-20dB) |> spect
 C240 = tempc(sp240)
 p3 = rplot(tempc,C240[3s],n=3,showvar=false)
 

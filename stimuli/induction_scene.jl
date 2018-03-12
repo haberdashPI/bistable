@@ -8,16 +8,16 @@ test = aba(freq=500Hz,df=6,tone_length=75ms,spacing=50ms,repeat=32)
 context1 = aba_band(freq=2.5kHz,width=1,df=0,tone_length=75ms,spacing=50ms,repeat=32)
 context2 = aba(freq=2kHz,df=missing,tone_length=75ms,spacing=50ms,repeat=32)
 
-save("context1.wav",[amplify(context1,-20); amplify(test,-20)])
-save("context2.wav",[amplify(context2,-20); amplify(test,-20)])
+save("context1.wav",[amplify(context1,-20dB); amplify(test,-20)])
+save("context2.wav",[amplify(context2,-20dB); amplify(test,-20)])
 
 baseline = aba(freq=500Hz,df=12,tone_length=75ms,spacing=50ms,repeat=64)
 broad = aba_band(freq=500Hz,width=0.5,df=12,tone_length=75ms,spacing=50ms,repeat=64)
 pullsed = aba_pulse(freq=500Hz,pulse=2,pulse_spacing=5ms,df=6,tone_length=75ms,spacing=50ms,repeat=64)
 
-save("baseline.wav",amplify(baseline,-20))
-save("broad.wav",amplify(broad,-20))
-save("pullsed.wav",amplify(pullsed,-20))
+save("baseline.wav",amplify(baseline,-20dB))
+save("broad.wav",amplify(broad,-20dB))
+save("pullsed.wav",amplify(pullsed,-20dB))
 
 rplot(audiospect(pullsed))
 

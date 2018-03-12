@@ -15,7 +15,7 @@ cort = CorticalModel(spect,scales=2.0.^linspace(-0.5,2,6)) # 3 ?
 cohere = CoherenceModel(cort,3,window=100ms,method=:nmf,delta=50ms,
                         maxiter=200,tol=1e-3)
 
-x = @>(ab(120ms,120ms,1,6,500Hz,6),normpower,amplify(-10))
+x = ab(120ms,120ms,1,6,500Hz,6) |> normpower |> amplify(-10dB)
 sp = spect(x)
 cr = cort(sp);
 C = cohere(cr);
@@ -28,7 +28,7 @@ p2 = rplot(spect,spC)
 spC = mean_spect2(cohere,C,cr,component=2);
 p3 = rplot(spect,spC)
 
-x = @>(ab(120ms,120ms,0,6,500Hz,6),normpower,amplify(-10))
+x = ab(120ms,120ms,0,6,500Hz,6) |> normpower |> amplify(-10dB)
 sp = spect(x)
 cr = cort(sp);
 C = cohere(cr);

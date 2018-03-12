@@ -39,11 +39,13 @@ include("warble.jl")
 
 freq = 1kHz
 width = 12/12
-a = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
+a = noise(90ms) |> bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) |>
+  ramp(5ms)
 a = [a; silence(30ms)]
 freq = freq*2^(0/12)
 width = 1/12
-b = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
+b = noise(90ms) |> bandpass (freq * 2.0^(-width/2),freq * 2.0^(width/2)) |>
+  ramp(5ms)
 b = [b; silence(30ms)]
 
 x11 = vcat(Iterators.repeated([a; b],100)...)
@@ -51,11 +53,13 @@ save("approach1_split.wav",x11)
 
 freq = 1kHz
 width = 8/12
-a = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
+a = noise(90ms) |> bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) |>
+  ramp(5ms)
 a = [a; silence(30ms)]
 freq = freq*2^(0/12)
 width = 4/12
-b = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
+b = noise(90ms) |> bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) |>
+  ramp(5ms)
 b = [b; silence(30ms)]
 
 x4 = vcat(Iterators.repeated([a; b],100)...)
@@ -63,11 +67,13 @@ save("approach1_bistable.wav",x4)
 
 freq = 1kHz
 width = 4/12
-a = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
+a = noise(90ms) |> bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) |>
+  ramp(5ms)
 a = [a; silence(30ms)]
 freq = freq*2^(0/12)
 width = 4/12
-b = @> noise(90ms) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) ramp(5ms)
+b = noise(90ms) |> bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2)) |>
+  ramp(5ms)
 b = [b; silence(30ms)]
 
 x0 = vcat(Iterators.repeated([a; a],100)...)
@@ -90,14 +96,14 @@ depth = 0.2
 a = wobble(1kHz,depth,4Hz,0,20s)
 b = wobble(2^(1/12)*1kHz,depth,4Hz,π,20s)
 
-x = @> mix(a,b) normpower amplify(-15)
+x = mix(a,b) |> normpower |> amplify(-15dB)
 save("approach2_split.wav",x)
 
 depth = 1
 a = wobble(1kHz,depth,4Hz,0,20s)
 b = wobble(2^(2/12)*1kHz,depth,4Hz,π,20s)
 
-x = @> mix(a,b) normpower amplify(-15)
+x = mix(a,b) |> normpower |> amplify(-15dB)
 save("approach2_bistable.wav",x)
 
 
@@ -105,7 +111,7 @@ depth = 25
 a = wobble(1kHz,depth,4Hz,0,20s)
 b = wobble(2^(2/12)*1kHz,depth,4Hz,π,20s)
 
-x = @> mix(a,b) normpower amplify(-15)
+x = mix(a,b) |> normpower |> amplify(-15dB)
 save("approach2_fuse.wav",x)
 
 # seems more like the above adjusts the point of bistability rather

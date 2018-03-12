@@ -12,7 +12,7 @@ R"library(cowplot)"
 quartz() = R"quartz()"
 dir = "../../plots/run_2018_03_10"
 isdir(dir) || mkdir(dir)
-x = @> ab(120ms,120ms,1,6,500Hz,6) normpower amplify(-20)
+x = ab(120ms,120ms,1,6,500Hz,6) |> normpower |> amplify(-20dB)
 
 sp = audiospect(x;Δt=25ms)
 cs = cortical(sp;scales=cycoct.*round.(2.0.^linspace(-1,2,9),1))
@@ -25,13 +25,17 @@ rplot(C)
 Ct = track(C)
 rplot(Ct)
 
+# TODO: look at spectral masking output
+# to see if we can get some statistics for the low-level
+# adapt/MI
+
 ########################################
 # TODO: fix below to fit with new API
 
 # # ########################################
 # # looking at noise
 
-# xl = @> ab(120ms,120ms,1,150,500Hz,6) normpower amplify(-10)
+# xl = ab(120ms,120ms,1,150,500Hz,6) |> normpower |> amplify(-10dB)
 # params = AdaptMI(c_m=1,τ_m=200ms,W_m=scale_weighting2(cs,0.75),
 #                  c_a=12,τ_a=2s,shape_y = x -> max(0,x),
 #                  τ_σ = 100ms, c_σ = 0.5,

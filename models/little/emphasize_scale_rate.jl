@@ -16,7 +16,7 @@ cparams = Dict(:scales => cycoct.*round.(2.0.^linspace(-1,2,9),1),
 dir = "../../plots/run_2018_02_28"
 isdir(dir) || mkdir(dir)
 
-x = @> ab(120ms,120ms,1,6,500Hz,6) normpower amplify(-20)
+x = ab(120ms,120ms,1,6,500Hz,6) |> normpower |> amplify(-20dB)
 sp = audiospect(x;sparams...);
 cr = cortical(sp;cparams...);
 
@@ -61,7 +61,7 @@ save_plot($(joinpath(dir,"2_fake_rate_emphasis.pdf")),p,
           base_aspect_ratio=1.3,nrow=2,ncol=2)
 """
 
-x = @> ab(60ms,60ms,1,12,500Hz,6) normpower amplify(-20)
+x = ab(60ms,60ms,1,12,500Hz,6) |> normpower |> amplify(-20dB)
 sp = audiospect(x;sparams...);
 cr = cortical(sp;cparams...);
 

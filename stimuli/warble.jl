@@ -22,7 +22,7 @@ function warble(freq,width,depth,scale,rate,len,itr=25,
   shift(x) = x*0.5depth + (1-0.5depth)
   ym = y .* shift.(sin.(2π.*(scale.*f' .- rate.*t)))
   x = inv(spect,ym,iterations=itr)
-  xs = @> sound(x) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2))
+  xs = sound(x) |> bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2))
 
   if unit_len < len
     extender(x,n) = n <= 1 ? x : fadeto(x,extender(x,n-1),fade_len)
@@ -36,7 +36,7 @@ function noise_warble(freq,width,depth,scale,rate,len,itr=25,
                 unit_len=min(3s,len),fade_len=1s)
   @assert fade_len < unit_len
 
-  x = @> noise(unit_len) bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2))
+  x = noise(unit_len) |> bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2))
   y = spect(x)
 
   t = ustrip.(indices(y,1)*Δt(spect))

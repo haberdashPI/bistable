@@ -3,11 +3,11 @@ using Missings
 
 function aba(;freq=nothing,df=nothing,tone_length=nothing,
              spacing=nothing,repeat=nothing)
-  a = @> tone(freq,tone_length) normpower ramp
+  a = tone(freq,tone_length) |> normpower |> ramp
   if ismissing(df)
     b = silence(tone_length)
   else
-    b = @> tone(freq*2^(df/12),tone_length) normpower ramp
+    b = tone(freq*2^(df/12),tone_length) |> normpower |> ramp
   end
 
   space = silence(spacing)
@@ -20,16 +20,16 @@ function aba_pulse(;freq=nothing,pulse=nothing,pulse_spacing=nothing,
              spacing=nothing,repeat=nothing)
   function pulsetone(freq,tone_length)
     pulse_length = (tone_length - pulse_spacing*(pulse-1)) / pulse
-    ptone = @> tone(freq,pulse_length) ramp(pulse_spacing/2)
+    ptone = tone(freq,pulse_length) |> ramp(pulse_spacing/2)
     pbreak = silence(pulse_spacing)
     vcat(Iterators.repeated([ptone;pbreak],pulse-1)...,ptone)
   end
 
-  a = @> pulsetone(freq,tone_length) normpower ramp
+  a = pulsetone(freq,tone_length) |> normpower |> ramp
   if ismissing(df)
     b = silence(tone_length)
   else
-    b = @> pulsetone(freq*2^(df/12),tone_length) normpower ramp
+    b = pulsetone(freq*2^(df/12),tone_length) |> normpower |> ramp
   end
 
   space = silence(spacing)
@@ -38,21 +38,15 @@ end
 
 function aba_band(;freq=nothing,width=nothing,df=nothing,tone_length=nothing,
                  spacing=nothing,repeat=nothing)
-  a = @> begin
-    noise(tone_length)
-    bandpass(freq*2.0^(-width/2),freq*2.0^(width/2))
-    normpower
-    ramp
-  end
+  a = noise(tone_length) |> bandpass(freq*2.0^(-width/2),freq*2.0^(width/2)) |>
+    normpower |> ramp
+
   if ismissing(df)
     b = silence(tone_length)
   else
-    b = @> begin
-      noise(tone_length)
-      bandpass(@show(freq*2.0^(df/12-width/2)),@show(freq*2.0^(df/12+width/2)))
-      normpower
-      ramp
-    end
+    b = noise(tone_length) |>
+      bandpass(freq*2.0^(df/12-width/2),freq*2.0^(df/12+width/2))
+      normpower |> ramp
   end
 
   space = silence(50ms)

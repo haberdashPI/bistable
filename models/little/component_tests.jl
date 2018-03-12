@@ -13,7 +13,7 @@ isdir(dir) || mkdir(dir)
 spect = AuditorySpectrogram(len=25,min_freq = 250Hz,max_freq=1500Hz)
 cort = CorticalModel(spect,scales = 2.0.^linspace(-2,1,10))
 
-x = @> ab(120ms,120ms,1,10,500Hz,6) normpower amplify(-20)
+x = ab(120ms,120ms,1,10,500Hz,6) |> normpower |> amplify(-20dB)
 
 sp = spect(x);
 cr = cort(sp);
@@ -28,4 +28,3 @@ quartz(); scale_plot(cohere,Cc,scales=[0.25,0.5,1,2])
 
 scaleonly = CorticalModel(spect,scales = scales(cort),rates=[NaN])
 quartz(); rplot(scaleonly,scaleonly(sp),scales=[0.25,0.5,1,2])
-

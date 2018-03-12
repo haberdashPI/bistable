@@ -10,7 +10,7 @@ mkdir(dir)
 spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=10)
 cort = CorticalModel(spect,scales=2.0.^(-1:4),rates=[-2.0.^(1:5); 2.0.^(1:5)])
 
-x = @>(ab(120ms,120ms,1,10,500Hz,6),normpower,amplify(-10))
+x = ab(120ms,120ms,1,10,500Hz,6) |> normpower |> amplify(-10dB)
 
 ## adaptation MI in spectrogram
 

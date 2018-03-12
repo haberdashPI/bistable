@@ -15,7 +15,7 @@ spect = AuditorySpectrogram("/Users/davidlittle/Data/cochba.h5",len=25)
 cort = CorticalModel(spect)
 tempc = TCAnalysis(cort,4,window=750ms,method=(:real_pca,8),frame_len=50ms)
 
-x = @>(ab(120ms,120ms,1,40,500Hz,6),normpower,amplify(-10))
+x = ab(120ms,120ms,1,40,500Hz,6) |> normpower |> amplify(-10dB)
 
 sp = spect(x);
 cr = cort(sp);
