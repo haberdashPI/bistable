@@ -8,7 +8,7 @@ import DSP.Filters.freqs
 import Sounds: Sound
 
 export freqs, times, nfreqs, ntimes, delta_t, delta_f, Δt, Δf, frame_length,
-  audiospect, Sound, data, params, freq_ticks
+  audiospect, Sound, freq_ticks
 
 const cochba = h5open(joinpath(@__DIR__,"..","data","cochba.h5")) do file
   read(file,"/real") + read(file,"/imag")*im
@@ -51,7 +51,7 @@ delta_f(x) = Δf(x)
 
 frame_length(params::ASParams) = floor(Int,Δt(params) * params.fs)
 Δt(params::ASParams) = params.Δt
-Δf(params::ASParams) = (1 / 24)*Hz
+Δf(params::ASParams) = 2^(1/24)
 Sounds.samplerate(params::ASParams) = uconvert(Hz,params.fs)
 
 frame_length(as::Result) = frame_length(as.params)
@@ -275,11 +275,11 @@ function Sounds.Sound(y_in::AuditorySpectrogram;max_iterations=typemax(Int),
       x ./= std(x)
     end
 
-    y_hat,y3_hat = audiospect_helper(x,params,true)
-    x = match_x(params,x,ratios,y,y_hat,y3_hat)
+    ŷ,ŷ3 = audiospect_helper(x,params,true)
+    x = match_x(params,x,ratios,y,ŷ,ŷ3)
 
-    y_hat .*= target_mean/mean(y_hat)
-    err = sum((y_hat .- y).^2) ./ target_sum2
+    ŷ .*= target_mean/mean(ŷ)
+    err = sum((ŷ .- y).^2) ./ target_sum2
 
     if err < min_err
       min_x = x
@@ -322,13 +322,13 @@ function inv_guess(params::ASParams,y::AbstractMatrix)
   squeeze(x,2)
 end
 
-function match_x(params::ASParams,x,ratios,y,y_hat,y3_hat)
+function match_x(params::ASParams,x,ratios,y,ŷ,ŷ3)
   M = size(cochba,2)
   steps = 1:frame_length(params)*size(y,1)
   indices = ceil.(Int,steps / frame_length(params))
 
-  map!(ratios,y_hat,y) do y_hat,y
-    !iszero(y_hat) ? y ./ y_hat : !iszero(y) ? 2 : 1
+  map!(ratios,ŷ,y) do ŷ,y
+    !iszero(ŷ) ? y ./ ŷ : !iszero(y) ? 2 : 1
   end
 
   x .= 0
@@ -339,9 +339,9 @@ function match_x(params::ASParams,x,ratios,y,y_hat,y3_hat)
     A = imag(cochba[(0:p)+2, ch])  # autoregressive coefficients
 
     if params.nonlinear == -2
-      y1 = y3_hat[:,ch].*view(ratios,indices,ch)
+      y1 = ŷ3[:,ch].*view(ratios,indices,ch)
     else
-      y1 = y3_hat[:,ch]
+      y1 = ŷ3[:,ch]
       posi = find(y1 .>= 0)
       y1[posi] .*= view(ratios,indices[posi],ch)
 
