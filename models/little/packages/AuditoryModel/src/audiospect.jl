@@ -1,7 +1,7 @@
 using ProgressMeter
 using AxisArrays
 using DSP
-using HDF5
+using JLD
 using Sounds
 
 import DSP.Filters.freqs
@@ -10,8 +10,18 @@ import Sounds: Sound
 export freqs, times, nfreqs, ntimes, delta_t, delta_f, Δt, Δf, frame_length,
   audiospect, Sound, freq_ticks
 
-const cochba = h5open(joinpath(@__DIR__,"..","data","cochba.h5")) do file
-  read(file,"/real") + read(file,"/imag")*im
+struct CochFilter
+  B::Vector{Float64}
+  A::Vector{Float64}
+end
+
+struct CochFilters
+  norm::Float64
+  filters::Vector{CochFilter}
+end
+
+const cochba = jldopen(joinpath(@__DIR__,"..","data","cochba.jld")) do file
+  read(file,"cochba")
 end
 
 const fixed_fs = 8000
@@ -34,7 +44,7 @@ resultname(x::AuditorySpectrogram) = "Auditory Spectrogram"
 similar_helper(::AuditorySpectrogram,data,params) =
   AuditorySpectrogram(data,params)
 
-nfreqs(as::ASParams) = size(cochba,2)-1
+nfreqs(as::ASParams) = length(cochba.filters)-1
 nfreqs(x) = length(freqs(x))
 
 freqs(as::ASParams) = 440.0Hz * 2.0.^(((1:nfreqs(as)).-31)./24 .+ as.octave_shift)
@@ -133,7 +143,7 @@ audiospect(x::Sound,params::ASParams) =
 
 function audiospect_helper(x::Vector{T},params::ASParams,
                            internal_call=false) where {T}
-  L, M = size(cochba)  # p_max = L - 2
+  M = length(cochba.filters)
   L_x = length(x)  # length of input
   frame_len  = frame_length(params)
 
@@ -156,9 +166,7 @@ function audiospect_helper(x::Vector{T},params::ASParams,
   # last channel (highest frequency)
   #######################################
 
-  p  = floor(Int,real(cochba[1, M]))
-  B  = real(cochba[(0:p)+2, M])
-  A  = imag(cochba[(0:p)+2, M])
+  B,A  = cochba.filters[M].B,cochba.filters[M].A
 
   y1 = filt(PolynomialRatio(B,A),x)
   y2 = sigmoid(y1, params.nonlinear)
@@ -170,15 +178,13 @@ function audiospect_helper(x::Vector{T},params::ASParams,
   #######################################
   # All other channels
   #######################################
-  for ch = (M-1):-1:1,
+  for ch = (M-1):-1:1
 
     #######################################
     # ANALYSIS: cochlear filterbank
     ########################################
     # (IIR) filter bank convolution ---> y1
-    p  = floor(Int,real(cochba[1, ch]))  # order of ARMA filter
-    B  = real(cochba[(0:p)+2, ch])  # moving average coefficients
-    A  = imag(cochba[(0:p)+2, ch])  # autoregressive coefficients
+    B,A  = cochba.filters[ch].B,cochba.filters[ch].A
 
     y1 = filt(B, A, x)
     ########################################
@@ -240,7 +246,7 @@ function Sounds.Sound(y_in::AuditorySpectrogram;max_iterations=typemax(Int),
           "No stopping criterion specified (max_iterations or target_error).")
   params = y_in.params
 
-  M = size(cochba,2)
+  M = length(cochba.filters)
 
   # expand y to include all frequencies
   y = zeros(eltype(y_in),size(y_in,1),M-1)
@@ -323,7 +329,7 @@ function inv_guess(params::ASParams,y::AbstractMatrix)
 end
 
 function match_x(params::ASParams,x,ratios,y,ŷ,ŷ3)
-  M = size(cochba,2)
+  M = length(cochba.filters)
   steps = 1:frame_length(params)*size(y,1)
   indices = ceil.(Int,steps / frame_length(params))
 
@@ -333,10 +339,8 @@ function match_x(params::ASParams,x,ratios,y,ŷ,ŷ3)
 
   x .= 0
   for ch in 1:M-1
-    p = floor(Int,real(cochba[1, ch]))  # order of ARMA filter
-    ch_norm  = imag(cochba[1, M])
-    B = real(cochba[(0:p)+2, ch])  # moving average coefficients
-    A = imag(cochba[(0:p)+2, ch])  # autoregressive coefficients
+    ch_norm = cochba.norm
+    B,A  = cochba.filters[ch].B,cochba.filters[ch].A
 
     if params.nonlinear == -2
       y1 = ŷ3[:,ch].*view(ratios,indices,ch)
