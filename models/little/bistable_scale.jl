@@ -5,8 +5,6 @@ using AxisArrays
 using RCall
 include("util/stim.jl")
 
-# TODO: next step, get adaptmi working with AxisArrays
-
 R"library(ggplot2)"
 R"library(cowplot)"
 quartz() = R"quartz()"
