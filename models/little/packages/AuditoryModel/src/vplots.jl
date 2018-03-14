@@ -27,25 +27,32 @@ function vraster_plot__real(df::DataFrame;value=:z,x=:x,y=:y,maxbins=300,
   colormap = if any(df[value_r] .< 0)
     lim = maximum(abs.(limits))
     limits = (-lim,lim)
-    "#".*hex.(RGB.(cmap("D1")))
+    "#".*hex.(cmap[:D1])
   else
-    "#".*hex.(RGB.(Colors.colormap("Reds")))
+    "#".*hex.(cmap[:reds])
   end
 
   nx = length(unique(df[x]))
   ny = length(unique(df[y]))
 
+  # TODO: check on this working when the final, stable VegaLite.jl
+  # is out, right now vlfill and vlstroke are undefined, even though
+  # they are in the spec.
   df |>
-    markrect() |>
+      markrect() |>
     encoding(xquantitative(field=x,vlbin(maxbins=min(nx,maxbins))),
              yquantitative(field=y,vlbin(maxbins=min(ny,maxbins))),
-             colorquantitative(field=value,scale=vlscale(domain=collect(limits),
-                                                         range=colormap)))
+             vlfill(field=value,typ=:quantitative,
+                    scale=vlscale(domain=collect(limits),
+                                  range=colormap)),
+             vlstroke(field=value,typ=:quantitative,
+                      scale=vlscale(domain=collect(limits),
+                                    range=colormap)))
 end
 
 function vraster_plot__complex(df::DataFrame;value=:z,x=:x,y=:y,maxbins=300,
                               phase_suffix=:_phase,abs_suffix=:_abs)
-  colormap = "#".*hex.(RGB.(cmap("C6")))
+  colormap = "#".*hex.(cmap[:C6])
   df = copy(df)
   z_phase = Symbol(string(value,phase_suffix))
   z_abs = Symbol(string(value,abs_suffix))
