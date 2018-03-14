@@ -1,10 +1,16 @@
 using RCall
 using DataFrames
+using JLD
 
 export rplot, collapsed_scale_plot
-import PerceptualColourMaps: cmap
 import Colors: RGB
-import Colors
+
+const cmap = Dict{Symbol,Vector{RGB}}()
+jldopen(joinpath(@__DIR__,"..","data","colormaps.jld")) do file
+  cmap[:D1] = read(file,"D1")
+  cmap[:reds] = read(file,"reds")
+  cmap[:C6] = read(file,"C6")
+end
 
 R"library(ggplot2)"
 
@@ -32,9 +38,9 @@ function raster_plot__real(df::DataFrame;value=:z,x=:x,y=:y,
   colormap = if any(df[value_r] .< 0)
     lim = maximum(abs.(limits))
     limits = (-lim,lim)
-    "#".*hex.(RGB.(cmap("D1")))
+    "#".*hex.(cmap[:D1])
   else
-    "#".*hex.(RGB.(Colors.colormap("Reds")))
+    "#".*hex.(cmap[:reds])
   end
 
 R"""
@@ -47,7 +53,7 @@ R"""
 end
 function raster_plot__complex(df::DataFrame;value=:z,x=:x,y=:y,
                               phase_suffix=:_phase,abs_suffix=:_abs)
-  colormap = "#".*hex.(RGB.(cmap("C6")))
+  colormap = "#".*hex.(cmap[:C6])
   df = copy(df)
   z_phase = Symbol(string(value,phase_suffix))
   z_abs = Symbol(string(value,abs_suffix))
