@@ -5,6 +5,8 @@ using JLD
 export rplot, collapsed_scale_plot
 import Colors: RGB
 
+# TODO??: move to seperate file that is always loaded
+# so both rplots and vplots can use it
 const cmap = Dict{Symbol,Vector{RGB}}()
 jldopen(joinpath(@__DIR__,"..","data","colormaps.jld")) do file
   cmap[:D1] = read(file,"D1")
@@ -14,7 +16,7 @@ end
 
 R"library(ggplot2)"
 
-function raster_plot(z::Matrix;x=indices(z,1),y=indices(z,2))
+function raster_plot(z::AbstractMatrix;x=indices(z,1),y=indices(z,2))
   Y = ones(x) .* y'
   X = x .* ones(y)'
   df = DataFrame(x = vec(X),y=vec(Y),z = vec(z))
