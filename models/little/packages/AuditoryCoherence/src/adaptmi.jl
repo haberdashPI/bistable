@@ -23,8 +23,6 @@ sig(x) = 1/(1+exp(-10(x-0.5)))
 
   τ_σ::typeof(1.0s) = 100ms
   c_σ::Float64 = 0.3
-
-  Δt::typeof(1.0s) = 1ms
 end
 
 # efficient representation of W*y where W = (ones(n,n) - I)/(n-1) for all n
@@ -107,7 +105,7 @@ function withangle(angle,y::Tuple)
   (y[1].*exp.(angle.*im),y[2:end]...)
 end
 function withangle(angle,y)
-  y.*angle
+  y.*exp.(angle.*im)
 end
 approx_similar(x::AbstractArray{<:Complex{T}}) where T =
   similar(x,T)
@@ -119,7 +117,7 @@ approx_zeros(y::AbstractArray{<:Complex{T}},dims...) where T =
 ################################################################################
 # genertic adaptation and mutual-inhibition operation
 adaptmi(x;kw...) = adaptmi(x,AdaptMI(;kw...))
-function adaptmi(x,params)
+function adaptmi(x,params::AdaptMI)
   @assert :time ∈ axisnames(x)
   time = Axis{:time}
 
@@ -130,7 +128,6 @@ function adaptmi(x,params)
   τ_a = params.τ_a; c_a = params.c_a
   τ_e = params.τ_e; c_e = params.c_e
   τ_m = params.τ_m; c_m = params.c_m; W_m = params.W_m
-  Δt = params.Δt
 
   a = approx_similar(y) # a = adaptation
   e = approx_similar(y) # a = adaptation
@@ -141,17 +138,17 @@ function adaptmi(x,params)
   e_t = approx_zeros(yr_t)
   m_t = approx_zeros(yr_t)
 
-  dt_y = eltype(a_t)(Δt / τ_y)
-  dt_a = eltype(a_t)(Δt / τ_a)
-  dt_e = eltype(e_t)(Δt / τ_e)
-  dt_m = eltype(a_t)(Δt / τ_m)
+  dt_y = eltype(a_t)(Δt(x) / τ_y)
+  dt_a = eltype(a_t)(Δt(x) / τ_a)
+  dt_e = eltype(e_t)(Δt(x) / τ_e)
+  dt_m = eltype(a_t)(Δt(x) / τ_m)
 
   @showprogress "Adapt/Inhibit: " for t in indices(times(y),1)
     y_t = x[time(t)]
 
     yr_t,a_t,e_t,m_t = @approx (y_t,a_t,e_t,m_t) begin
       y_t .*= α
-      y_t .-= (y_t.*c_a.*a_t .- c_e.*e_t .+ y_t.*c_m.*m_t)
+      y_t .-= (y_t.*c_a.*a_t .- c_e.*e_t .+ c_m.*m_t)
       yp_t = shape_y.(y_t)
       a_t .+= (yp_t .- a_t).*dt_a
       e_t .+= (yp_t .- e_t).*dt_e
@@ -165,24 +162,27 @@ function adaptmi(x,params)
     e[time(t)] = e_t
     m[time(t)] = m_t
   end
-  y,a,e,m
+  y,a,m,e
 end
 
 ################################################################################
 # generic drifting noise function
 
-function drift(x,params=AdaptMI())
-  τ_σ, c_σ, Δt = params.τ_σ, params.c_σ, params.Δt
+drift(x,along_axes...;kw...) = drift(x,AdaptMI(;kw...),along_axes)
+function drift(x,params::AdaptMI,along_axes=typeof.(axes(x)))
+  @show along_axes
+  τ_σ, c_σ = params.τ_σ, params.c_σ
   time = Axis{:time}
 
   y = similar(x)
-  σ_t = zeros(y[time(1)])
+  temp = zeros(x[time(1),(ax(1) for ax in along_axes)...])
+  σ_t = approx_zeros(temp)
   dims = size(σ_t)
-  @showprogress "Drift: " for t in time_indices(x)
+  @showprogress "Drift: " for t in indices(times(y),1)
     y_t = x[time(t)]
     y_t,σ_t = @approx (y_t,σ_t) begin
-      σ_t .+= -σ_t.*(Δt/τ_σ) .+ randn(dims).*(c_σ*sqrt(2Δt/τ_σ))
-      y_t .+= σ_t
+      σ_t .+= -σ_t.*(Δt(x)/τ_σ) .+ randn(dims).*(c_σ*sqrt(2Δt(x)/τ_σ))
+      y_t .*= (1 .+ σ_t)
 
       y_t,σ_t
     end

@@ -137,18 +137,23 @@ function cohere(x::AbstractArray{T},params::CParams) where T
   Coherence(C,params)
 end
 
-function mask(cr::AbstractArray,C::CoherenceComponent)
+function mask(cr::AbstractArray,C::Coherence)
+  error("Please select one component (see documentation for `component`).")
+end
+
+function mask(cr::AbstractArray{T},C::CoherenceComponent) where T
   @assert axisdim(cr,Axis{:time}) == 1
   @assert axisdim(cr,Axis{:rate}) == 2
-  @assert size(cr)[3:end...] == size(C)[2:end...] "Dimension mismatch"
+  @assert size(cr)[3:end] == size(C)[2:end] "Dimension mismatch"
 
-  params = AuditoryModel.Parmas(C)
+  params = AuditoryModel.Params(C)
 
-  windows = enumerate(windowing(x,1;length=windowlen(params,x),
-                                minlength=min_windowlen(params,x),
-                                step=frame_length(params,x)))
-  y = zero(cr)
-  norm = fill(real(zero(eltype(cr))),size(cr))
+  windows = enumerate(windowing(cr,1;length=windowlen(params,cr),
+                                minlength=min_windowlen(params,cr),
+                                step=frame_length(params,cr)))
+  y = zeros(AxisArray(cr))
+  norm = similar(y,real(T))
+  norm .= zero(real(T))
   @showprogress "Masking: " for (i,w_inds) in windows
     c = C[Axis{:time}(i)]
     y[Axis{:time}(w_inds)] .+= reshape(c,1,1,size(c)...)
@@ -156,5 +161,8 @@ function mask(cr::AbstractArray,C::CoherenceComponent)
   end
   y ./= norm
   y ./= maximum(abs,y)
-  y .= sqrt.(abs.(x) .* y) .* exp.(angle.(x).*im)
+  y .= sqrt.(abs.(cr) .* y) .* exp.(angle.(cr).*im)
+
+  @show nfreqs(y)
+  cortical(y,AuditoryModel.Params(cr))
 end

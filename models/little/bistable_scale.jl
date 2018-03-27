@@ -10,18 +10,45 @@ R"library(cowplot)"
 quartz() = R"quartz()"
 dir = "../../plots/run_2018_03_10"
 isdir(dir) || mkdir(dir)
-x = ab(120ms,120ms,1,6,500Hz,6) |> normpower |> amplify(-20dB)
 
-sp = audiospect(x;Δt=25ms)
+x = ab(120ms,120ms,1,25,500Hz,6) |> normpower |> amplify(-20dB)
+
+sp = audiospect(x)
 cs = cortical(sp;scales=cycoct.*round.(2.0.^linspace(-1,2,9),1))
+sweights = AxisArray(squeeze(mean(abs.(cs),axisdim(cs,Axis{:freq})),3),
+                     axes(cs,Axis{:time}),
+                     axes(cs,Axis{:scale}))
 
-crs = cortical(cs[:,:,250Hz .. 1kHz];rates=(2.0.^(1:5))Hz)
-C = cohere(crs,ncomponents=3,window=350ms,method=:nmf,
-            delta=200ms,maxiter=200,tol=1e-3)
+swn = drift(sweights,τ_σ = 500ms,c_σ = 0.3);
+swna,a,m = adaptmi(swn,
+                  c_m=5,τ_m=350ms,W_m=scale_weighting2(cs,1.0),
+                  c_e=1.5,τ_e = 300ms,
+                  c_a=30,τ_a=3s,shape_y = x -> max(0,x),α=3.0)
+
+csa = similar(cs)
+csa .= sqrt.(abs.(cs) .* swna) .* exp.(angle.(cs)*im)
+rplot(csa)
+
+# TODO: verify that the new simple tracking implementation
+# works for the more basic, non adaptmi input.
+
+crsa = cortical(csa[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
+C = cohere(crsa[0s .. 10s],ncomponents=3,window=300ms,method=:nmf,
+            delta=200ms,maxiter=100,tol=1e-3)
 rplot(C)
 
-Ct = track(C)
+crs = cortical(cs[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
+C = cohere(crs[0s .. 5s],ncomponents=3,window=300ms,method=:nmf,
+            delta=200ms,maxiter=100,tol=1e-3)
+rplot(C)
+
+Ct = track(C,tc=0.6s)
 rplot(Ct)
+
+crsC = mask(crs,component(C,1))
+xm = audiospect(crsC)
+rplot(xm)
+
 
 # TODO: look at spectral masking output
 # to see if we can get some statistics for the low-level
@@ -67,5 +94,3 @@ rplot(Ct)
 # # Thought: the noise as written probably averages out to somethign very
 # # minimal across all components of a scale, I should probably have
 # # per scale noise
-
-

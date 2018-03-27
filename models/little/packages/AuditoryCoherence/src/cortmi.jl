@@ -38,5 +38,9 @@ function scale_weighting2(cort,σ)
     reshape(W*vec(sum(x,(1,3))),1,:,1)
   end
 
+  function helper(x::AbstractArray{T,1}) where T
+    W*x
+  end
+
   helper
 end

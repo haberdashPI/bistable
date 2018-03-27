@@ -21,7 +21,9 @@ struct CParams{R,S} <: Params
     if rates == scales == nothing
       error("You must specify the rates and/or scales.")
     end
-    new{R,S}(aspect,rates,scales,bandonly)
+    new{R,S}(aspect,
+             rates == nothing ? nothing : sort(rates),
+             scales == nothing ? nothing :sort(scales),bandonly)
   end
 end
 const CParamScales{S} = CParams{Void,S}
@@ -108,29 +110,33 @@ cortical(y::AbstractMatrix,params::CParams) =
 ####################
 # 'identity' functions: converts various arrays that already contain the
 # computed cortical representation
-function cortical(y::AxisArray{T,4} where T,params::CParamAll)
-  @assert(nfreqs(x) == nfreqs(params),
-          "Frequency channels of array and parameters do not match")
-  @assert indexin(scales(x),scales(params)) .> 0 "Missing scales in parameters"
-  @assert indexin(rates(x),rates(params)) .> 0 "Missing rates in parameters"
-  Cortical(y,params)
+function cortical(x::AxisArray{T,4} where T,params::CParamAll)
+  @assert(all(i > 0 for i in indexin(freqs(x),freqs(params))),
+          "Frequency channels of array inconsisent with parameters.")
+  @assert(all(i > 0 for i in indexin(scales(x),scales(params))),
+           "Missing scales in parameters")
+  @assert(all(i > 0 for i in indexin(rates(x),rates(params))),
+          "Missing rates in parameters")
+  Cortical(x,params)
 end
 
-function cortical(y::AxisArray{T,3} where T,params::CParamScales)
-  @assert(nfreqs(x) == nfreqs(params),
-          "Frequency channels of array and parameters do not match")
+function cortical(x::AxisArray{T,3} where T,params::CParamScales)
+  @assert(all(i > 0 for i in indexin(freqs(x),freqs(params))),
+          "Frequency channels of array inconsisent with parameters.")
   @assert :rate ∉ axisnames(y) "Unexpectd rate dimension"
-  @assert indexin(scales(x),scales(params)) .> 0 "Missing scales in parameters"
-  Cortical(y,params)
+  @assert(all(i > 0 for i in indexin(scales(x),scales(params))),
+           "Missing scales in parameters")
+  Cortical(x,params)
 end
 
 
-function cortical(y::AxisArray{T,3} where T,params::CParamRates)
-  @assert(nfreqs(x) == nfreqs(params),
-          "Frequency channels of array and parameters do not match")
-  @assert indexin(rates(x),rates(params)) .> 0 "Missing rates in parameters"
+function cortical(x::AxisArray{T,3} where T,params::CParamRates)
+  @assert(all(i > 0 for i in indexin(freqs(x),freqs(params))),
+          "Frequency channels of array inconsisent with parameters.")
+  @assert(all(i > 0 for i in indexin(rates(x),rates(params))),
+          "Missing rates in parameters")
   @assert :scale ∉ axisnames(y) "Unexpectd scale dimension"
-  Cortical(y,params)
+  Cortical(x,params)
 end
 
 function cortical(y::AbstractArray{T,4} where T,params::CParamAll)
