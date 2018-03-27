@@ -1,5 +1,16 @@
 export track
 
+abstract type Tracking end
+@with_kw struct SimpleTracking <: Tracking
+  tc::typeof(1.0s) = 1s
+end
+Tracking(::Val{:simple};params...) = SimpleTracking(;params...)
+
+function track(C::Coherence;method=:simple,params...)
+  method = Tracking(Val{method};params...)
+  track(C,method)
+end
+
 function orderings(N)
   if N > 5
     error("Orderings larger than 5 not supported")
@@ -19,11 +30,11 @@ function bestordering(x,y)
   os[i]
 end
 
-function track(C::Coherence;tc=1s)
+function track(C::Coherence,params::SimpleTracking)
   time = Axis{:time}
   component = Axis{:component}
   K = ncomponents(C)
-  λ = Δt(C)/tc
+  λ = Δt(C)/params.tc
   Ĉ = C[time(1)]
 
   @showprogress "Tracking Sources..." for t in eachindex(times(C))

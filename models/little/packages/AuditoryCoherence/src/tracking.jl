@@ -1,31 +1,40 @@
-using ConjugatePriors
+using RMath
 using Distributions
 using StatsFuns
+using Combinatorics
 
 @with_kw struct CoherenceTrack
 end
 
 const max_sources = 4
 
-struct Weighted{T}
+mutable struct LogWeighted{T}
   val::T
   log_weight::Float64
 end
-sample(x::Weighted{T},x,args...) where T =
-  update(sample(x.val,x,args...),x.weight)
-update(x::Weighted{T},log_weight::Float64) where T =
-  Weighted(x,log_weight+x.log_weight)
-log_weight(x::Weighted{T}) = x.log_weight
-reweight(x::Weighted{T},log_weight::Float64) = Weighted(x.val,log_weight)
-reweight(fn::Function,x) = reweight(x,fn(log_weight(x)))
-
-map_weights(fn::Function,xs) = map(x -> reweight(fn,x),xs)
-map_weights!(fn::Function,xs) = map!(x -> reweight(fn,x),xs,xs)
+sample(x::LogWeighted{T},x,args...) where T =
+  reweight!.(w -> x.log_weight + w,sample(x.val,x,args...))
+log_weight(x::LogWeighted{T}) = x.log_weight
+reweight!(x::LogWeighted{T},log_weight::Float64) = x.log_weight = log_weight
+reweight!(fn::Function,x) = reweight(x,fn(log_weight(x)))
 
 function normalize_weights(x)
   s = logsumexp(log_weight.(x))
   reweight.(w -> w - s,x)
 end
+
+function broadcast(fn::typeof(log_weight),
+                   nested::AbstractArray{<:AbstractArray})
+  weights = Array{Float64}(sum(length.(x)))
+  i = 0
+  for xs in nested
+    for x in xs
+      weights[i+=1] = log_weight(x)
+    end
+  end
+  weights
+end
+reweight(fn::Function,x::AbstractArray{<:LogWeighted}) = reweight.(fn,x)
 
 resample(N) = xs -> resample(xs,N)
 function resample(xs,N)
@@ -33,6 +42,266 @@ function resample(xs,N)
   filter!(!isinf ∘ log_weight,reweight.(xs,log.(weights)))
 end
 
+function resample(nested::AbstractArray{<:AbstractArray},N)
+  weights = rand(Multinomial(N,exp.(log_weight.(xs))))
+  samples = Array{eltype(eltype(nested))}(N)
+  i = 0
+  j = 0
+  for xs in nested
+    for x in xs
+      i+=1
+      if weights[i] > 0
+        samples[j+=1] = reweight(x,log(weights[i]))
+      end
+    end
+  end
+  samples
+end
+
+# the plan, do the *SIMPLEST* form of the particle filter
+# (jus track normals and alpha, nothing more)
+
+mutable struct MultiNormalStats{T}
+  x::Vector{T}
+  x2::Matrix{T}
+  n::Int
+  x2_offset::Int
+end
+function MultiNormalStats(mean,cov,n::Int,x2_offset=length(mean))
+  MultiNormalStats(mean*n,cov .+ mean.*mean',n,x2_offset)
+end
+function MultiNormalStats(data::AbstractArray{T,3} where T,
+                          n=size(data,1),x2_offset=size(data,2))
+  x = similar(data,size(data,2))
+  x2 = similar(data,size(data,2,2))
+  for k in size(data,3)
+    d = data[:,:,k]
+    x .+= vec(mean(d,1))*n
+    x2 .+= n .* d'd ./ size(data,1)
+  end
+  MultiNormalStats(x,x2,n,x2_offset)
+end
+
+function MultiNormalStats(data::AbstractArray{T,2} where T,
+                          n=size(data,1),x2_offset=size(data,2))
+  x = vec(mean(data,1))*n
+  x2 = n .* data'data ./ size(data,1)
+  MultiNormalStats(x,x2,n,x2_offset)
+end
+
+function diff(a::MultiNormalStats{T},b::MultiNormalStats{T}) where T
+  total = 0.0
+  total += sum(abs,a.x .- b.x)
+  total += sum(abs,a.x2 .- b.x2)
+  total += sum(abs,a.n - b.n)
+
+  total / (length(a.x)^2 + length(a.x) + 1)
+end
+
+function diff(as::AbstractArray{MultiNormalStats{T}},
+              bs::AbstractArray{MultiNormalStats{T}})
+  ks,hs = length(as) <= length(bs) ? as,bs : bs,as
+  max_kn = maximum(k.n for k in ks)
+
+  function diff_helper(ks,hs)
+    total = diff.(ks,hs[1:length(k)])
+    total += sum(h.n / max_kn for h in hs)
+
+    total / length(h)
+  end
+
+  minimum(diff_helper(ks,hs[permute])
+          for permute in perumutations(1:length(hs)))
+end
+
+function update!(stats::MultiNormalStats{T},x::AbstractVector{T}) where T
+  stats.x .+= x
+  stats.x2 .+= x.*x'
+  stats.n += 1
+
+  stats
+end
+
+function logpdf(stats::MultiNormalStats{T},x::AbstractVector{T}) where T
+  d = length(x)
+  Λ = (stats.x2 .- (stats.x.*stats.x')) ./ stats.n
+  μ = stats.x ./ stats.n
+  n = stats.n
+  nu = stats.n + stats.x2_offset - d + 1
+
+  logpdf_mvt(nu,μ,Λ .* ((n + 1)/(n * nu))))
+end
+pdf(stats::MultiNormalStats{T},x::AbstractVector{T}) where T =
+  exp(logpdf(stats,x))
+
+function logpdf_mvt(v,μ,Σ,x)
+  d = length(μ)
+  C = lgamma((v+1)/2) - (lgamma(v/2)+log(v*π)^(d/2)) - 0.5logabsdet(Σ)
+  diff = μ-x
+
+  C*log(1+1/v*(diff'/Σ)*diff)*-(v+d)/2
+end
+
+mutable struct BinomialStats
+  counts::Int
+  n::Int
+end
+function update!(stats::BinomialStats,x::Bool)
+  stats.counts += x
+  stats.n += 1
+
+  stats
+end
+pdf(stats::BinomialStats,x::Bool) =
+  x ? stats.counts/stats.n : 1-(stats.counts/stats.n)
+logpdf(stats::BinomialStats,x::Bool) = log(pdf(stats,x))
+
+struct Particle{T}
+  sources::Vector{MultiNormalStats{T}}
+  freqs::Vector{BinomialStats}
+  indices::Vector{Int}
+
+  source_prior::MultiNormalStats{T}
+  freq_prior::Float64
+end
+function Particle(source_prior,freq_prior)
+  Particle(MultiNormalStats{T}[],BinomialStats[],Int[],source_prior,freq_prior)
+end
+
+function update!(p::Particle{T},sources,indices::Vector{Int})
+  if indices[end] > length(p.freqs)
+    push!(p.freqs,0)
+    push!(p.sources,copy(p.source_prior))
+  end
+
+  for c in indices
+    update!(p.sources[c],sources[c])
+  end
+
+  for i in 1:length(p.freqs)
+    update!(p.freqs[i],i ∈ indices)
+  end
+  p.indices = indices
+
+  p
+end
+
+function logpdf(p::Particle{T},sources,indices::Vector{Int})
+  logsum = 0.0
+  freq_total = 0.0
+
+  oldindices = indices
+  if indices[end] > length(p.freqs)
+    oldindices = indices[1:end-1]
+    freq_total += log(p.alpha)
+    logsum += logpdf(p.source_prior,sources[:,indices[end]])
+  end
+
+  for c in oldindices
+    logsum += logpdf(p.sources[c],sources[c])
+  end
+
+  for i in 1:length(p.freqs)
+    freq_total += pdf(p.freqs[i],i ∈ oldindices)
+  end
+
+  logsum += log(freq_total / (length(p.freqs) + p.alpha))
+
+  logsum
+end
+pdf(p::Particle{T},sources,indices::Vector{Int}) =
+  log(pdf(p,sources,indices))
+
+const max_sources = 6
+
+function orderings(n,N)
+  @assert n <= N <= max_sources
+  [p for subset in combinations(1:N,n) for p in permutations(subset)]
+end
+
+function sample(p::Particle,sources::AbstractMatrix)
+  orders = orderings(size(sources,2),1:min(length(p.freqs)+1,max_sources))
+  samples = Array{LogWeighted{typeof(p)}}(length(orders))
+
+  for (i,(columns,indices)) in enumerate(orders)
+    newp = deepcopy(p)
+    cols = [sources[:,c] for c in columns]
+    update!(newp,cols,indices)
+    samples[i] = LogWeighted(newp,logpdf(newp,cols,indices))
+  end
+  samples
+end
+
+function update(particles::AbstractArray{LogWeighted{Particle{T}}},
+  sources::AbstractMatrix{T}) where T
+
+  map(p -> sample(p,sources),particles) |>
+    normalize_weights |>
+    resample(N)
+end
+
+function remove_similar!(particles::AbstractArray{LogWeighted{Particle{T}}},
+  sources::AbstractMatrix{T}) where T
+
+  i = 0
+  for p in particles
+    if !any(nearly_the_same(q,p,sources) for q in particles[1:i])
+      particles[i+=1] = p
+    end
+  end
+  @views particles[1:i]
+end
+
+function nearly_the_same(p::LogWeighted{Particle{T}},
+  q::LogWeighted{Particle{T}},sources::AbstractMatrix{T},
+  pdftol=0.05,source_diff_tol=1e-4) where T
+
+  if abs(logpdf(p.val,sources,p.indices) -
+    logpdf(q.val,soruces,q.indices)) > log(1+pdftol)
+    return false
+  end
+
+  diff(p.sources,q.sources) > source_diff_tol
+end
+
+@with_kw struct ParticleTracking
+  N::Int = 1000
+  diversify_every::Int = 10
+  grouping_prior::Float64 = 1
+  data_prior = nothing
+end
+Tracking(::Val{:particles};params...) = ParticleTracking(;params...)
+
+function track(C::Coherence,params::ParticleTracking)
+  time = Axis{:time}
+  component = Axis{:component}
+  K = ncomponents(C)
+  if params.data_prior == nothing
+    data_prior = MultiNormalStats(reshape(C,ntimes(C),:,ncomponents(C)),1)
+  else
+    data_prior = params.data_prior
+  end
+
+  particles = fill(LogWeighted(Particle(data_prior,params.grouping_prior),0.0),
+                   params.N)
+  assignments = Vector{Vector{Int}}(ntimes(C))
+
+  @showprogress "Tracking Sources..." for t in eachindex(times(C))
+    particles = update(particles,reshape(C[time(t)],:,ncomponents(C)))
+    if diversify_every % t == 0
+      particles = diversify!(particles)
+    end
+
+    assignments[t] = particles[indmax(log_weight.(particles))].val.indices
+  end
+  # mmm.... how do we handle labels...., for each
+  # component we could ask how likely it is each component
+  # is
+end
+
+# TODO: how to report the state of the particl filter...
+
+#=
 struct OldParticle{T}
   ϵ::Float64
 
@@ -141,7 +410,7 @@ end
 
 struct TrackState{T,M}
   method::M
-  particles::Array{Weighted{TrackParticle{T}}}
+  particles::Array{LogWeighted{TrackParticle{T}}}
 
   # TODO: fill in parameters
 end
@@ -208,10 +477,10 @@ end
 
 weight(state::TrackState,y) = p -> weight(state,p,y)
 weight(state::TrackState,particle::TrackParticle,y) =
-  Weighted(particle,logpdf(state,particle,y) - proposal_logpdf(state,particle))
+  LogWeighted(particle,logpdf(state,particle,y) - proposal_logpdf(state,particle))
 
 function sample(states::Array{TrackState{T}},y) where T
-  all_particles = Array{Array{Weighted{TrackParticle{T}}}}(length(states))
+  all_particles = Array{Array{LogWeighted{TrackParticle{T}}}}(length(states))
   for (i,state) in enumerate(states)
     all_particles[i] = map(weight(state,y),proposals(state,y))
     map_weights!(all_particles[i],w -> w - log(length(all_particles[i])))
