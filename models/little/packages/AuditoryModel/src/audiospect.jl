@@ -14,13 +14,14 @@ struct CochFilter
   B::Vector{Float64}
   A::Vector{Float64}
 end
+(filter::CochFilter)(x) = filt(filter.B,filter.A,x)
 
 struct CochFilters
   norm::Float64
   filters::Vector{CochFilter}
 end
 
-const cochba = jldopen(joinpath(@__DIR__,"..","data","cochba.jld")) do file
+const cochlear = jldopen(joinpath(@__DIR__,"..","data","cochba.jld")) do file
   read(file,"cochba")
 end
 
@@ -44,7 +45,7 @@ resultname(x::AuditorySpectrogram) = "Auditory Spectrogram"
 similar_helper(::AuditorySpectrogram,data,params) =
   AuditorySpectrogram(data,params)
 
-nfreqs(as::ASParams) = length(cochba.filters)-1
+nfreqs(as::ASParams) = length(cochlear.filters)-1
 nfreqs(x) = length(freqs(x))
 
 freqs(as::ASParams) = 440.0Hz * 2.0.^(((1:nfreqs(as)).-31)./24 .+ as.octave_shift)
@@ -82,22 +83,6 @@ function ASParams(x;fs=samplerate(x),delta_t=10ms,
   end
   p
 end
-
-function sigmoid(x::AbstractArray{T},fac::T) where T
-  if fac > 0
-    one(T) ./ (one(T) .+ exp.(.-x./fac))
-  elseif fac == 0
-    T.(x .> zero(T))
-  elseif fac == -1
-    max.(x,zero(T))
-  elseif fac == -2
-    T.(x)
-    # TODO: implement halfregu
-  else
-    error("Non linear factor of $fac not supported")
-  end
-end
-
 
 ########################################
 # auditory spectrogram
@@ -143,98 +128,42 @@ audiospect(x::Sound,params::ASParams) =
 
 function audiospect_helper(x::Vector{T},params::ASParams,
                            internal_call=false) where {T}
-  M = length(cochba.filters)
-  L_x = length(x)  # length of input
+  M = length(cochlear.filters)
+
   frame_len  = frame_length(params)
-
-  # decaying factor
-  α = iszero(params.decay_tc) ? zero(T) :
-    exp(-1/(params.decay_tc*2^(4+params.octave_shift)))
-
-  # hair cell time constant in ms
-  haircell_tc = 1//2
-  β = exp(-1/(haircell_tc*2^(4+params.octave_shift)))
-
-  N = ceil(Int,L_x / frame_len) # of frames
+  N = ceil(Int,length(x) / frame_len) # of frames
   if length(x) < N*frame_len
     append!(x,fill(zero(T),N*frame_len - length(x)))
   end
-  v5 = fill(zero(T),N, M-1)
-  y3_r = !internal_call ? fill(zero(T),0,0) : fill(zero(T),length(x),M-1)
+  Y = fill(zero(T),N, M-1)
+  Y_haircell = !internal_call ? fill(zero(T),0,0) : fill(zero(T),length(x),M-1)
 
-  #######################################
-  # last channel (highest frequency)
-  #######################################
+  last_haircell = x |>
+    cochlear.filters[M] |>
+    ion_channels(params) |>
+    haircell_membrane(params)
 
-  B,A  = cochba.filters[M].B,cochba.filters[M].A
-
-  y1 = filt(PolynomialRatio(B,A),x)
-  y2 = sigmoid(y1, params.nonlinear)
-
-  # hair cell membrane (low-pass <= 4 kHz) ignored for LINEAR ionic channels
-  if (params.nonlinear != -2) y2 = filt(PolynomialRatio([1.0],[1.0; -β]),y2) end
-  y2_h = y2
-
-  #######################################
-  # All other channels
-  #######################################
   for ch = (M-1):-1:1
+    # initial haircell transduction
+    y,last_haircell = x |> cochlear.filters[ch] |>
+      ion_channels(params) |>
+      haircell_membrane(params) |>
+      lateral_inhibition(last_haircell)
 
-    #######################################
-    # ANALYSIS: cochlear filterbank
-    ########################################
-    # (IIR) filter bank convolution ---> y1
-    B,A  = cochba.filters[ch].B,cochba.filters[ch].A
+    # recitfication and temporal integration
+    Y[:,ch] = y |> rectify |> temporal_integration(params,N)
 
-    y1 = filt(B, A, x)
-    ########################################
-    # TRANSDUCTION: hair cells
-    ########################################
-    # Fluid cillia coupling (preemphasis) (ignored)
-
-    # ionic channels (sigmoid function)
-    y2 = sigmoid(y1, params.nonlinear)
-
-    # hair cell membrane (low-pass <= 4 kHz) ---> y2 (ignored for linear)
-    if (params.nonlinear != -2) y2 = filt(PolynomialRatio([1.0],[1.0; -β]),y2) end
-
-    ########################################
-    # REDUCTION: lateral inhibitory network
-    ########################################
-    # masked by higher (frequency) spatial response
-    y3   = y2 - y2_h
-    y2_h = y2
-    if internal_call
-      y3_r[:,ch] = y3
-    end
-
-    # spatial smoother ---> y3 (ignored)
-    #y3s = y3 + y3_h
-    #y3_h = y3
-
-    # half-wave rectifier ---> y4
-    y4 = max.(y3, 0)
-
-    # temporal integration window ---> y5
-    if !iszero(α)  # leaky integration
-      y5 = filt(PolynomialRatio([1.0],[1.0; -α]),y4)
-      v5[:, ch] = y5[frame_len*(1:N)]
-    else    # short-term average
-      if (frame_len == 1)
-        v5[:, ch] = y4
-      else
-        v5[:, ch] = mean(reshape(y4, frame_len, N),1)'
-      end
-    end
+    # save the intermediate result y if this is an internal call
+    if internal_call; Y_haircell[:,ch] = y end
   end
 
   if internal_call
-    v5,y3_r
+    Y,Y_haircell
   else
     f = Axis{:freq}(freqs(params))
-    t = Axis{:time}(times(params,v5))
+    t = Axis{:time}(times(params,Y))
 
-    AuditorySpectrogram(AxisArray(v5,t,f),params)
+    AuditorySpectrogram(AxisArray(Y,t,f),params)
   end
 end
 
@@ -246,7 +175,7 @@ function Sounds.Sound(y_in::AuditorySpectrogram;max_iterations=typemax(Int),
           "No stopping criterion specified (max_iterations or target_error).")
   params = y_in.params
 
-  M = length(cochba.filters)
+  M = length(cochlear.filters)
 
   # expand y to include all frequencies
   y = zeros(eltype(y_in),size(y_in,1),M-1)
@@ -258,10 +187,6 @@ function Sounds.Sound(y_in::AuditorySpectrogram;max_iterations=typemax(Int),
   x = inv_guess(params,y)
 
   # iteration setup
-  ratios = similar(y)
-  target_mean = mean(y)
-  target_sum2 = sum(y.^2)
-
   min_err = Inf
   min_x = x
 
@@ -272,29 +197,19 @@ function Sounds.Sound(y_in::AuditorySpectrogram;max_iterations=typemax(Int),
   end
 
   for iteration in 1:max_iterations
-    if min_err < target_error
-      break
-    end
+    if min_err < target_error; break end
+    params.nonlinear == 0 && standardize!(params,x)
 
-    if params.nonlinear == 0
-      x .-= mean(x)
-      x ./= std(x)
-    end
+    ŷ,ŷ_haircell = audiospect_helper(x,params,true)
+    x = match_x(params,x,y,ŷ,ŷ_haircell)
 
-    ŷ,ŷ3 = audiospect_helper(x,params,true)
-    x = match_x(params,x,ratios,y,ŷ,ŷ3)
-
-    ŷ .*= target_mean/mean(ŷ)
-    err = sum((ŷ .- y).^2) ./ target_sum2
+    err = relative_error!(y,ŷ)
 
     if err < min_err
       min_x = x
       min_err = err
     elseif err-1 > min_err
-      # restart
-      x .= sign.(x) .+ rand(size(x))
-      x .-= mean(x)
-      x ./= std(x)
+      randomized_reset!(x)
     end
 
     x .*= 1.01
@@ -314,38 +229,78 @@ end
 ################################################################################
 # private helper functions
 
+function ion_channels(params::ASParams)
+  if params.nonlinear > 0
+    x -> 1.0 ./ (1.0 .+ exp.(.-x./params.nonlinear))
+  elseif params.nonlinear == 0
+    x -> Float64.(x .> 0.0)
+  elseif params.nonlinear == -1
+    x -> max.(x,0.0)
+  elseif params.nonlinear == -2
+    x -> Float64.(x)
+    # TODO: implement halfregu
+  else
+    error("Non linear factor of $fac not supported")
+  end
+end
+
+function haircell_membrane(params)
+  if params.nonlinear  != -2
+    β = exp(-1/((1//2)*2^(4+params.octave_shift)))
+    y -> filt([1.0],[1.0; -β])
+  else
+    identity
+  end
+end
+
+rectify(x) = max.(x,0)
+
+function temporal_integration(params::ASParams,N)
+  frame_len = frame_length(params)
+  if !iszero(params.decay_tc)
+    α = exp(-1/(params.decay_tc*2^(4+params.octave_shift)))
+    function(x)
+      y = filt([1.0],[1.0; -α],x)
+      @views y[frame_len*(1:N)]
+    end
+  else    # short-term average
+    frame_len == 1 ? identity : y -> mean(reshape(y, frame_len, N),1)'
+  end
+end
+
+function lateral_inhibition(last_haircell)
+  function(y)
+    new_y = y .- last_haircell
+    new_y,y
+  end
+end
+
 function inv_guess(params::ASParams,y::AbstractMatrix)
-  # ?? the initial guess only uses the first 48 channels
+  # the initial guess only uses the first 48 channels
   f = ustrip.(uconvert.(Hz,freqs(params)))[1:48]
   steps = 1:frame_length(params)*size(y,1)
   indices = ceil.(Int,steps / frame_length(params))
   t = steps ./ ustrip(uconvert(Hz,params.fs))
 
-  x = sum(cos.(2π.*f'.*t) .* view(y,indices,1:48),2)
-  x .-= mean(x)
-  x ./= std(x)
-
-  squeeze(x,2)
+  x = squeeze(standardize!(sum(cos.(2π.*f'.*t) .* view(y,indices,1:48),2)),2)
 end
 
-function match_x(params::ASParams,x,ratios,y,ŷ,ŷ3)
-  M = length(cochba.filters)
+function match_x(params::ASParams,x,y,ŷ,ŷ_haircell)
+  M = length(cochlear.filters)
   steps = 1:frame_length(params)*size(y,1)
   indices = ceil.(Int,steps / frame_length(params))
 
-  map!(ratios,ŷ,y) do ŷ,y
+  ratios = map(ŷ,y) do ŷ,y
     !iszero(ŷ) ? y ./ ŷ : !iszero(y) ? 2 : 1
   end
 
   x .= 0
+  ch_norm = cochlear.norm
   for ch in 1:M-1
-    ch_norm = cochba.norm
-    B,A  = cochba.filters[ch].B,cochba.filters[ch].A
-
     if params.nonlinear == -2
-      y1 = ŷ3[:,ch].*view(ratios,indices,ch)
+      y1 = ŷ_haircell[:,ch].*view(ratios,indices,ch)
     else
-      y1 = ŷ3[:,ch]
+      y1 = ŷ_haircell[:,ch]
       posi = find(y1 .>= 0)
       y1[posi] .*= view(ratios,indices[posi],ch)
 
@@ -353,11 +308,32 @@ function match_x(params::ASParams,x,ratios,y,ŷ,ŷ3)
       y1[negi] .*= maximum(y1[posi]) / -minimum(y1[negi])
     end
 
-    x .+= reverse(filt(B,A,reverse(y1))) / ch_norm
+    x .+= reverse(filt(cochlear.filters[ch],reverse(y1))) / ch_norm
   end
 
   x
 end
+
+function randomized_reset!(x)
+  x .= sign.(x) .+ rand(size(x))
+  x .-= mean(x)
+  x ./= std(x)
+  x
+end
+
+function relative_error!(y,ŷ)
+  y2sum = sum(y.^2)
+  ymean = mean(y)
+
+  ŷ .*= ymean/mean(ŷ)
+  sum((ŷ .- y).^2) ./ y2sum
+end
+
+function standardize!(x)
+  x .-= mean(x)
+  x ./= std(x)
+end
+
 
 function freq_ticks(as)
   a = minimum(freqs(as))
