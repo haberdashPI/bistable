@@ -337,7 +337,7 @@ function match_x(params::ASParams,x,y,ŷ,ŷ_haircell)
       y1[negi] .*= maximum(y1[posi]) / -minimum(y1[negi])
     end
 
-    x .+= reverse(filt(cochlear.filters[ch],reverse(y1))) / ch_norm
+    x .+= reverse(cochlear.filters[ch](reverse(y1))) ./ ch_norm
   end
 
   x
