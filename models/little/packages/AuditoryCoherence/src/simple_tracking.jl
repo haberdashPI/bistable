@@ -1,4 +1,5 @@
 export track
+using Combinatorics
 
 abstract type Tracking end
 @with_kw struct SimpleTracking <: Tracking
@@ -7,27 +8,42 @@ end
 Tracking(::Val{:simple};params...) = SimpleTracking(;params...)
 
 function track(C::Coherence;method=:simple,params...)
-  method = Tracking(Val{method};params...)
+  method = Tracking(Val{method}();params...)
   track(C,method)
 end
 
-function orderings(N)
-  if N > 5
-    error("Orderings larger than 5 not supported")
+function maxby(by,xs)
+  state = start(xs)
+  # NOTE: in general shoud check for empty iterator
+  # but I know there will be at least one value in usage below
+  # and this avoids type instability in julia 0.6 (should be fixed 0.7)
+  # if done(xs,state)
+  # return nothing
+  # else
+  result, state = next(xs,state)
+  maxval = by(result)
+  while !done(xs,state)
+    x, state = next(xs,state)
+    val = by(x)
+    if isless(maxval,val)
+      maxval = val
+      result = x
+    end
   end
-  insert!(array,x,i) = [j == i ? x : array[j < i ? j : j-1]
-                        for j in 1:length(array)+1]
-  if N == 0; [Int[]]
-  else [insert!(copy(o),N,i) for i in 1:N for o in orderings(N-1)] end
+  result
+  # end
 end
 
 function bestordering(x,y)
   @assert length(x) == length(y)
-  score(x,y,ordering) = norm(x .- y[ordering],1)
-  os = orderings(length(y))
-  i = indmin(score(x,y,o) for o in os)
+  @assert length(x) <= 6 "No more than 6 components supported"*
+    " (due to combinatorial explosion of possible solutions.)"
+  # minimize cosine difference
+  diff(x,y) = norm(vec(x) .- vec(y),1)
 
-  os[i]
+  maxby(permutations(1:length(y))) do order
+    -sum(diff(xi,yi) for (xi,yi) in zip(x,y[order]))
+  end
 end
 
 function track(C::Coherence,params::SimpleTracking)

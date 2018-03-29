@@ -21,13 +21,15 @@ sweights = AxisArray(squeeze(mean(abs.(cs),axisdim(cs,Axis{:freq})),3),
 
 swn = drift(sweights,τ_σ = 500ms,c_σ = 0.3);
 swna,a,m = adaptmi(swn,
-                  c_m=5,τ_m=350ms,W_m=scale_weighting2(cs,1.0),
-                  c_e=1.5,τ_e = 300ms,
-                  c_a=30,τ_a=3s,shape_y = x -> max(0,x),α=3.0)
+                   c_m=5,τ_m=350ms,W_m=scale_weighting2(cs,1.0),
+                   c_e=1.5,τ_e = 300ms,
+                   c_a=30,τ_a=3s,shape_y = x -> max(0,x),α=3.0)
 
 csa = similar(cs)
 csa .= sqrt.(abs.(cs) .* swna) .* exp.(angle.(cs)*im)
 rplot(csa)
+
+
 
 # TODO: verify that the new simple tracking implementation
 # works for the more basic, non adaptmi input.
@@ -37,12 +39,13 @@ C = cohere(crsa[0s .. 10s],ncomponents=3,window=300ms,method=:nmf,
             delta=200ms,maxiter=100,tol=1e-3)
 rplot(C)
 
+
 crs = cortical(cs[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
 C = cohere(crs[0s .. 5s],ncomponents=3,window=300ms,method=:nmf,
             delta=200ms,maxiter=100,tol=1e-3)
 rplot(C)
 
-Ct = track(C,tc=0.6s)
+Ct = track(C,tc=0.8s)
 rplot(Ct)
 
 crsC = mask(crs,component(C,1))
