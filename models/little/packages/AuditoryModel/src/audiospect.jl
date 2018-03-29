@@ -231,6 +231,30 @@ function Sounds.Sound(y_in::AuditorySpectrogram;max_iterations=typemax(Int),
   Sound(min_x,rate=samplerate(params))
 end
 
+########################################
+# visualization utility
+function freq_ticks(as)
+  a = minimum(freqs(as))
+  b = maximum(freqs(as))
+  step = 0.25
+
+  helper(step) = round.(filter(f -> a <= f*Hz <= b,1000*2.0.^(-3:step:2)),-1)
+  fbreaks = helper(step)
+  while length(fbreaks) > 7
+    fbreaks = helper(step *= 2)
+  end
+
+  fs = ustrip(uconvert.(Hz,freqs(as)))
+
+  findices = mapslices(abs.(fbreaks .- fs'),2) do row
+    _, i = findmin(row)
+    i
+  end
+
+  fbreaks,findices
+end
+
+
 ################################################################################
 # private helper functions
 
@@ -337,26 +361,4 @@ end
 function standardize!(x)
   x .-= mean(x)
   x ./= std(x)
-end
-
-
-function freq_ticks(as)
-  a = minimum(freqs(as))
-  b = maximum(freqs(as))
-  step = 0.25
-
-  helper(step) = round.(filter(f -> a <= f*Hz <= b,1000*2.0.^(-3:step:2)),-1)
-  fbreaks = helper(step)
-  while length(fbreaks) > 7
-    fbreaks = helper(step *= 2)
-  end
-
-  fs = ustrip(uconvert.(Hz,freqs(as)))
-
-  findices = mapslices(abs.(fbreaks .- fs'),2) do row
-    _, i = findmin(row)
-    i
-  end
-
-  fbreaks,findices
 end
