@@ -70,8 +70,9 @@ frame_length(params::ASParams) = floor(Int,Δt(params) * params.fs)
 Sounds.samplerate(params::ASParams) = uconvert(Hz,params.fs)
 
 frame_length(as::Result) = frame_length(as.params)
-Δt(as::Result) = Δt(as.params)
-Δf(as::Result) = Δf(as.params)
+Δt(as::Result) = Δt(Params(as))
+Δf(as::Result) = Δf(Params(as))
+Δt(x) = (ts = times(x); ts[2] - ts[1])
 Sounds.samplerate(x::Result) = samplerate(Params(x))
 
 function ASParams(x;fs=samplerate(x),delta_t=10ms,
