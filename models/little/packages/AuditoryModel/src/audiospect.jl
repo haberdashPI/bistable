@@ -10,6 +10,8 @@ import Sounds: Sound
 export freqs, times, nfreqs, ntimes, delta_t, delta_f, Δt, Δf, frame_length,
   audiospect, Sound, freq_ticks
 
+########################################
+# cochlear filters
 struct CochFilter
   B::Vector{Float64}
   A::Vector{Float64}
@@ -25,6 +27,8 @@ const cochlear = jldopen(joinpath(@__DIR__,"..","data","cochba.jld")) do file
   read(file,"cochba")
 end
 
+########################################
+# auditory spectrogram data type and its parameters
 const fixed_fs = 8000
 
 struct ASParams <: Params
@@ -85,7 +89,7 @@ function ASParams(x;fs=samplerate(x),delta_t=10ms,
 end
 
 ########################################
-# auditory spectrogram
+# auditory spectrogram interface
 audiospect(x::AbstractArray;params...) = audiospect(x,ASParams(x;params...))
 
 ####################
