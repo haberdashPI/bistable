@@ -13,7 +13,7 @@ isdir(dir) || mkdir(dir)
 spect = AuditorySpectrogram(len=25,min_freq = 250Hz,max_freq=1500Hz)
 cort = CorticalModel(spect,scales = 2.0.^linspace(-2,1,10))
 
-x = ab(120ms,120ms,1,10,500Hz,6) |> normpower |> amplify(-20dB)
+x = ab(120ms,120ms,1,10,500Hz,6) |> normpower |> amplify(-10dB)
 
 sp = spect(x);
 cr = cort(sp);

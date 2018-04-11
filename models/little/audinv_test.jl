@@ -9,7 +9,7 @@ quartz() = R"quartz()"
 
 spect = AuditorySpectrogram(len=25)
 
-x = ab(120ms,120ms,1,10,500Hz,6) |> normpower |> amplify(-20dB)
+x = ab(120ms,120ms,1,10,500Hz,6) |> normpower |> amplify(-10dB)
 
 y = spect(x)
 x_inv = inv(spect,y,usematlab=false)

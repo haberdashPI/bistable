@@ -6,7 +6,7 @@ quartz() = R"quartz()"
 using AxisArrays
 using Sounds
 include("util/stim.jl")
-x = ab(120ms,120ms,1,6,500Hz,6) |> normpower |> amplify(-20dB)
+x = ab(120ms,120ms,1,6,500Hz,6) |> normpower |> amplify(-10dB)
 y = audiospect(x)
 cr = cortical(y,rates=default_rates,scales=default_scales)
 

@@ -11,7 +11,7 @@ quartz() = R"quartz()"
 dir = "../../plots/run_2018_03_10"
 isdir(dir) || mkdir(dir)
 
-x = ab(120ms,120ms,1,25,500Hz,6) |> normpower |> amplify(-20dB)
+x = ab(120ms,120ms,1,25,500Hz,6) |> normpower |> amplify(-10dB)
 
 sp = audiospect(x)
 cs = cortical(sp;scales=cycoct.*round.(2.0.^linspace(-1,2,9),1))
