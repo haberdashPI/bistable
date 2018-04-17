@@ -2,8 +2,12 @@ module AuditoryModel
 using DataFrames
 using Unitful
 using Unitful: ms, s, Hz, kHz
+using ProgressMeter
 
 export ms, s, Hz, kHz
+
+next!(x::Progress) = ProgressMeter.next!(x)
+next!(x::Void) = nothing
 
 include("modelresult.jl")
 include("audiospect.jl")

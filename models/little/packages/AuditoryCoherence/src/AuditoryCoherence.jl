@@ -9,6 +9,10 @@ export adaptmi, drift, scale_weighting, ncomponents, nunits, CoherenceModel,
     fusion_ratio, object_SNR, mask, scene_object_ratio,
     object_SNR2, ab_match, mean_spect, mean_spect2, AdaptMI
 
+using ProgressMeter
+next!(x::Progress) = ProgressMeter.next!(x)
+next!(x::Void) = nothing
+
 include("adaptmi.jl")
 include("cortmi.jl")
 include("cohere.jl")

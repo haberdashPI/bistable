@@ -1,4 +1,3 @@
-using ProgressMeter
 using AxisArrays
 using DSP
 using JLD
@@ -91,11 +90,12 @@ end
 
 ########################################
 # auditory spectrogram interface
-audiospect(x::AbstractArray;params...) = audiospect(x,ASParams(x;params...))
+audiospect(x::AbstractArray;progressbar=true,params...) =
+  audiospect(x,ASParams(x;params...),progressbar)
 
 ####################
 # 'identity' conversions (something that's already basically a spectrogram)
-function audiospect(x::AbstractArray,params::ASParams)
+function audiospect(x::AbstractArray,params::ASParams,progressbar=true)
   if ndims(x) <= 2 && size(x,2) <= 2
     # the array probably represents a sound
     audiospect(Sound(x,rate=samplerate(params)))
@@ -113,14 +113,14 @@ function audiospect(x::AbstractArray,params::ASParams)
   end
 end
 
-function audiospect(x::AxisArray{T,2} where T,params::ASParams)
+function audiospect(x::AxisArray{T,2} where T,params::ASParams,progressbar=true)
   @assert(nfreqs(x) == nfreqs(params),
           "Frequency channels of array and parameters do not match")
 
   AuditorySpectrogram(x,params)
 end
 
-function audiospect(x::AuditorySpectrogram,params::ASParams)
+function audiospect(x::AuditorySpectrogram,params::ASParams,progressbar=true)
   @assert(x.params == params,
           "Parameters of spectrogram and input parameters do not match")
   x
@@ -128,10 +128,11 @@ end
 
 ####################
 # the actual computation of a spectrogram
-audiospect(x::Sound,params::ASParams) =
-  audiospect_helper(vec(Array(convert(Sound{fixed_fs,eltype(x),1},x))),params)
+audiospect(x::Sound,params::ASParams,progressbar=true) =
+  audiospect_helper(vec(Array(convert(Sound{fixed_fs,eltype(x),1},x))),params,
+                    progressbar)
 
-function audiospect_helper(x::Vector{T},params::ASParams,
+function audiospect_helper(x::Vector{T},params::ASParams,progressbar=true,
                            internal_call=false) where {T}
   M = length(cochlear.filters)
 
@@ -148,6 +149,7 @@ function audiospect_helper(x::Vector{T},params::ASParams,
     ion_channels(params) |>
     haircell_membrane(params)
 
+  progress = progressbar ? Progress(desc="Auditory Spectrogram: ",M-1) : nothing
   for ch = (M-1):-1:1
     # initial haircell transduction
     y,last_haircell = x |> cochlear.filters[ch] |>
@@ -160,6 +162,7 @@ function audiospect_helper(x::Vector{T},params::ASParams,
 
     # save the intermediate result y if this is an internal call
     if internal_call; Y_haircell[:,ch] = y end
+    next!(progress)
   end
 
   if internal_call
@@ -175,7 +178,7 @@ end
 ########################################
 # inverse of auditory spectorgram
 function Sounds.Sound(y_in::AuditorySpectrogram;max_iterations=typemax(Int),
-                      target_error=0.05)
+                      target_error=0.05,progressbar=true)
   @assert(max_iterations < typemax(Int) || target_error < Inf,
           "No stopping criterion specified (max_iterations or target_error).")
   params = y_in.params
@@ -195,17 +198,19 @@ function Sounds.Sound(y_in::AuditorySpectrogram;max_iterations=typemax(Int),
   min_err = Inf
   min_x = x
 
-  if max_iterations < typemax(Int)
-    prog = Progress(max_iterations,"Inverting Spectrogram: ")
+  prog = if !progressbar
+    nothing
+  elseif max_iterations < typemax(Int)
+    Progress(max_iterations,"Inverting Spectrogram: ")
   else
-    prog = ProgressThresh(target_error,"Inverting Spectrogram: ")
+    ProgressThresh(target_error,"Inverting Spectrogram: ")
   end
 
   for iteration in 1:max_iterations
     if min_err < target_error; break end
     params.nonlinear == 0 && standardize!(params,x)
 
-    ŷ,ŷ_haircell = audiospect_helper(x,params,true)
+    ŷ,ŷ_haircell = audiospect_helper(x,params,false,true)
     x = match_x(params,x,y,ŷ,ŷ_haircell)
 
     err = relative_error!(y,ŷ)
@@ -219,11 +224,13 @@ function Sounds.Sound(y_in::AuditorySpectrogram;max_iterations=typemax(Int),
 
     x .*= 1.01
 
-    if max_iterations < typemax(Int)
-      ProgressMeter.next!(prog;showvalues =
-                          [(:error,string(100round(min_err,4),"%"))])
-    else
-      ProgressMeter.update!(prog,min_err)
+    if progressbar
+      if max_iterations < typemax(Int)
+        ProgressMeter.next!(prog;showvalues =
+                            [(:error,string(100round(min_err,4),"%"))])
+      else
+        ProgressMeter.update!(prog,min_err)
+      end
     end
   end
   ProgressMeter.finish!(prog)

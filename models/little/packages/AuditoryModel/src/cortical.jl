@@ -1,11 +1,7 @@
-using ProgressMeter
 using AxisArrays
 
 export rates, scales, nrates, nscales, default_rates, default_scales,
   cortical, cycoct, co
-
-next!(x::Progress) = ProgressMeter.next!(x)
-next!(x::Missing) = nothing
 
 @dimension Sc "Sc" Scale
 @refunit cycoct "cyc/oct" CyclesPerOct Sc false
@@ -97,20 +93,21 @@ const spect_rate = 24
 # TODO: implicity convert sound into cortical representation
 
 # cortical responses of rates and scales simultaneously
-function cortical(y::AbstractArray;params...)
+function cortical(y::AbstractArray;progressbar=true,params...)
   params = CParams(y;params...)
-  cortical(y,params)
+  cortical(y,params,progressbar)
 end
 
-cortical(y::AbstractVector,params::CParams) =
-  cortical(audiospect(y,params.aspect),params)
-cortical(y::AbstractMatrix,params::CParams) =
-  cortical(audiospect(y,params.aspect),params)
+cortical(y::AbstractVector,params::CParams,progressbar=true) =
+  cortical(audiospect(y,params.aspect),params,progressbar)
+cortical(y::AbstractMatrix,params::CParams,progressbar=true) =
+  cortical(audiospect(y,params.aspect),params,progressbar)
 
 ####################
 # 'identity' functions: converts various arrays that already contain the
 # computed cortical representation
-function cortical(x::AxisArray{T,4} where T,params::CParamAll)
+function cortical(x::AxisArray{T,4} where T,params::CParamAll,
+                  progressbar=true)
   @assert(all(i > 0 for i in indexin(freqs(x),freqs(params))),
           "Frequency channels of array inconsisent with parameters.")
   @assert(all(i > 0 for i in indexin(scales(x),scales(params))),
@@ -120,7 +117,8 @@ function cortical(x::AxisArray{T,4} where T,params::CParamAll)
   Cortical(x,params)
 end
 
-function cortical(x::AxisArray{T,3} where T,params::CParamScales)
+function cortical(x::AxisArray{T,3} where T,params::CParamScales,
+                  progressbar=true)
   @assert(all(i > 0 for i in indexin(freqs(x),freqs(params))),
           "Frequency channels of array inconsisent with parameters.")
   @assert :rate ∉ axisnames(x) "Unexpectd rate dimension"
@@ -130,7 +128,8 @@ function cortical(x::AxisArray{T,3} where T,params::CParamScales)
 end
 
 
-function cortical(x::AxisArray{T,3} where T,params::CParamRates)
+function cortical(x::AxisArray{T,3} where T,params::CParamRates,
+                  progressbar=true)
   @assert(all(i > 0 for i in indexin(freqs(x),freqs(params))),
           "Frequency channels of array inconsisent with parameters.")
   @assert(all(i > 0 for i in indexin(rates(x),rates(params))),
@@ -139,7 +138,8 @@ function cortical(x::AxisArray{T,3} where T,params::CParamRates)
   Cortical(x,params)
 end
 
-function cortical(y::AbstractArray{T,4} where T,params::CParamAll)
+function cortical(y::AbstractArray{T,4} where T,params::CParamAll,
+                  progressbar=true)
   f = Axis{:freq}(freqs(params.aspect))
   r = Axis{:rate}(params.rates)
   sc = Axis{:scale}(params.scales)
@@ -147,14 +147,16 @@ function cortical(y::AbstractArray{T,4} where T,params::CParamAll)
   Cortical(AxisArray(y,t,r,sc,f),params)
 end
 
-function cortical(y::AbstractArray{T,3} where T,params::CParamRates)
+function cortical(y::AbstractArray{T,3} where T,params::CParamRates,
+                  progressbar=true)
   f = Axis{:freq}(freqs(params.aspect))
   r = Axis{:rate}(params.rates)
   t = Axis{:time}(times(params.aspect,y))
   Cortical(AxisArray(y,t,r,f),params)
 end
 
-function cortical(y::AbstractArray{T,3} where T,params::CParamScales)
+function cortical(y::AbstractArray{T,3} where T,params::CParamScales,
+                  progressbar=true)
   f = Axis{:freq}(freqs(params.aspect))
   sc = Axis{:scale}(params.scales)
   t = Axis{:time}(times(params.aspect,y))
@@ -163,15 +165,17 @@ end
 
 ####################
 # actual cortical computation
-function cortical(y::Result,params::CParamAll)
-  progress = cortical_progress(nrates(params)+1)
+function cortical(y::Result,params::CParamAll,progressbar=true)
+  progress = progressbar ? cortical_progress(nrates(params)+1) : nothing
   cs = cortical(y,asscales(params),missing)
   next!(progress)
-  cortical(cs,asrates(params),progress)
+  cortical(cs,asrates(params),progressbar,progress)
 end
 
-function cortical(y::Result,params::CParamRates,
-                  progress=cortical_progress(nrates(params)))
+# cortical responses of rates
+function cortical(y::Result,params::CParamRates,progressbar=true,
+                  progress=progressbar ? cortical_progress(nrates(params)) :
+                  nothing)
 
   if :rate ∈ axisnames(y)
     warning("Rates already analyzed in the input, ",
@@ -193,9 +197,9 @@ Cortical(cr::AxisArray{T,4} where T,p::CParamRates) =
 
 # cortical responses of scales
 vecperm(x::AbstractVector,n) = reshape(x,fill(1,n-1)...,:)
-function cortical(y::Result,params::CParamScales,
-                  progress=cortical_progress(nscales(params)))
-  @assert :scale ∉ axisnames(y) "Scales already analyzed"
+function cortical(y::Result,params::CParamScales,progressbar=true,
+                  progress=progressbar ? cortical_progress(nscales(params)) :
+                  nothing)
   if :scale ∈ axisnames(y)
     warning("Scales already analyzed in the input, returning ",
             "this input unmodified.")

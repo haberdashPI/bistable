@@ -1,4 +1,3 @@
-using ProgressMeter
 using Parameters
 using Unitful: s, ms, ustrip
 
@@ -116,8 +115,8 @@ approx_zeros(y::AbstractArray{<:Complex{T}},dims...) where T =
 
 ################################################################################
 # genertic adaptation and mutual-inhibition operation
-adaptmi(x;kw...) = adaptmi(x,AdaptMI(;kw...))
-function adaptmi(x,params::AdaptMI)
+adaptmi(x;progressbar=true,kw...) = adaptmi(x,AdaptMI(;kw...),progressbar)
+function adaptmi(x,params::AdaptMI,progressbar=true)
   @assert :time ∈ axisnames(x)
   time = Axis{:time}
 
@@ -143,7 +142,8 @@ function adaptmi(x,params::AdaptMI)
   dt_e = eltype(e_t)(Δt(x) / τ_e)
   dt_m = eltype(a_t)(Δt(x) / τ_m)
 
-  @showprogress "Adapt/Inhibit: " for t in indices(times(y),1)
+  progress = progressbar ? Progress(desc="Adapt/Inhibit: ",ntimes(y)) : nothing
+  for t in indices(times(y),1)
     y_t = x[time(t)]
 
     yr_t,a_t,e_t,m_t = @approx (y_t,a_t,e_t,m_t) begin
@@ -161,6 +161,8 @@ function adaptmi(x,params::AdaptMI)
     a[time(t)] = a_t
     e[time(t)] = e_t
     m[time(t)] = m_t
+
+    next!(progress)
   end
   y,a,m,e
 end
@@ -168,9 +170,9 @@ end
 ################################################################################
 # generic drifting noise function
 
-drift(x,along_axes...;kw...) = drift(x,AdaptMI(;kw...),along_axes)
-function drift(x,params::AdaptMI,along_axes=typeof.(axes(x)))
-  @show along_axes
+drift(x,along_axes...;progressbar=true,kw...) =
+  drift(x,AdaptMI(;kw...),along_axes,progressbar)
+function drift(x,params::AdaptMI,along_axes=typeof.(axes(x)),progressbar=true)
   τ_σ, c_σ = params.τ_σ, params.c_σ
   time = Axis{:time}
 
@@ -178,7 +180,8 @@ function drift(x,params::AdaptMI,along_axes=typeof.(axes(x)))
   temp = zeros(x[time(1),(ax(1) for ax in along_axes)...])
   σ_t = approx_zeros(temp)
   dims = size(σ_t)
-  @showprogress "Drift: " for t in indices(times(y),1)
+  progress = progressbar ? Progress(desc="Drift: ",ntimes(y)) : nothing
+  for t in indices(times(y),1)
     y_t = x[time(t)]
     y_t,σ_t = @approx (y_t,σ_t) begin
       σ_t .+= -σ_t.*(Δt(x)/τ_σ) .+ randn(dims).*(c_σ*sqrt(2Δt(x)/τ_σ))
@@ -188,6 +191,8 @@ function drift(x,params::AdaptMI,along_axes=typeof.(axes(x)))
     end
 
     y[time(t)] = y_t
+
+    next!(progress)
   end
   y
 end
