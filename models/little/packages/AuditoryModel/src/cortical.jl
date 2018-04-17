@@ -123,7 +123,7 @@ end
 function cortical(x::AxisArray{T,3} where T,params::CParamScales)
   @assert(all(i > 0 for i in indexin(freqs(x),freqs(params))),
           "Frequency channels of array inconsisent with parameters.")
-  @assert :rate ∉ axisnames(y) "Unexpectd rate dimension"
+  @assert :rate ∉ axisnames(x) "Unexpectd rate dimension"
   @assert(all(i > 0 for i in indexin(scales(x),scales(params))),
            "Missing scales in parameters")
   Cortical(x,params)
@@ -170,9 +170,14 @@ function cortical(y::Result,params::CParamAll)
   cortical(cs,asrates(params),progress)
 end
 
-# cortical responses of rates
 function cortical(y::Result,params::CParamRates,
                   progress=cortical_progress(nrates(params)))
+
+  if :rate ∈ axisnames(y)
+    warning("Rates already analyzed in the input, ",
+            "returning this input unmodified.")
+  end
+
   fir = FIRFiltering(y,Axis{:time})
 
   cr = initcr(y,params)
@@ -191,6 +196,11 @@ vecperm(x::AbstractVector,n) = reshape(x,fill(1,n-1)...,:)
 function cortical(y::Result,params::CParamScales,
                   progress=cortical_progress(nscales(params)))
   @assert :scale ∉ axisnames(y) "Scales already analyzed"
+  if :scale ∈ axisnames(y)
+    warning("Scales already analyzed in the input, returning ",
+            "this input unmodified.")
+    y
+  end
   fir = FIRFiltering(y,Axis{:freq})
 
   cs = initcr(y,params)
