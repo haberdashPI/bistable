@@ -6,3 +6,4 @@
 *.jld
 *.jld2
 .juliahistory
+stimuli/*.wav
