@@ -101,7 +101,6 @@ function nunits(params::CParams,x)
     isa(ax,Axis{:time}) || isa(ax,Axis{:rate}) ? 1 : length(ax)
   end
 end
-ncomponents(params::CParams) = params.ncomponents
 
 cohere(x::AuditoryModel.Result;params...) = cohere(x,CParams(x;params...))
 
