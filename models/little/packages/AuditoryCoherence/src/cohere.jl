@@ -88,12 +88,14 @@ function CParams(x;ncomponents=1,window=1s,minwindow=window,
           method)
 end
 
+windowing(x,dim,params::CParams) =
+  windowing(x,dim,length=windowlen(params,x),step=frame_length(params,x),
+            minlength=min_windowlen(params,x))
 windowing(x,dim;length=nothing,step=nothing,minlength=nothing) =
   (max(1,t-length+1):t for t in indices(x,dim)[minlength:step:end])
 
 windowlen(params::CParams,x) = round(Int,params.window/Δt(x))
-min_windowlen(params::CParams,x) =
-  round(Int,params.minwindow / Δt(x))
+min_windowlen(params::CParams,x) = round(Int,params.minwindow / Δt(x))
 function nunits(params::CParams,x)
   mapreduce(*,axes(x)) do ax
     isa(ax,Axis{:time}) || isa(ax,Axis{:rate}) ? 1 : length(ax)
@@ -113,9 +115,7 @@ function cohere(x::AbstractArray{T},params::CParams) where T
     return Coherence(x,params)
   end
 
-  windows = windowing(x,1;length=windowlen(params,x),
-                      minlength=min_windowlen(params,x),
-                      step=frame_length(params,x))
+  windows = windowing(x,1,params)
 
   K = ncomponents(params)
   C_data = zeros(eltype(params.method,x),length(windows),size(x)[3:end]...,K)
@@ -146,11 +146,7 @@ function mask(cr::AbstractArray{T},C::CoherenceComponent) where T
   @assert axisdim(cr,Axis{:rate}) == 2
   @assert size(cr)[3:end] == size(C)[2:end] "Dimension mismatch"
 
-  params = AuditoryModel.Params(C)
-
-  windows = enumerate(windowing(cr,1;length=windowlen(params,cr),
-                                minlength=min_windowlen(params,cr),
-                                step=frame_length(params,cr)))
+  windows = enumerate(windowing(cr,1,AuditoryModel.Params(C)))
   y = zeros(AxisArray(cr))
   norm = similar(y,real(T))
   norm .= zero(real(T))
