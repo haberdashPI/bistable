@@ -74,7 +74,7 @@ function component_means(C)
 end
 
 AuditoryModel.frame_length(params::CParams,x) =
-  min(1,floor(Int,params.delta / Δt(x)))
+  max(1,floor(Int,params.delta / Δt(x)))
 
 function CParams(x;ncomponents=1,window=1s,minwindow=window,
                   method=:nmf,delta=10ms,
