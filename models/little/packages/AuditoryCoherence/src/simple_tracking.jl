@@ -12,11 +12,12 @@ function track(C::Coherence;method=:simple,params...)
   track(C,method)
 end
 
-function maxby(by,xs)
+function maximumby(by,xs)
   state = start(xs)
   # NOTE: in general shoud check for empty iterator
   # but I know there will be at least one value in usage below
-  # and this avoids type instability in julia 0.6 (should be fixed 0.7)
+  # and this avoids poor performance in julia 0.6 due to type stability
+  # (should be fixed in 0.7)
   # if done(xs,state)
   # return nothing
   # else
@@ -41,7 +42,7 @@ function bestordering(x,y)
   # minimize cosine difference
   diff(x,y) = norm(vec(x) .- vec(y),1)
 
-  maxby(permutations(1:length(y))) do order
+  maximumby(permutations(1:length(y))) do order
     -sum(diff(xi,yi) for (xi,yi) in zip(x,y[order]))
   end
 end
@@ -61,7 +62,6 @@ function track(C::Coherence,params::SimpleTracking)
   end
 
   # rearrange so largest is first
-
   ordering = sortperm(component_means(C),rev=true)
   C .= C[component(ordering)]
 end
