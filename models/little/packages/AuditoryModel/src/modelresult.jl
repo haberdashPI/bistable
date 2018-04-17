@@ -40,6 +40,16 @@ function Base.similar(x::Result,::Type{S},
   end
 end
 
+Base.similar(x::Result,ax1::Axis,axs::Axis...) = similar(x,eltype(x),ax1,axs...)
+function Base.similar(x::Result,::Type{S},ax1::Axis,axs::Axis...) where S
+  if ndims(x) == 1+length(axs)
+    data = similar(AxisArray(x),ax1,axs...)
+    similar_helper(x,data,x.params)
+  else
+    similar(AxisArray(x),S,ax1,axs...)
+  end
+end
+
 function showparams(io,x)
   for field in fieldnames(x)
     showfield(io,field,getfield(x,field))
