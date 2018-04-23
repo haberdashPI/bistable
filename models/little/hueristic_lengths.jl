@@ -66,5 +66,3 @@ ggplot($df,aes(x=length,fill=stimuli)) +
   theme_classic()
 ggsave($(joinpath(dir,"histogram_bythreshold.pdf")))
 """
-
-# TODO: save plot and data

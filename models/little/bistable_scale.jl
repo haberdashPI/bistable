@@ -4,15 +4,16 @@ using DataFrames
 using AuditoryCoherence
 using AxisArrays
 using RCall
-using JLD
 
 include("util/stim.jl")
 include("util/peaks.jl")
 include("util/lengths.jl")
+include("util/threshold.jl")
 
 R"library(ggplot2)"
 R"library(cowplot)"
 quartz() = R"quartz()"
+lplot(x) = R"qplot(x=1:$(length(x)),y=$(Array(x)),geom='line')"
 dir = "../../plots/run_2018_04_16"
 isdir(dir) || mkdir(dir)
 
@@ -26,13 +27,18 @@ sweights = AxisArray(squeeze(mean(abs.(cs),axisdim(cs,Axis{:freq})),3),
 
 swn = drift(sweights,τ_σ = 500ms,c_σ = 0.3);
 swna,a,m = adaptmi(swn,
-                   c_m=5,τ_m=350ms,W_m=scale_weighting2(cs,1.0),
+                   c_m=5,τ_m=350ms,W_m=scale_weighting2(cs,0.2),
+                   c_d=1.8,τ_d = 500ms,
                    c_e=1.5,τ_e = 300ms,
                    c_a=30,τ_a=3s,shape_y = x -> max(0,x),α=3.0)
 
 csa = similar(cs);
 csa .= sqrt.(abs.(cs) .* swna) .* exp.(angle.(cs)*im)
 rplot(csa)
+
+stream1,stream2 = threshold_scales(csa,1.5cycoct)
+# counts = source_count_by_threshold(csa,cutoff=2cycoct,buildup=1s,
+#                                    window=1s,delta=0.25s)
 
 #########################################
 # find object count by peak picking

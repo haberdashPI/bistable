@@ -1,4 +1,4 @@
-export scale_weighting, scale_weighting2
+export scale_weighting, scale_weighting2, freq_weighting
 
 # the key is getting this weighting matrix right,
 # I think I will be best able to do this
@@ -43,4 +43,12 @@ function scale_weighting2(cort,σ)
   end
 
   helper
+end
+
+function freq_weighting(spect,σ)
+  f = log.(ustrip.(freqs(spect)))
+  W = @. 1 - exp(-(f - f')^2 / (σ^2*log(2)))
+  W ./= sum(W,2)
+
+  x -> W*x
 end

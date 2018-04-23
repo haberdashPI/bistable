@@ -13,7 +13,7 @@ include("util/lengths.jl")
 R"library(ggplot2)"
 R"library(cowplot)"
 quartz() = R"quartz()"
-dir = "../../plots/run_2018_04_16"
+dir = "../../plots/run_$(Date(now()))"
 isdir(dir) || mkdir(dir)
 
 x = ab(120ms,120ms,1,25,500Hz,6) |> normpower |> amplify(-10dB)
@@ -42,10 +42,13 @@ rplot(C)
 # @save "scratch.jld2" cs csa C
 # @load "scratch.jld2" cs csa C
 
-Ct = track(C,tc=0.8s)
-rplot(Ct)
 
-early = C[0s .. 2s];
+Ct = track(C,tc=0.8s)
+# rplot(Ct)
+
+early = C[0s .. 4s];
 p = reshape(mean(early,4),size(early,1),:)
 early_prior = AuditoryCoherence.MultiNormalStats(p);
-Ctp = track(C,method=:prior,tc=0.8s,prior=early_prior)
+Ctp = track(C,method=:prior,tc=1s,prior=early_prior,thresh=1e-1)
+rplot(Ctp)
+alert()

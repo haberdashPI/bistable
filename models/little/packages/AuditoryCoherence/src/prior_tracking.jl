@@ -1,4 +1,4 @@
-
+import Distributions: Normal, logpdf
 using Combinatorics
 
 mutable struct MultiNormalStats{T}
@@ -57,8 +57,24 @@ function logpdf_mvt(v,μ,Σ,x)
   C*log(1+1/v*(diff'/Σ)*diff)*-(v+d)/2
 end
 
+function logpdf_thresh(stats::MultiNormalStats,x::AbstractVector,thresh)
+  ii = find(diag(stats.x2) .- (stats.x .* stats.x) .> thresh)
+
+  d = length(ii)
+  Λ = (stats.x2[ii,ii] .- (stats.x[ii].*stats.x[ii]')) ./ stats.n
+  μ = stats.x[ii] ./ stats.n
+  n = stats.n
+  # a bit of cheating...
+  nu = max(1,floor(Int,stats.n + stats.x2_offset - d + 1))
+
+  jj = setdiff(1:length(x),ii)
+  logpdf_mvt(nu,μ,Λ .* ((n + 1)/(n * nu)),x[ii]) +
+    sum(logpdf.(Normal(0,thresh),x[jj] .- stats.x[jj]))
+end
+
 @with_kw struct PriorTracking <: Tracking
   tc::typeof(1.0s) = 1s
+  thresh::Float64 = 1e-2
   prior::MultiNormalStats{Float64}
 end
 Tracking(::Val{:prior};params...) = PriorTracking(;params...)
@@ -88,7 +104,8 @@ function track(C::Coherence,params::PriorTracking)
     bestorder = maximumby(possible_orders(max_sources,ncomponents(C))) do order
       logsum = sum(enumerate(order)) do i_k
         (i,k) = i_k
-        logpdf(params.prior + sources[k],vec(C[time(t),component(i)])) +
+        logpdf_thresh(params.prior + sources[k],vec(C[time(t),component(i)]),
+                      params.thresh) +
           log((freqs[k] + freq_prior[1])/(count + freq_prior[2]))
       end
       logsum += sum(setdiff(1:max_sources,order)) do i
@@ -103,7 +120,6 @@ function track(C::Coherence,params::PriorTracking)
     C_out[time(t),component(setdiff(1:max_sources,bestorder))] = 0
 
     tc = 1 / max(0.5,params.tc / Δt(C))
-    @show tc
     # update the source models
 
     for k in 1:max_sources

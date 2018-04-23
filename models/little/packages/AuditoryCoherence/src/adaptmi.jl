@@ -16,6 +16,9 @@ sig(x) = 1/(1+exp(-10(x-0.5)))
   c_e::Float64 = 0
   τ_e::typeof(1.0s) = 300ms
 
+  c_d::Float64 = 0
+  τ_d::typeof(1.0s) = 2s
+
   c_m::Float64 = 10
   τ_m::typeof(1.0s) = 50ms
   W_m::I = inhibit_uniform
@@ -126,45 +129,51 @@ function adaptmi(x,params::AdaptMI,progressbar=true)
   τ_y = params.τ_y; shape_y = params.shape_y
   τ_a = params.τ_a; c_a = params.c_a
   τ_e = params.τ_e; c_e = params.c_e
+  τ_d = params.τ_d; c_d = params.c_d
   τ_m = params.τ_m; c_m = params.c_m; W_m = params.W_m
 
   a = approx_similar(y) # a = adaptation
   e = approx_similar(y) # a = adaptation
+  d = approx_similar(y) # a = adaptation
   m = approx_similar(y) # m = mutual inhibition
 
   yr_t = zeros(y[time(1)])
   a_t = approx_zeros(yr_t)
   e_t = approx_zeros(yr_t)
+  d_t = approx_zeros(yr_t)
   m_t = approx_zeros(yr_t)
 
   dt_y = eltype(a_t)(Δt(x) / τ_y)
   dt_a = eltype(a_t)(Δt(x) / τ_a)
   dt_e = eltype(e_t)(Δt(x) / τ_e)
+  dt_d = eltype(d_t)(Δt(x) / τ_d)
   dt_m = eltype(a_t)(Δt(x) / τ_m)
 
   progress = progressbar ? Progress(desc="Adapt/Inhibit: ",ntimes(y)) : nothing
   for t in indices(times(y),1)
     y_t = x[time(t)]
 
-    yr_t,a_t,e_t,m_t = @approx (y_t,a_t,e_t,m_t) begin
+    yr_t,a_t,e_t,d_t,m_t = @approx (y_t,a_t,e_t,d_t,m_t) begin
       y_t .*= α
-      y_t .-= (y_t.*c_a.*a_t .- c_e.*e_t .+ c_m.*m_t)
+      y_t .-= (y_t.*c_a.*a_t .- c_e.*e_t .+ c_d.*d_t .+ c_m.*m_t)
       yp_t = shape_y.(y_t)
       a_t .+= (yp_t .- a_t).*dt_a
       e_t .+= (yp_t .- e_t).*dt_e
+      d_t .+= (yp_t .- d_t).*dt_d
       m_t .+= (W_m(yp_t) .- m_t).*dt_m
 
-      yp_t,a_t,e_t,m_t
+      yp_t,a_t,e_t,d_t,m_t
     end
 
     y[time(t)] = yr_t
     a[time(t)] = a_t
     e[time(t)] = e_t
+    d[time(t)] = d_t
     m[time(t)] = m_t
 
     next!(progress)
   end
-  y,a,m,e
+  y,a,m,e,d
 end
 
 ################################################################################

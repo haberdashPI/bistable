@@ -1,17 +1,17 @@
 using DSP
 
 lowpass = digitalfilter(Lowpass(0.27),Butterworth(4))
-function find_peaks(x,stage=:final)
+function find_peaks(x)#,stage=:final)
   x = filtfilt(lowpass,x)
   dx = diff(x)
   ddx = diff(dx)
   cross0 = find(dx[1:end-1].*dx[2:end] .< 0) .+ 1
 
-  stage == :cross && return cross0
+  # stage == :cross && return cross0
 
   peaks = cross0[ddx[cross0 .- 1] .< 0]
 
-  stage == :max && return peaks
+  # stage == :max && return peaks
 
   if !isempty(peaks)
     peaks[x[peaks] .> 0.75maximum(x[peaks])]
@@ -26,15 +26,17 @@ function guess_source_count(window)
   end
 
   maxi = map(allpeaks) do peaks
-    isempty(peaks) ? -Inf : maximum(peaks)
+    isempty(peaks) ? typemin(eltype(peaks)) : maximum(peaks)
   end |> indmax
   length(allpeaks[maxi])
 end
 
 function map_window(fn,x,window,delta)
-  map(1:floor(Int,delta / Δt(x)):ntimes(x)) do i
+  indices = 1:floor(Int,delta / Δt(x)):ntimes(x)
+  vals = map(indices) do i
     fn(x[atindex(0s .. window,i)])
   end
+  AxisArray(vals,Axis{:time}(times(x)[indices]))
 end
 
 mycollapse(x) = squeeze(mean(abs.(Array(x)),1),1)
@@ -72,15 +74,8 @@ function source_peaks(cs;window=1s,delta=0.25s,stage=:final)
   y
 end
 
-function source_count_by_peaks(cs;window=1s,delta=0.25s)
-  indices = 1:floor(Int,delta / Δt(cs)):ntimes(cs)
-  y = AxisArray(zeros(length(indices)),Axis{:time}(times(cs)[indices]))
-  
-  for (k,i) in enumerate(indices)
-    win = cs[atindex(0s .. window,i)]
-    y[k] = guess_source_count(mycollapse(win))
+function source_count_by_peaks(cs;window=1s,delta=0.25s,buildup=1s)
+  map_window(cs[buildup .. last(times(cs))],window,delta) do win
+    guess_source_count(mycollapse(win))
   end
-
-  y
 end
-    
