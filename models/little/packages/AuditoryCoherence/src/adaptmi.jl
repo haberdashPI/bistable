@@ -6,18 +6,16 @@ using Unitful: s, ms, ustrip
 sig(x) = 1/(1+exp(-10(x-0.5)))
 
 @with_kw struct AdaptMI{S,I}
-  α::Float64 = 1.0
-  τ_y::typeof(1.0s) = 10ms
+  c_x::Float64 = 1.0
+  τ_x::typeof(1.0s) = 300ms
+
+  c_n::Float64 = 10.0
+  τ_n::typeof(1.0s) = 1s
+
   shape_y::S = identity
 
   c_a::Float64 = 5
   τ_a::typeof(1.0s) = 1.5s
-
-  c_e::Float64 = 0
-  τ_e::typeof(1.0s) = 300ms
-
-  c_d::Float64 = 0
-  τ_d::typeof(1.0s) = 2s
 
   c_m::Float64 = 10
   τ_m::typeof(1.0s) = 50ms
@@ -45,7 +43,7 @@ end
 function time_indices
 end
 
-# after set_timeslice!(y,t,y_t), time slice t of y === y_t
+# after set_timeslice!(y,t,ya_t), time slice t of y === ya_t
 function set_timeslice!
 end
 
@@ -53,32 +51,21 @@ end
 function get_timeslice
 end
 
-# __approx(f,x,xs...) ≈ f(x,xs...)
+# approx(f,x,xs...) ≈ f(x,xs...)
 
 # x can be an 'important' value, meaning it is used to determine how the
 # remaining values are approximated
-function __approx
+function approx
 end
 
 # get a timeslice in the same format used for values
-# within the function called by __approx
+# within the function called by approx
 function approx_empty_timeslice
 end
 
 # get a value with a similar format to data, but differing in that it has the
-# same format as used within the function called by __approx
+# same format as used within the function called by approx
 function approx_similar
-end
-
-# @approx (x1,x2) begin
-#   x1 + x2
-# end
-#
-# is equivalent to:
-#
-# __approx(+,x1,x2)
-macro approx(args,body)
-  :(__approx($(esc(args)) -> $(esc(body)),$(esc(args))...))
 end
 
 ##############################
@@ -87,7 +74,7 @@ end
 #   as the time dimension
 # - there is no loss due to approximation
 
-__approx(f,args...) = f(args...)
+approx(f,args...) = f(args...)
 approx_similar(x) = similar(x)
 approx_zeros(x,dims...) = zeros(x,dims...)
 
@@ -97,7 +84,7 @@ approx_zeros(x,dims...) = zeros(x,dims...)
 #   so that m and a remain real, the resulting output
 #   can be multiplied by the phase of the original signal
 #   to find the final, complex output
-function __approx(f,x::AbstractArray{<:Complex},args...)
+function approx(f,x::AbstractArray{<:Complex},args...)
   y = f(abs.(x),args...)
   withangle(angle.(x),y)
 end
@@ -125,55 +112,46 @@ function adaptmi(x,params::AdaptMI,progressbar=true)
 
   y = similar(x)
 
-  α = params.α
-  τ_y = params.τ_y; shape_y = params.shape_y
+  shape_y = params.shape_y
+  τ_x = params.τ_x; c_x = params.c_x
+  τ_n = params.τ_n; c_n = params.c_n
   τ_a = params.τ_a; c_a = params.c_a
-  τ_e = params.τ_e; c_e = params.c_e
-  τ_d = params.τ_d; c_d = params.c_d
   τ_m = params.τ_m; c_m = params.c_m; W_m = params.W_m
 
   a = approx_similar(y) # a = adaptation
-  e = approx_similar(y) # a = adaptation
-  d = approx_similar(y) # a = adaptation
   m = approx_similar(y) # m = mutual inhibition
 
-  yr_t = zeros(y[time(1)])
-  a_t = approx_zeros(yr_t)
-  e_t = approx_zeros(yr_t)
-  d_t = approx_zeros(yr_t)
-  m_t = approx_zeros(yr_t)
+  y_t = approx_zeros(y[time(1)])
+  n_t = copy(y_t)
+  yam_t = copy(y_t)
+  shape_y_t = copy(y_t)
+  a_t = copy(y_t)
+  m_t = copy(y_t)
 
-  dt_y = eltype(a_t)(Δt(x) / τ_y)
+  dt_n = eltype(a_t)(Δt(x) / τ_n)
+  dt_x = eltype(a_t)(Δt(x) / τ_x)
   dt_a = eltype(a_t)(Δt(x) / τ_a)
-  dt_e = eltype(e_t)(Δt(x) / τ_e)
-  dt_d = eltype(d_t)(Δt(x) / τ_d)
   dt_m = eltype(a_t)(Δt(x) / τ_m)
 
   progress = progressbar ? Progress(desc="Adapt/Inhibit: ",ntimes(y)) : nothing
-  for t in indices(times(y),1)
-    y_t = x[time(t)]
+  for ti in indices(times(y),1)
+    t = time(ti)
 
-    yr_t,a_t,e_t,d_t,m_t = @approx (y_t,a_t,e_t,d_t,m_t) begin
-      y_t .*= α
-      y_t .-= (y_t.*c_a.*a_t .- c_e.*e_t .+ c_d.*d_t .+ c_m.*m_t)
-      yp_t = shape_y.(y_t)
-      a_t .+= (yp_t .- a_t).*dt_a
-      e_t .+= (yp_t .- e_t).*dt_e
-      d_t .+= (yp_t .- d_t).*dt_d
-      m_t .+= (W_m(yp_t) .- m_t).*dt_m
+    y[t],a[t],m[t] = approx(x[t]) do x_t
+      @. y_t += (c_x*x_t - y_t)*dt_x
+      @. n_t += (y_t - n_t)*dt_n
+      @. yam_t = (1 - c_a*a_t)*(y_t./max(1/c_n,n_t)) - c_m*m_t
+      @. shape_y_t = shape_y(yam_t)
+      @. a_t += (shape_y_t - a_t)*dt_a
+      w = W_m(shape_y_t)
+      @. m_t += (w - m_t)*dt_m
 
-      yp_t,a_t,e_t,d_t,m_t
+      shape_y_t,a_t,m_t
     end
-
-    y[time(t)] = yr_t
-    a[time(t)] = a_t
-    e[time(t)] = e_t
-    d[time(t)] = d_t
-    m[time(t)] = m_t
 
     next!(progress)
   end
-  y,a,m,e,d
+  y,a,m
 end
 
 ################################################################################
@@ -191,15 +169,15 @@ function drift(x,params::AdaptMI,along_axes=typeof.(axes(x)),progressbar=true)
   dims = size(σ_t)
   progress = progressbar ? Progress(desc="Drift: ",ntimes(y)) : nothing
   for t in indices(times(y),1)
-    y_t = x[time(t)]
-    y_t,σ_t = @approx (y_t,σ_t) begin
+    ya_t = x[time(t)]
+    ya_t,σ_t = approx(ya_t,σ_t) do ya_t,σ_t
       σ_t .+= -σ_t.*(Δt(x)/τ_σ) .+ randn(dims).*(c_σ*sqrt(2Δt(x)/τ_σ))
-      y_t .*= (1 .+ σ_t)
+      ya_t .*= (1 .+ σ_t)
 
-      y_t,σ_t
+      ya_t,σ_t
     end
 
-    y[time(t)] = y_t
+    y[time(t)] = ya_t
 
     next!(progress)
   end
