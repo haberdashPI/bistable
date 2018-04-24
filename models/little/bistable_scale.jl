@@ -1,7 +1,7 @@
 push!(LOAD_PATH,"packages")
 using AuditoryModel
-using DataFrames
 using AuditoryCoherence
+using DataFrames
 using AxisArrays
 using RCall
 
