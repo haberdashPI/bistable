@@ -77,6 +77,24 @@ R"""
 """
 end
 
+function rplot(z::AbstractMatrix)
+  ixs = CartesianRange(size(z))
+  at(ixs,i) = map(x -> x[i],ixs)
+
+  df = DataFrame(response = vec(z),
+                 time = vec(ustrip(times(z)[at(ixs,1)])),
+                 index = vec(at(ixs,2)))
+  p = raster_plot(df,value=:response,x=:time,y=:index)
+
+R"""
+
+  library(ggplot2)
+
+  $p + ylab('Index') + xlab('Time (s)')
+
+"""
+end
+
 function rplot(as::AuditorySpectrogram)
   ixs = CartesianRange(size(as))
   at(ixs,i) = map(x -> x[i],ixs)
