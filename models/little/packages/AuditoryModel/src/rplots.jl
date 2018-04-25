@@ -151,12 +151,13 @@ R"""
 """
 end
 
-function rplot(cort::CorticalScales;scales=AuditoryModel.scales(cort))
+function rplot(cort::CorticalScales;scales=AuditoryModel.scales(cort),
+               fn=identity)
   cort = cort[:,atvalue.(scales),:]
   ixs = CartesianRange(size(cort))
   at(ixs,i) = map(x -> x[i],ixs)
 
-  df = DataFrame(response = vec(cort),
+  df = DataFrame(response = fn.(vec(cort)),
                  time = ustrip.(vec(times(cort)[at(ixs,1)])),
                  scale = ustrip.(vec(scales[at(ixs,2)])),
                  freq_bin = vec(at(ixs,3)))
@@ -186,12 +187,12 @@ end
 
 
 function rplot(cort::Cortical;rates=AuditoryModel.rates(cort),
-               scales=AuditoryModel.scales(cort))
+               scales=AuditoryModel.scales(cort),fn=identity)
   cort = cort[:,atvalue.(rates),atvalue.(scales),:]
   ixs = CartesianRange(size(cort))
   at(ixs,i) = map(x -> x[i],ixs)
 
-  df = DataFrame(response = vec(cort),
+  df = DataFrame(response = fn.(vec(cort)),
                  time = ustrip.(vec(times(cort)[at(ixs,1)])),
                  rate = ustrip.(vec(rates[at(ixs,2)])),
                  scale = ustrip.(vec(scales[at(ixs,3)])),
