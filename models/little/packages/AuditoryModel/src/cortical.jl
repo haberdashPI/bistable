@@ -167,7 +167,7 @@ end
 # actual cortical computation
 function cortical(y::Result,params::CParamAll,progressbar=true)
   progress = progressbar ? cortical_progress(nrates(params)+1) : nothing
-  cs = cortical(y,asscales(params),missing)
+  cs = cortical(y,asscales(params),false)
   next!(progress)
   cortical(cs,asrates(params),progressbar,progress)
 end
@@ -437,9 +437,9 @@ function rate_filters(Y,x,params=Params(x);use_conj=false)
 end
 
 # create the temporal-rate filter (filter along temporal axis)
-function rate_filter(rate,len,Δt,kind,use_conj=false)
-  t = (0:len-1).*ustrip(Δt)
-  h = @. abs(rate) * sin(2π*t) * t^2 * exp(-3.5t)
+function rate_filter(rate,len,Δt,kind,use_conj=false,return_partial=false)
+  t = (0:len-1)*ustrip(Δt)*abs(rate)
+  h = @. sin(2π*t) * t^2 * exp(-3.5t)
   h .-= mean(h)
 
   H0 = view(fft(pad(h,2len)),1:len)
@@ -462,5 +462,9 @@ function rate_filter(rate,len,Δt,kind,use_conj=false)
 		HR[len+1] = abs(HR[len+2])
 	end
 
-  HR
+  if return_partial
+    HR,h
+  else
+    HR
+  end
 end
