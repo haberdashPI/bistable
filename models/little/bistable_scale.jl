@@ -61,7 +61,7 @@ rplot(C)
 #             delta=200ms,maxiter=100,tol=1e-3)
 # rplot(C)
 
-Ct = track(C,tc=0.8s)
+Ct = track(C,tc=0.5s)
 rplot(Ct)
 
 AuditoryCoherence.MultiNormalStats(reshape())

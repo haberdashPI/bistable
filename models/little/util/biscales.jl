@@ -7,23 +7,14 @@ type ResponseOverflow <: Exception
 end
 
 function bistable_scales(x,params)
+  scales = cycoct.*2.0.^linspace(params[:scale_start],
+                                 params[:scale_stop],
+                                 params[:scale_N])
+
   noise_params = Dict(:τ_σ=>params[:τ_σ],:c_σ=>params[:c_σ])
-
-  adapt_params = Dict(:c_m=>params[:c_m],
-                      :τ_m=>params[:τ_m],
-                      :c_e=>params[:c_e],
-                      :τ_e=>params[:τ_e],
-                      :c_a=>params[:c_a],
-                      :τ_a=>params[:τ_a],
-
-                      :c_e=>params[:c_e],
-                      :τ_e=>params[:τ_e],
-                      :c_d=>params[:c_d],
-                      :τ_d=>params[:τ_d],
-
-                      :α=>params[:α])
-
-  cortical_params = Dict(:scales=>params[:scales])
+  cortical_params = Dict(:scales=>scales)
+  other_keys = [:τ_σ,:c_σ,:scale_start,:scale_stop,:scale_N,:W_m_σ]
+  adapt_params = Dict(k => params[k] for k in setdiff(keys(params),other_keys))
 
   sp = audiospect(x,progressbar=false)
   cs = cortical(sp;cortical_params...,progressbar=false)
@@ -38,7 +29,7 @@ function bistable_scales(x,params)
   end
 
   swn = drift(scale_weights;noise_params...,progressbar=false)
-  swna,a,m = adaptmi(swn,W_m=scale_weighting2(cs,params[:W_m_σ]),
+  swna,a,m = adaptmi(swn,W_m=scale_weighting(cs,params[:W_m_σ]),
                      shape_y = x -> max(0,x);
                      adapt_params...,progressbar=false)
 

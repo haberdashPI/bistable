@@ -5,7 +5,7 @@ parameter_index = length(ARGS) > 0 ? ARGS[1] : 1
 dir = joinpath("..","..","data","count_lengths")
 isdir(dir) || mkdir(dir)
 
-params = load("params.feather")
+params = load("params.jld2")[:df]
 N = 100
 methods = Dict(
   :peaks => x -> source_count_by_peaks(x,window=1s,delta=0.25s,buildup=1s),
