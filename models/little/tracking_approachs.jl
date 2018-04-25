@@ -42,13 +42,23 @@ rplot(C)
 # @save "scratch.jld2" cs csa C
 # @load "scratch.jld2" cs csa C
 
-
 Ct = track(C,tc=0.8s)
-# rplot(Ct)
+rplot(Ct)
 
 early = C[0s .. 4s];
 p = reshape(mean(early,4),size(early,1),:)
 early_prior = AuditoryCoherence.MultiNormalStats(p);
 Ctp = track(C,method=:prior,tc=1s,prior=early_prior,thresh=1e-1)
 rplot(Ctp)
+alert()
+
+crs = cortical(cs[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
+Cna = cohere(crs,ncomponents=3,window=200ms,method=:nmf,
+             delta=50ms,maxiter=100,tol=1e-3)
+
+
+early = Cna[0s .. 4s];
+p = reshape(mean(early,4),size(early,1),:)
+early_prior = AuditoryCoherence.MultiNormalStats(p);
+Cna_t = track(Cna,method=:prior,tc=1s,prior=early_prior,thresh=1e-1)
 alert()
