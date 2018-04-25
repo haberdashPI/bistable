@@ -119,6 +119,8 @@ function ab(tone_len,spacing_len,offset_ratio,repeats,freq,delta,options...)
 
   a = :without_a in options ? silence(tone_len) : tone(a_freq,tone_len)
   b = :without_b in options ? silence(tone_len) : tone(b_freq,tone_len)
+  a = :ramp in options ? ramp(a,25ms) : a
+  b = :ramp in options ? ramp(b,25ms) : b
   ab = mix(a,[silence(offset_ratio*(tone_len+spacing_len));b])
   ab_len = 2(tone_len+spacing_len)
   ab = [ab; silence(ab_len - duration(ab))]
