@@ -7,3 +7,7 @@
 *.jld2
 .juliahistory
 stimuli/*.wav
+*.swp
+.ctags
+.gutctags
+tags
