@@ -1,6 +1,9 @@
 
 
 # Bistability
+NOTE: this readme is in no way meant to be helpful to an external audience.
+It is a scratch pad for notes (and is out of date because I'm using other methods
+right now to keep track of my progress).
 
 # RESET!!!
 
