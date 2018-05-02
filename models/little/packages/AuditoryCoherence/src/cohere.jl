@@ -38,12 +38,13 @@ AuditoryModel.resultname(x::CoherenceComponent) = "Single Coherence Component"
 AuditoryModel.similar_helper(::CoherenceComponent,val,params) =
   CoherenceComponent(val,params)
 
-function AuditoryModel.
-  modelwrap(x::A,newval::AxisArray{T}) where {T,M,A <: Coherence{M,T}}
+function AuditoryModel.modelwrap(x::A,newval::AxisArray{T}) where
+  {T,M,A <: Coherence{M,T}}
 
-  axnames = axisnames(newval)
   if setdiff(axisnames(x),axisnames(newval)) == [:component]
     CoherenceComponent(newval,AuditoryModel.Params(x))
+  elseif axisnames(x) == axisnames(newval)
+    A(newval,AuditoryModel.Params(x))
   else
     newval
   end
