@@ -6,6 +6,8 @@ type ResponseOverflow <: Exception
   val::Float64
 end
 
+meanabs(A,n) = squeeze(reducedim((x,y) -> x+abs(y),A,n,zero(real(eltype(A)))),n)
+
 function bistable_scales(x,params)
   scales = cycoct.*2.0.^linspace(params[:scale_start],
                                  params[:scale_stop],
@@ -19,9 +21,8 @@ function bistable_scales(x,params)
   sp = audiospect(x,progressbar=false)
   cs = cortical(sp;cortical_params...,progressbar=false)
 
-  scale_weights = AxisArray(squeeze(mean(abs.(cs),axisdim(cs,Axis{:freq})),3),
-                       axes(cs,Axis{:time}),
-                            axes(cs,Axis{:scale}))
+  scale_weights = AxisArray(meanabs(cs,(axisdim(cs,Axis{:freq}),)),
+                       axes(cs,Axis{:time}), axes(cs,Axis{:scale}))
 
   weight_max = maximum(scale_weights)
   if weight_max > reasonable_response_maximum
@@ -33,5 +34,5 @@ function bistable_scales(x,params)
                      shape_y = x -> max(0,x);
                      adapt_params...,progressbar=false)
 
-  cs .= sqrt.(abs.(cs) .* swna) .* exp.(angle.(cs)*im)
+  cs .= sqrt.(abs.(cs) .* swna) .* exp.(angle.(cs).*im)
 end

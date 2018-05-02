@@ -30,11 +30,11 @@ end
 # - use Logging to report status of program
 
 function count_lengths_helper(x,methods,params)
+  y = bistable_scales(x,params)
   vals = map(methods) do name_method
-    y = bistable_scales(x,params)
     name,method = name_method
     try
-      len,stim = percept_lengths(method(csa))
+      len,stim = y |> method |> percept_lengths
       name => DataFrame(length = len,stimulus = stim,method = string(name))
     catch e
       if e isa ResponseOverflow

@@ -1,6 +1,7 @@
 using FileIO
+using DataFrames
 using JLD2
-import Base.Iterators: drop
+drop = Base.Iterators.drop
 
 push!(LOAD_PATH,"packages")
 using AuditoryModel
@@ -11,17 +12,11 @@ params = Dict(
   :c_m => 10.^linspace(-1,1,10),     :τ_m => linspace(50.0ms,500.0ms,3),
   :c_a => 10.^linspace(-1.0,1.0,10), :τ_a => linspace(100.0ms,10.0s,3),
 
-  :W_m_σ => 10.^linspace(-1.0,2.0,5),
+  :W_m_σ => 10.^linspace(-1.0,2.0,3),
   :τ_x => linspace(100ms,300ms,3), :c_x => linspace(0.75,5,3),
   :c_n => [15], :τ_n => [1s],
-  :scale_start => [-1], :scale_stop => [2], :scale_N => [12]
+  :scale_start => [-1.0], :scale_stop => [2.0], :scale_N => [12]
 )
-
-function withentry(dict,key,val)
-  result = copy(dict)
-  result[key] = val
-  result
-end
 
 function byparams(params)
   if length(params) == 1
@@ -37,4 +32,4 @@ function byparams(params)
   end
 end
 df = byparams(params)
-save("params.jld2",:df => df)
+save("params.jld2","df",df)
