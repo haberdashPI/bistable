@@ -48,6 +48,7 @@ function bestordering(x,y)
 end
 
 function track(C::Coherence,params::SimpleTracking)
+  C = copy(C)
   time = Axis{:time}
   component = Axis{:component}
   K = ncomponents(C)
