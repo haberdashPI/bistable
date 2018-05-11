@@ -1,6 +1,7 @@
 using AxisArrays
 using DSP
-using JLD
+using JLD2
+using FileIO
 using Sounds
 
 import DSP.Filters.freqs
@@ -22,9 +23,7 @@ struct CochFilters
   filters::Vector{CochFilter}
 end
 
-const cochlear = jldopen(joinpath(@__DIR__,"..","data","cochba.jld")) do file
-  read(file,"cochba")
-end
+const cochlear = load(joinpath(@__DIR__,"..","data","cochba.jld2"),"cochba")
 
 ########################################
 # auditory spectrogram data type and its parameters

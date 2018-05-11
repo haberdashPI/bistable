@@ -1,6 +1,6 @@
 using RCall
 using DataFrames
-using JLD
+using JLD2
 
 export rplot, collapsed_scale_plot
 import Colors: RGB
@@ -8,10 +8,10 @@ import Colors: RGB
 # TODO??: move to seperate file that is always loaded
 # so both rplots and vplots can use it
 const cmap = Dict{Symbol,Vector{RGB}}()
-jldopen(joinpath(@__DIR__,"..","data","colormaps.jld")) do file
-  cmap[:D1] = read(file,"D1")
-  cmap[:reds] = read(file,"reds")
-  cmap[:C6] = read(file,"C6")
+jldopen(joinpath(@__DIR__,"..","data","colormaps.jld2")) do file
+  cmap[:D1] = file["D1"]
+  cmap[:reds] = file["reds"]
+  cmap[:C6] = file["C6"]
 end
 
 R"library(ggplot2)"

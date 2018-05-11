@@ -1,6 +1,7 @@
 push!(LOAD_PATH,"packages")
 using AuditoryModel
-using JLD
+using JLD2
+using FileIO
 using HDF5
 
 cochba = h5open(joinpath("packages","AuditoryModel","data","cochba.h5")) do file
@@ -20,4 +21,4 @@ end
 ch_norm  = imag(cochba[1, M])
 
 data = AuditoryModel.CochFilters(ch_norm,filters)
-save(joinpath("packages","AuditoryModel","data","cochba.jld"),"cochba",data)
+save(joinpath("packages","AuditoryModel","data","cochba.jld2"),"cochba",data)

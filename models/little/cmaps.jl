@@ -1,10 +1,10 @@
 import PerceptualColourMaps: cmap
 import Colors: RGB
 import Colors
-using JLD
+using JLD2
 
-jldopen(joinpath("packages","AuditoryModel","data","colormaps.jld"),"w") do file
-  write(file,"D1",RGB.(cmap("D1")))
-  write(file,"reds",RGB.(Colors.colormap("Reds")))
-  write(file,"C6",RGB.(cmap("C6")))
+jldopen(joinpath("packages","AuditoryModel","data","colormaps.jld2"),"w") do file
+  file["D1"] = RGB.(cmap("D1"))
+  file["reds"] = RGB.(Colors.colormap("Reds"))
+  file["C6"] = RGB.(cmap("C6"))
 end
