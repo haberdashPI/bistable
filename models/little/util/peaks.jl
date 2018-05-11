@@ -31,10 +31,19 @@ function guess_source_count(window)
   length(allpeaks[maxi])
 end
 
-function map_window(fn,x,window,delta)
-  indices = 1:floor(Int,delta / Δt(x)):ntimes(x)
+function slicerange(x,range,axis)
+  dim = axisdim(x,axis)
+  args = Array{Any}(ndims(x))
+  args .= Colon()
+  args[dim] = range
+  getindex(x,args...)
+end
+
+function map_window(fn,x,window,delta;showprogress=false)
+  indices = (1:floor(Int,delta / Δt(x)):ntimes(x))[1:end-1]
+  width = floor(Int,window / Δt(x))
   vals = map(indices) do i
-    fn(x[atindex(0s .. window,i)])
+    fn(slicerange(x,clamp.(i:i+width,1,ntimes(x)),Axis{:time}))
   end
   AxisArray(vals,Axis{:time}(times(x)[indices]))
 end
