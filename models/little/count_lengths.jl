@@ -16,14 +16,6 @@ include("util/lengths.jl")
 include("util/biscales.jl")
 include("util/threshold.jl")
 
-function percept_lengths(counts,minlen=0.5s)
-  thresh = ustrip(minlen/Δt(counts))
-  lens,vals = findlengths(counts)
-  slens = lens * ustrip(Δt(counts))
-
-  mergelengths(slens,vals,ustrip(minlen))
-end
-
 # TODO:
 # - make sure there aren't any aggregious type instabilities
 #   in the code that is running most frequently
