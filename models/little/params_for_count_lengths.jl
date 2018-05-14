@@ -3,7 +3,7 @@ using DataFrames
 using JLD2
 drop = Base.Iterators.drop
 
-push!(LOAD_PATH,"packages")
+push!(LOAD_PATH,joinpath(@__DIR__,"packages"))
 using AuditoryModel
 using AuditoryCoherence
 
@@ -15,7 +15,6 @@ params = Dict(
   :W_m_σ => 10.^linspace(-1.0,2.0,3),
   :τ_x => linspace(100ms,300ms,3), :c_x => linspace(0.75,5,3),
   :c_n => [15], :τ_n => [1s],
-  :scale_start => [-1.0], :scale_stop => [2.0], :scale_N => [12]
 )
 
 function byparams(params)
@@ -32,4 +31,8 @@ function byparams(params)
   end
 end
 df = byparams(params)
-save("params.jld2","df",df)
+open(joinpath(@__DIR__,"params_count.txt"),"w") do f
+  println(f,"$(nrow(df))")
+end
+save(joinpath(@__DIR__,"params.jld2"),"df",df)
+

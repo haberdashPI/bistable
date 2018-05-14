@@ -1,23 +1,54 @@
-using Feather
-include("count_lengths.jl")
-# NEXT STEP: find all using statements and install those packages
-# on the MARCC cluster
-parameter_index = length(ARGS) > 0 ? ARGS[1] : 1
-dir = length(ARGS) > 1 ? ARGS[2] : joinpath("..","..","data","count_lengths")
-isdir(dir) || mkdir(dir)
+using ArgParse
+include(joinpath(@__DIR__,"count_lengths.jl"))
 
-params = load("params.jld2")["df"]
-N = 25
-M = 10
-#  N = 1
-#  M = 1
+parse_settings = ArgParseSettings()
+@add_arg_table parse_settings begin
+  "first_index"
+    help = "First parameter index to test."
+    required = false
+    arg_type = Int
+    default = 1
+  "last_index"
+    help = "Second parameter index to test."
+    required = false
+    arg_type = Int
+    default = 0
+  "--scale_start"
+    help = "Power of 2 to start cortical scales at."
+    required = false
+    arg_type = Float64
+    default = -1.0
+  "--scale_stop"
+    help = "Power of 2 to stop cortical scales at."
+    required = false
+    arg_type = Float64
+    default = 2.0
+  "--scale_N"
+    help = "Number of cortical scales to use."
+    required = false
+    arg_type = Int
+    default = 12
+  "--repeat", "-r"
+    help = "How many times to repeat simulation for each parameter."
+    required = false
+    arg_type = Int
+    default = 1
+  "--stim_count", "-c"
+    help = "How many counts of the ab stimulus to present in each simulation."
+    required = false
+    arg_type = Int
+    default = 50
+  "--datadir", "-d"
+    help = "The directory to save results to"
+    required = false
+    arg_type = String
+    default = joinpath(@__DIR__,"..","..","data","count_lengths")
+  "--logfile", "-l"
+    help = "The file to log information to"
+    required = false
+    arg_type = String
+    default = joinpath(@__DIR__,"..","..","data","count_lengths","run.log")
+end
+args = parse_args(parse_settings)
 
-methods = Dict(
-  # :peaks => x -> source_count_by_peaks(x,window=1s,delta=0.25s,buildup=1s),
-  :threshold => x -> source_count_by_threshold(x,window=1s,delta=0.25s,
-                                               cutoff=2cycoct,buildup=1s)
-)
-
-@assert log10(length(params)) < 8
-count_lengths(@sprintf("params%08d",parameter_index),dir,N,M,methods,
-              Dict(k => params[parameter_index,k] for k in names(params)))
+count_lengths(args)
