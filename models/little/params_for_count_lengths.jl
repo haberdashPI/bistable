@@ -8,12 +8,12 @@ using AuditoryModel
 using AuditoryCoherence
 
 params = Dict(
-  :c_σ => 10.^linspace(-1,-0.1,10),  :τ_σ => linspace(0.0s,2.0s,3)[2:end],
-  :c_m => 10.^linspace(-1,1,10),     :τ_m => linspace(50.0ms,500.0ms,3),
-  :c_a => 10.^linspace(-1.0,1.0,10), :τ_a => linspace(100.0ms,10.0s,3),
+  :c_σ => 10.^linspace(-1,-0.1,5),  :τ_σ => linspace(0.0s,2.0s,3)[2:end],
+  :c_m => 10.^linspace(-1,1,5),     :τ_m => linspace(50.0ms,500.0ms,3),
+  :c_a => 10.^linspace(-1.0,1.0,5), :τ_a => linspace(100.0ms,10.0s,3),
 
   :W_m_σ => 10.^linspace(-1.0,2.0,3),
-  :τ_x => linspace(100ms,300ms,3), :c_x => linspace(0.75,5,3),
+  :τ_x => linspace(100ms,300ms,2), :c_x => linspace(0.75,5,2),
   :c_n => [15], :τ_n => [1s],
 )
 
