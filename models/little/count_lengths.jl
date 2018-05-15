@@ -1,10 +1,8 @@
 using Logging
 using FileIO
-using Feather
-#  using CSV
 using DataFrames
-#  using ProgressMeter
-using Feather
+using DataStructures
+
 push!(LOAD_PATH,joinpath(@__DIR__,"packages"))
 using AuditoryModel
 using AuditoryCoherence
@@ -15,25 +13,55 @@ include(joinpath(@__DIR__,"util","lengths.jl"))
 include(joinpath(@__DIR__,"util","biscales.jl"))
 include(joinpath(@__DIR__,"util","threshold.jl"))
 
-# TODO:
-# - make sure there aren't any aggregious type instabilities
-#   in the code that is running most frequently
-# - use Logging to report status of program
+struct CountLength
+  length::Float64
+  stimulus::UInt32
+  method::UInt32
+  error_code::UInt32
+  param_index::UInt32
+end
+
+function Base.write(io::IO,row::CountLength)
+  write(io,row.length)
+  write(io,row.stimulus)
+  write(io,row.method)
+  write(io,row.error_code)
+  write(io,row.param_index)
+end
+function saverows(file,rows::Array{CountLength})
+  open(file,"a+") do io
+    for row in rows; write(io,row); end
+  end
+end
+
+function Base.read(io::IO,::Type{CountLength})
+  CountLength(read(io,Float64),read(io,UInt32),read(io,UInt32),
+              read(io,UInt32),read(io,UInt32))
+end
+function loadrows(file)
+  rows = Array{CountLength}(0)
+  open(file,"r") do io
+    while !eof(io)
+      push!(rows,Base.read(io,CountLength))
+    end
+  end
+  rows
+end
 
 const RESPONSE_OVERFLOW=1
-function count_lengths_helper(x,methods,params)
+const method_index = Dict(:threshold => 1,:peaks => 2,:cohere => 3)
+function count_lengths_helper(x,methods,param_index,params)
   try
     y = bistable_scales(x,params)
     vals = map(methods) do name_method
       name,method = name_method
       len,stim = y |> method |> percept_lengths
-      name => DataFrame(length = len,stimulus = stim,method = string(name),
-                        error_code=0)
+      name => CountLength.(len,stim,method_index[name],0,param_index)
     end
     vcat(values(vals)...)
   catch e
     if e isa ResponseOverflow
-      DataFrame(length=0,stimulus=0,method="NONE",error_code=RESPONSE_OVERFLOW)
+      CountLength(0,0,0,RESPONSE_OVERFLOW,param_index)
     else
       rethrow(e)
     end
@@ -54,12 +82,6 @@ function count_lengths_runner(args)
   indices = first_index:last_index
   info("Reading parameters for indices $(indices)")
 
-  sim_repeat = args["repeat"]
-  # TODO: change these counts back to higher values and make
-  # use of threads (julia will also need to be run so that it
-  # has more than one thread, check how many I can actually
-  # use).
-
   methods = Dict(
     :threshold => x -> source_count_by_threshold(x,window=1s,delta=0.25s,
                                                  cutoff=2cycoct,buildup=1s)
@@ -78,22 +100,23 @@ function count_lengths_runner(args)
   info("Generated stimulus with cortical scales from 2^$(args["scale_start"])",
        " to 2^$(args["scale_stop"]) in $(args["scale_N"]) steps.")
 
-  results = Array{DataFrame}(length(indices))
-  info("Total threads: $(Threads.nthreads())")
-  Threads.@threads for i in indices
-    rows = vcat((count_lengths_helper(stim_resp,methods,
-                                      Dict(k => params[i,k] for k in
-                                           names(params)))
-                 for repeat in 1:sim_repeat)...)
-    rows[:,:param_index] = i
-    results[i] = rows
-  end
-
   @assert log10(nrow(params)) < 6
-  name = @sprintf("results_params%06d_%06d.feather",first_index,last_index)
-  filename = joinpath(dir,name)
-  Feather.write(filename,vcat(results...))
-  info("Wrote results to $name")
+
+  info("Total threads: $(Threads.nthreads())")
+  sim_repeat = args["repeat"]
+  Threads.@threads for i in repeat(indices,inner=sim_repeat)
+    rows = count_lengths_helper(stim_resp,methods,i,
+                                Dict(k => params[i,k] for k in names(params)))
+
+    name = @sprintf("results_params%06d_%06d_t%02d.clbin",
+                    first_index,last_index,Threads.threadid())
+    filename = joinpath(dir,name)
+    saverows(filename,rows)
+    if Threads.threadid() == 1
+      info("Completed a run for paramter $i.")
+    end
+  end
+  info("DONE")
 end
 
 function count_lengths(args)
