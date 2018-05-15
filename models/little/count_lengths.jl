@@ -61,7 +61,7 @@ function count_lengths_helper(x,methods,param_index,params)
     vcat(values(vals)...)
   catch e
     if e isa ResponseOverflow
-      CountLength(0,0,0,RESPONSE_OVERFLOW,param_index)
+      [CountLength(0,0,0,RESPONSE_OVERFLOW,param_index)]
     else
       rethrow(e)
     end
