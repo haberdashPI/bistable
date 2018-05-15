@@ -31,7 +31,7 @@ function byparams(params)
   end
 end
 df = byparams(params)
-open(joinpath(@__DIR__,"params_count.txt"),"w") do f
+open(joinpath(@__DIR__,"count_lengths_N.txt"),"w") do f
   println(f,"$(nrow(df))")
 end
 save(joinpath(@__DIR__,"params.jld2"),"df",df)
