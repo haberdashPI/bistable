@@ -1,77 +1,8 @@
-import Distributions: Normal, logpdf
 using Combinatorics
 
-mutable struct MultiNormalStats{T}
-  x::Vector{T}
-  x2::Matrix{T}
-  n::Float64
-  x2_offset::Float64
-end
-function MultiNormalStats(data::AbstractMatrix,n=size(data,1),
-                          x2_offset=size(data,2))
-  x = squeeze(sum(data,1),1) .* (n/size(data,1))
-  x2 = (data'data) .* (n/size(data,1))
-  MultiNormalStats{eltype(data)}(x,x2,n,x2_offset)
-end
-MultiNormalStats(::Type{T},n) where T =
-  MultiNormalStats{T}(zeros(T,n),zeros(T,n,n),0,0)
-
-function update!(stats::MultiNormalStats{T},x::AbstractVector{T}) where T
-  stats.x .+= x
-  stats.x2 .+= x.*x'
-  stats.n += 1
-
-  stats
-end
-update(stats::MultiNormalStats{T},x::AbstractVector{T}) where T =
-  update!(copy(stats),x)
-
-function mult!(stats::MultiNormalStats,c)
-  stats.x *= c
-  stats.x2 .*= c
-  stats.n *= c
-
-  stats
-end
-
-Base.:(+)(a::MultiNormalStats{T},b::MultiNormalStats{T}) where T =
-  MultiNormalStats(a.x+b.x,a.x2+b.x2,a.n+b.n,a.x2_offset+b.x2_offset)
-
-function logpdf(stats::MultiNormalStats,x::AbstractVector)
-  d = length(x)
-  Λ = (stats.x2 .- (stats.x.*stats.x')) ./ stats.n
-  μ = stats.x ./ stats.n
-  n = stats.n
-  # a bit of cheating...
-  nu = max(1,floor(Int,stats.n + stats.x2_offset - d + 1))
-
-  logpdf_mvt(nu,μ,Λ .* ((n + 1)/(n * nu)),x)
-end
-pdf(stats::MultiNormalStats,x::AbstractVector) = exp(logpdf(stats,x))
-
-function logpdf_mvt(v,μ,Σ,x)
-  d = length(μ)
-  C = lgamma((v+1)/2) - (lgamma(v/2)+log(v*π)^(d/2)) - 0.5logabsdet(Σ)[1]
-  diff = abs.(μ.-x)
-
-  C*log(1+1/v*(diff'/Σ)*diff)*-(v+d)/2
-end
-
-function logpdf_thresh(stats::MultiNormalStats,x::AbstractVector,thresh)
-  ii = find(diag(stats.x2) .- (stats.x .* stats.x) .> thresh)
-
-  d = length(ii)
-  Λ = (stats.x2[ii,ii] .- (stats.x[ii].*stats.x[ii]')) ./ stats.n
-  μ = stats.x[ii] ./ stats.n
-  n = stats.n
-  # a bit of cheating...
-  nu = max(1,floor(Int,stats.n + stats.x2_offset - d + 1))
-
-  jj = setdiff(1:length(x),ii)
-  logpdf_mvt(nu,μ,Λ .* ((n + 1)/(n * nu)),x[ii]) +
-    sum(logpdf.(Normal(0,thresh),x[jj] .- stats.x[jj]))
-end
-
+include(joinpath(@__DIR__,"tracking_priors.jl"))
+# TODO: make the prior type more generic (can any of the methods above be
+# generic)
 @with_kw struct PriorTracking <: Tracking
   tc::typeof(1.0s) = 1s
   thresh::Float64 = 1e-2
