@@ -83,9 +83,9 @@ function count_lengths_runner(args)
   info("Reading parameters for indices $(indices)")
 
   methods = Dict(
-    :threshold => x -> source_count_by_threshold(x,window=1s,delta=0.25s,
-                                                 cutoff=2cycoct,buildup=1s)
-  # :peaks => x -> source_count_by_peaks(x,window=1s,delta=0.25s,buildup=1s),
+    #  :threshold => x -> source_count_by_threshold(x,window=1s,delta=0.25s,
+                                                 #  cutoff=2cycoct,buildup=1s)
+    :peaks => x -> source_count_by_peaks(x,window=1s,delta=0.25s,buildup=1s)
   )
   info("Testing with the method$(length(methods) > 1 ? "s" : "") "*
        join(map(string,keys(methods)),", "," and ")*".")
