@@ -1,4 +1,4 @@
-import Distributions: Normal, logpdf
+import Distributions: TDist, Normal, logpdf
 
 mutable struct MultiNormalStats{T}
   μ::Vector{T}
@@ -6,6 +6,8 @@ mutable struct MultiNormalStats{T}
   n::Float64
   x2_offset::Float64
 end
+Base.zero(x::MultiNormalStats{T}) where T =
+  MultiNormalStats(zero(x.μ),zero(x.S),0.0,0.0)
 function MultiNormalStats(data::AbstractMatrix,n=size(data,1),
                           x2_offset=size(data,2))
   μ = mean(data,1)
@@ -21,7 +23,7 @@ function update!(stats::MultiNormalStats{T},x::AbstractVector{T}) where T
   stats.μ .+= δ/stats.n
 
   δ2 = x .- stats.μ
-  stats.x2 .+= δ.*δ2'
+  stats.S .+= δ.*δ2'
 
   stats
 end
@@ -63,7 +65,7 @@ function logpdf_mvt(v,μ,Σ,x)
 end
 
 function logpdf_thresh(stats::MultiNormalStats,x::AbstractVector,thresh)
-  ii = find(diag(stats.x2) .- (stats.x .* stats.x) .> thresh)
+  ii = find(stats.S ./ stats.n .> thresh)
 
   d = length(ii)
   Λ = stats.S[ii,ii] ./ stats.n
@@ -74,7 +76,7 @@ function logpdf_thresh(stats::MultiNormalStats,x::AbstractVector,thresh)
 
   jj = setdiff(1:length(x),ii)
   logpdf_mvt(nu,μ,Λ .* ((n + 1)/(n * nu)),x[ii]) +
-    sum(logpdf.(Normal(0,thresh),x[jj] .- stats.x[jj]))
+    sum(logpdf.(Normal(0,thresh),x[jj] .- stats.μ[jj]))
 end
 
 mutable struct IsoMultiNormalStats{T}
@@ -83,12 +85,13 @@ mutable struct IsoMultiNormalStats{T}
   n::Float64
   α::Float64
 end
+Base.zero(x::IsoMultiNormalStats{T}) where T =
+  IsoMultiNormalStats(zero(x.μ),zero(x.S),0.0,0.0)
 
-function IsoMultiNormalStats(data::AbstractMatrix,n=size(data,1),α=1,β=1)
-  μ = mean(data,1)
-  n = size(data,1)
-  S = data.^2
-  IsoMultiNormalStats{eltype(data)}(μ,S,n,α,β)
+function IsoMultiNormalStats(data::AbstractMatrix,n=size(data,1),α=1)
+  μ = squeeze(mean(data,1),1)
+  S = squeeze(sum(data.^2,1),1) .* n./size(data,1)
+  IsoMultiNormalStats{eltype(data)}(μ,S,n,α)
 end
 
 function update!(stats::IsoMultiNormalStats{T},x::AbstractVector{T}) where T
@@ -116,23 +119,25 @@ function Base.:(+)(a::IsoMultiNormalStats{T},b::IsoMultiNormalStats{T}) where T
                       N,a.α+b.α)
 end
 
-function logpdf(stats::IsoMultiNormalStats,x::AbstractMatrix)
+function logpdf(stats::IsoMultiNormalStats,x::AbstractVector)
   μ = stats.μ
   α = stats.n + stats.α
   β = stats.S
   σ = β./α .* ((stats.n + 1) ./ stats.n)
 
-  logpdf(TDist(2α),(x .- μ)./σ)
+  sum(logpdf(TDist(2α),(x .- μ)./σ))
 end
 
-function logpdf_thresh(stats::IsoMultiNormalStats,x::AbstractMatrix,thresh)
-  ii = find(diag(stats.x2) .- (stats.x .* stats.x) .> thresh)
+function logpdf_thresh(stats::IsoMultiNormalStats,x::AbstractVector,thresh)
+  ii = find(stats.S ./ stats.n .> thresh)
 
   μ = stats.μ[ii]
   α = stats.n + stats.α
-  β = stats.S[ii,ii]
+  β = stats.S[ii]
   σ = β./α .* ((stats.n + 1) ./ stats.n)
 
-  logpdf(TDist(2α),(x .- μ)./σ)
+  jj = setdiff(1:length(x),ii)
+  sum(logpdf.(TDist(2α),(x[ii] .- μ)./σ)) +
+    sum(logpdf.(Normal(0,thresh),x[jj] .- stats.μ[jj]))
 end
 

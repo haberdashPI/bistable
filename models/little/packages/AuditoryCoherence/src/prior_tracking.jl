@@ -1,12 +1,12 @@
 using Combinatorics
 
-include(joinpath(@__DIR__,"tracking_priors.jl"))
+include("tracking_priors.jl")
 # TODO: make the prior type more generic (can any of the methods above be
 # generic)
 @with_kw struct PriorTracking <: Tracking
   tc::typeof(1.0s) = 1s
   thresh::Float64 = 1e-2
-  prior::MultiNormalStats{Float64}
+  prior
 end
 Tracking(::Val{:prior};params...) = PriorTracking(;params...)
 
@@ -22,8 +22,7 @@ function track(C::Coherence,params::PriorTracking)
 
   time = Axis{:time}
   component = Axis{:component}
-  sources = [MultiNormalStats(Float64,length(params.prior.x))
-             for i in 1:max_sources]
+  sources = [zero(params.prior) for i in 1:max_sources]
   freqs = fill(0.0,max_sources)
   count = 0.0
   freq_prior = 1,2
