@@ -1,4 +1,4 @@
-#  include(joinpath(@__DIR__,"count_lengths.jl"))
+include(joinpath(@__DIR__,"count_lengths.jl"))
 
 # summraize the number of parameters run for each *.clbin file specified
 counts = zeros(27000)
