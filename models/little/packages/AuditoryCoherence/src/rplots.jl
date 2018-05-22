@@ -5,8 +5,8 @@ R"library(ggplot2)"
 
 function titlefn(λ,λ_digits,components)
   digits = λ_digits != :automatic ?  λ_digits :
-    min(-floor(Int,log10(λ[minimum(components)]))+2,
-        -floor(Int,log10(λ[maximum(components)]))+1)
+    min(floor(Int,-log10(λ[minimum(components)]))+2,
+        floor(Int,-log10(max(1e-8,λ[maximum(components)])))+1)
 
   function title(n)
     if n <= length(λ)
