@@ -48,15 +48,13 @@ function map_window(fn,x,window,delta;showprogress=false)
   AxisArray(vals,Axis{:time}(times(x)[indices]))
 end
 
-mycollapse(x) = squeeze(mean(abs.(Array(x)),1),1)
-
 function source_bumps(cs;window=1s,delta=0.25s)
   indices = 1:floor(Int,delta / Δt(cs)):ntimes(cs)
   y = similar(cs,Axis{:time}(times(cs)[indices]),axes(cs)[2:end]...)
 
   for (k,i) in enumerate(indices)
     win = cs[atindex(0s .. window,i)]
-    meanwin = mycollapse(win)
+    meanwin = meanabs(win,1)
     y[Axis{:time}(k)] = filtfilt(lowpass,copy(meanwin'))'
   end
 
@@ -69,7 +67,7 @@ function source_peaks(cs;window=1s,delta=0.25s,stage=:final)
 
   for (k,i) in enumerate(indices)
     win = cs[atindex(0s .. window,i)]
-    meanwin = mycollapse(win)
+    meanwin = meanabs(win,1)
     peaks = mapslices(meanwin,2) do col
       ixs = find_peaks(col,stage)
       col .= 0
@@ -85,6 +83,6 @@ end
 
 function source_count_by_peaks(cs;window=1s,delta=0.25s,buildup=1s)
   map_window(cs[buildup .. last(times(cs))],window,delta) do win
-    guess_source_count(mycollapse(win))
+    guess_source_count(meanabs(win,1))
   end
 end

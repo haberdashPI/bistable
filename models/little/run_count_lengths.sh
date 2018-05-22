@@ -4,6 +4,7 @@
 #SBATCH --time=12:0:0
 #SBATCH --partition=shared
 #SBATCH --ntasks=1
+#SBATCH --mem=30G
 #SBATCH --nodes=1
 #SBATCH --requeue
 #SBATCH --cpus-per-task=8
