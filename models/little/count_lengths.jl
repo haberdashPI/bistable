@@ -13,6 +13,12 @@ include(joinpath(@__DIR__,"util","lengths.jl"))
 include(joinpath(@__DIR__,"util","biscales.jl"))
 include(joinpath(@__DIR__,"util","threshold.jl"))
 
+# TODO: use a more robust format to save binary data
+# I don't like how easy it is to screw the below up with different versions
+# I can deal with it taking up more space, probably just use CSV
+# TODO: add an indicator of what simulation run a given length is from
+# so we can track how many of those have been run
+
 struct CountLength
   length::Float64
   stimulus::UInt32
@@ -50,6 +56,7 @@ end
 
 const RESPONSE_OVERFLOW=1
 const method_index = Dict(:threshold => 1,:peaks => 2,:cohere => 3)
+const method_labels = ["threshold","peaks","cohere"]
 function count_lengths_helper(x,methods,param_index,params)
   try
     y = bistable_scales(x,params)
