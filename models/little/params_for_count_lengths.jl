@@ -1,6 +1,8 @@
 using FileIO
 using DataFrames
+using Feather
 using JLD2
+using Unitful
 drop = Base.Iterators.drop
 
 push!(LOAD_PATH,joinpath(@__DIR__,"packages"))
@@ -31,8 +33,29 @@ function byparams(params)
   end
 end
 df = byparams(params)
+
+in_ms(x) = Float64.(ustrip.(uconvert.(ms,x)))
+
 open(joinpath(@__DIR__,"count_lengths_N.txt"),"w") do f
   println(f,"$(nrow(df))")
 end
-save(joinpath(@__DIR__,"params.jld2"),"df",df)
+
+filename = joinpath(@__DIR__,"params.feather")
+Feather.write(filename,df,transforms = Dict(
+    "τ_σ" => in_ms,
+    "τ_m" => in_ms,
+    "τ_a" => in_ms,
+    "τ_x" => in_ms,
+    "τ_n" => in_ms
+  ))
+
+test = df[1:10,:]
+
+Feather.write(filename,test,transforms = Dict(
+    "τ_σ" => in_ms,
+    "τ_m" => in_ms,
+    "τ_a" => in_ms,
+    "τ_x" => in_ms,
+    "τ_n" => in_ms
+  ))
 
