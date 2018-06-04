@@ -143,7 +143,7 @@ function track(C::Coherence,params::PriorTracking)
     mult!(track,decay)
     update!(track,C_out[time(t)],MAPgrouping)
 
-    for i in MAPgrouping.sources
+    for i in 1:params.max_sources
       source_out[t,:,:,i] = track.sources[i].μ
       sourceS_out[t,:,:,i] = std(track.sources[i])
 

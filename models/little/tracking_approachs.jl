@@ -54,44 +54,18 @@ Cna = cohere(crs,ncomponents=3,window=200ms,method=:nmf,
 
 early = Cna[0s .. 4s];
 p = reshape(mean(early,4),size(early,1),:)
-early_prior_iso = AuditoryCoherence.IsoMultiNormalStats(p,1);
+early_prior_iso = AuditoryCoherence.IsoMultiNormalStats(p,10);
 freq_prior = AuditoryCoherence.BinomialCond(
   :old => AuditoryCoherence.Beta(1.9,2.0),
   :new => AuditoryCoherence.Beta(0.1,2.0)
-)
+);
+early_prior_iso.S *= 10;
 
-Cna_t,sources,freq =
-  track(Cna,method=:prior,tc=1s,source_prior=early_prior_iso,
-        freq_prior=freq_prior, thresh=1e-1,max_sources = 5)
-# TODO: where we left off: sources are switching on and off
-# with each frame (when we remove the prior for inertia)
-# this is very strange, becuase the adjacent frames are pretty similar,
-# with some drift. this was working fine before... maybe switch
-# back to possible_orders?? make sure that works still
-# I've modularized a bit of the prior tracking code
-# so hopefully it is easier to debug
+Cna_t,sources,freq,source_sds =
+  track(Cna,method=:prior,tc=250ms,source_prior=early_prior_iso,
+        freq_prior=freq_prior,thresh=1e-1,max_sources = 5)
 
-# TODO: the next step is to look at the ranking of various orders to understand
-# what's happening with the probabilities
+# TODO: the time constant, the prior variance, and the prior strength
+# all influence whehther the sources divide, now let's create
+# an ensemble with different vlaues for these hyperparameters
 
-#  rplot(Cna_t)
-
-# TODO: okay so we can manipulate the sum of square of the prior to group the
-# objects. What if we reduce the time constant? (doesn't work *quite* as well).
-# maybe we can have particles with different time constants and different errors
-#  wearly_prior_iso = AuditoryCoherence.IsoMultiNormalStats(p,1);
-#  wearly_prior_iso.S *= 1_000_000
-#  Cnaw_t = track(Cna,method=:prior,tc=100ms,prior=wearly_prior_iso,thresh=1e-1)
-#  rplot(Cnaw_t)
-
-#  crsa = cortical(csa[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
-#  C = cohere(crsa,ncomponents=3,window=200ms,method=:nmf,
-            #  delta=50ms,maxiter=100,tol=1e-3)
-#  #  rplot(C)
-
-#  early = C[0s .. 4s];
-#  p = reshape(mean(early,4),size(early,1),:)
-#  early_prior_iso = AuditoryCoherence.IsoMultiNormalStats(p);
-#  Ct = track(C,method=:prior,tc=1s,prior=early_prior_iso,thresh=1e-1)
-#  rplot(Ct)
-#  alert()
