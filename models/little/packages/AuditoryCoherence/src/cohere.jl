@@ -61,11 +61,12 @@ end
 
 ncomponents(x::CParams) = x.ncomponents
 ncomponents(x::AuditoryModel.Result) = length(components(x))
+ncomponents(x::AxisArray) = size(x,axisdim(x,Axis{:component}))
 components(x::CParams) = 1:ncomponents(x)
 components(x::AuditoryModel.Result) = components(AxisArray(x))
 components(x::AxisArray) = axisvalues(axes(x,Axis{:component}))[1]
 
-component(x::Coherence,n) = x[Axis{:component}(n)]
+component(x::Union{AxisArray,Coherence},n) = x[Axis{:component}(n)]
 
 function component_means(C)
   mdims = filter(x -> x != axisdim(C,Axis{:component}),1:ndims(C))
