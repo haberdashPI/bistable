@@ -22,7 +22,9 @@ include("prior_tracking.jl")
 
 # after we stop revising this package use can use the conditionl
 # dependency (it interferes with 'Revise' automatic updates)
-@require RCall include(joinpath(@__DIR__,"rplots.jl"))
+# @require RCall include(joinpath(@__DIR__,"rplots.jl"))
+include(joinpath(@__DIR__,"rplots.jl"))
+
 #  include(joinpath(@__DIR__,"rplots.jl"))
 # @require Gadfly include("gplots.jl")
 
