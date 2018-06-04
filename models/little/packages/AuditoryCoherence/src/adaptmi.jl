@@ -138,14 +138,14 @@ function adaptmi(x,params::AdaptMI,progressbar=true)
     t = time(ti)
 
     y[t],a[t],m[t] = approx(x[t]) do x_t
-      @. y_t += (c_x*x_t - y_t)*dt_x
-      @. n_t += (y_t - n_t)*dt_n
-      @. yam_t = (1 - c_a*a_t)*(y_t./max(1/c_n,n_t)) - c_m*m_t
-      @. shape_y_t = shape_y(yam_t)
-      @. a_t += (shape_y_t - a_t)*dt_a
-      w = W_m(shape_y_t)
-      @. m_t += (w - m_t)*dt_m
-
+      @. begin
+        y_t += (c_x*x_t - y_t)*dt_x
+        n_t += (y_t - n_t)*dt_n
+        yam_t = (1 - c_a*a_t)*(y_t./max(1/c_n,n_t)) - c_m*m_t
+        shape_y_t = shape_y(yam_t)
+        a_t += (shape_y_t - a_t)*dt_a
+        m_t += ($W_m(shape_y_t) - m_t)*dt_m
+      end
       shape_y_t,a_t,m_t
     end
 
