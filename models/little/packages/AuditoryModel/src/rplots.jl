@@ -32,7 +32,9 @@ function raster_plot(df::DataFrame;value=:z,kwds...)
 end
 
 function raster_plot__real(df::DataFrame;value=:z,x=:x,y=:y,
-                           limits=extrema(real.(df[value])),real_suffix=:_real)
+                           limits=extrema(filter(!isinf,real.(df[value]))),
+                           real_suffix=:_real)
+  @show limits
   value_r = Symbol(string(value,real_suffix))
   df = copy(df)
   df[value_r] = real.(df[value])

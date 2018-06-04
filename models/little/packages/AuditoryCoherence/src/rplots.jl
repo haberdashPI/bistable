@@ -4,9 +4,10 @@ export rplot, scale_plot
 R"library(ggplot2)"
 
 function titlefn(λ,λ_digits,components)
+  @assert !any(isnan,λ)
   digits = λ_digits != :automatic ?  λ_digits :
-    min(floor(Int,-log10(λ[minimum(components)]))+2,
-        floor(Int,-log10(max(1e-8,λ[maximum(components)])))+1)
+    min(floor(Int,-log10(clamp(λ[minimum(components)],1e-8,1e8)))+2,
+        floor(Int,-log10(clamp(λ[maximum(components)],1e-8,1e8)))+1)
 
   function title(n)
     if n <= length(λ)
@@ -40,7 +41,40 @@ function findnear(x,nearby)
   end
 end
 
-function rplot(C::Coherence{M,T,4} where {M,T};λ_digits=:automatic)
+function rplot(C::CoherenceComponent{M,T,3} where {M,T};λ_digits=:automatic,
+               kwds...)
+  @assert axisdim(C,Axis{:time}) == 1
+  @assert axisdim(C,Axis{:scale}) == 2
+  @assert axisdim(C,Axis{:freq}) == 3
+
+  ii = CartesianRange(size(C))
+  at(i) = map(ii -> ii[i],ii)
+
+  df = DataFrame(value = vec(C),
+                 time = vec(ustrip.(times(C)[at(1)])),
+                 scale = vec(round.(ustrip.(scales(C)[at(2)]),2)),
+                 freq_bin = vec(at(3)))
+
+  @show df[1:10,:]
+
+  fbreaks,findices = freq_ticks(C)
+  p = raster_plot(df;value=:value,x=:time,y=:freq_bin,kwds...)
+
+R"""
+  scalevals = $(ustrip.(scales(C)))
+  scalestr = function(x){sprintf("'Scale: %3.2f cyc/oct'",x)}
+  ordered_scales = function(x){
+    factor(scalestr(x),levels=scalestr(scalevals))
+  }
+
+  $p + facet_grid(ordered_scales(scale)~.) + #ordered_scales(scale)) +
+    scale_y_continuous(breaks=$findices,labels=$fbreaks) +
+    ylab('Frequency (Hz)') + xlab('Time (s)')
+"""
+end
+
+function rplot(C::Coherence{M,T,4} where {M,T};λ_digits=:automatic,
+               kwds...)
   @assert axisdim(C,Axis{:time}) == 1
   @assert axisdim(C,Axis{:scale}) == 2
   @assert axisdim(C,Axis{:freq}) == 3
@@ -59,7 +93,7 @@ function rplot(C::Coherence{M,T,4} where {M,T};λ_digits=:automatic)
                  component_title = rowtitle.(vec(at(4))))
 
   fbreaks,findices = freq_ticks(C)
-  p = raster_plot(df,value=:value,x=:time,y=:freq_bin)
+  p = raster_plot(df;value=:value,x=:time,y=:freq_bin,kwds...)
 
 R"""
   scalevals = $(ustrip.(scales(C)))

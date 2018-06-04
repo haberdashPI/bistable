@@ -119,7 +119,6 @@ function track(C::Coherence,params::PriorTracking)
   C_out .= 0
   source_out = copy(C_out)
   sourceS_out = copy(C_out)
-  freq_out = zeros(ntimes(C),params.max_sources,4)
 
   @show decay = 1.0 - 1.0 / max(1.0,params.tc / Δt(C))
 
@@ -146,11 +145,6 @@ function track(C::Coherence,params::PriorTracking)
     for i in 1:params.max_sources
       source_out[t,:,:,i] = track.sources[i].μ
       sourceS_out[t,:,:,i] = std(track.sources[i])
-
-      freq_out[t,i,1] = track.freqs[i].at[:old].α
-      freq_out[t,i,2] = track.freqs[i].at[:old].β
-      freq_out[t,i,3] = track.freqs[i].at[:new].α
-      freq_out[t,i,4] = track.freqs[i].at[:new].β
     end
   end
 
@@ -158,5 +152,5 @@ function track(C::Coherence,params::PriorTracking)
   order = sortperm(component_means(C_out),rev=true)
   C_out .= C_out[component(order)]
 
-  C_out,source_out,freq_out,sourceS_out
+  C_out,source_out,sourceS_out
 end

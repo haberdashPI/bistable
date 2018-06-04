@@ -119,7 +119,7 @@ mutable struct IsoMultiNormalStats{T}
   n2::Float64
   α::Float64
 end
-Base.std(x::IsoMultiNormalStats) = x.S ./ x.n2
+Base.std(x::IsoMultiNormalStats) = x.n2 > 0 ? x.S ./ x.n2 : Inf
 Base.zero(x::IsoMultiNormalStats{T}) where T =
   IsoMultiNormalStats(zero(x.μ),zero(x.S),0.0,0.0,0.0)
 

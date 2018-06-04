@@ -59,13 +59,16 @@ freq_prior = AuditoryCoherence.BinomialCond(
   :old => AuditoryCoherence.Beta(1.9,2.0),
   :new => AuditoryCoherence.Beta(0.1,2.0)
 );
-early_prior_iso.S *= 10;
+early_prior_iso.S *= 1;
 
-Cna_t,sources,freq,source_sds =
+Cna_t,sources,source_sds =
   track(Cna,method=:prior,tc=250ms,source_prior=early_prior_iso,
         freq_prior=freq_prior,thresh=1e-1,max_sources = 5)
-
+alert()
 # TODO: the time constant, the prior variance, and the prior strength
 # all influence whehther the sources divide, now let's create
 # an ensemble with different vlaues for these hyperparameters
 
+# TODO: can I pick priors without using the actually data?
+# maybe use a reasonable range? (what is the actually variance?)
+alert()
