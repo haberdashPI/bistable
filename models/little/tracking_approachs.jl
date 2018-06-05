@@ -63,12 +63,42 @@ early_prior_iso.S *= 1;
 
 Cna_t,sources,source_sds =
   track(Cna,method=:prior,tc=250ms,source_prior=early_prior_iso,
-        freq_prior=freq_prior,thresh=1e-1,max_sources = 5)
+        freq_prior=freq_prior,thresh=1e-1,max_sources = 3)
 alert()
+
+rplot(Cna)
+R"""
+ggsave($(joinpath(dir,"1_cohere_before_tracking.pdf")))
+"""
+
+rplot(Cna_t)
+R"""
+ggsave($(joinpath(dir,"2_cohere_after_tracking_large_SD.pdf")))
+"""
+
+early = Cna[0s .. 4s];
+p = reshape(mean(early,4),size(early,1),:)
+early_prior_iso = AuditoryCoherence.IsoMultiNormalStats(p,10);
+freq_prior = AuditoryCoherence.BinomialCond(
+  :old => AuditoryCoherence.Beta(1.9,2.0),
+  :new => AuditoryCoherence.Beta(0.1,2.0)
+);
+early_prior_iso.S *= 10;
+
+Cna_t,sources,source_sds =
+  track(Cna,method=:prior,tc=250ms,source_prior=early_prior_iso,
+        freq_prior=freq_prior,thresh=1e-1,max_sources = 3)
+alert()
+
+rplot(Cna_t)
+R"""
+ggsave($(joinpath(dir,"3_cohere_after_tracking_small_SD.pdf")))
+"""
+
 # TODO: the time constant, the prior variance, and the prior strength
 # all influence whehther the sources divide, now let's create
-# an ensemble with different vlaues for these hyperparameters
+# an ensemble with different values for these hyperparameters
 
-# TODO: can I pick priors without using the actually data?
+# TODO: can I pick priors without using the actual data?
 # maybe use a reasonable range? (what is the actually variance?)
 alert()
