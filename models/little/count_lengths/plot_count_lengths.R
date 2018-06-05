@@ -32,13 +32,6 @@ summary = df %>% group_by(pindex,method) %>%
   left_join(params) %>%
   gather(measure,value,N1:sd_ratio)
 
-plot_taus = function(summary){
-  ggplot(summary,aes(x = tau_m/1000,y=tau_a/1000,fill=value)) +
-  facet_grid(measure~paste("noise =",tau_sigma/1000," (s)")) + geom_raster() +
-  scale_x_continuous(name="Mutual Inhibition Tau (s)") +
-  scale_y_continuous(name="Adaptation Tau (s)")
-}
-
 ################################################################################
 # By Threshold
 strength_plot = function(df){
@@ -56,25 +49,100 @@ strength_plot = function(df){
     scale_y_continuous(name="Adaptation",breaks=log10(a_breaks),labels=a_breaks) +
     scale_fill_distiller(name="log_10(Ratio)",palette='RdBu',
                          limits=c(-max(abs(pdf$value),na.rm=T),
-                                  max(abs(pdf$value),na.rm=T))) +
-    ggtitle("Mean Length Ratio (Threshold Hueristic) by Strengths")
+                                  max(abs(pdf$value),na.rm=T)))
 }
 
 p = summary %>% filter(measure == 'mean_ratio') %>% strength_plot
+p = p + ggtitle("Strengths - Log Ratio of Means")
 save_plot(file.path(dir,"mean_strengths.pdf"),p,nrow=2,ncol=5,base_width=2,
           base_height=2.5)
 
 p = summary %>% filter(measure == 'sd_ratio') %>% strength_plot
+p = p + ggtitle("Strengths - Log Ratio of SDs")
 save_plot(file.path(dir,"sd_strengths.pdf"),p,nrow=2,ncol=5,base_width=2,
                     base_height=2.5)
 
 p = summary %>% filter(measure == 'N_ratio') %>% strength_plot
+p = p + ggtitle("Strengths - Log Ratio of Counts")
 save_plot(file.path(dir,"count_strengths.pdf"),p,nrow=2,ncol=5,base_width=2,
                     base_height=2.5)
 
-# TODO: do the same for taus
-# TODO: do the same for W_m_sig and c_m (and tau_m?)
-# TODO: do the same for tau_x and c_x
+
+p = summary %>% filter(measure == 'N_ratio',method == 'peaks') %>% strength_plot
+p = p + ggtitle("Strengths - Log Ratio of Counts")
+save_plot(file.path(dir,"count_strengths_peaks.pdf"),p,nrow=1,ncol=5,base_width=2,
+                    base_height=2.5)
+
+tau_plot = function(df){
+  pdf = df %>%
+    group_by(tau_m,tau_a,tau_sigma,method) %>%
+    summarize(value=median(value,na.rm=T))
+
+  ggplot(pdf,aes(x = tau_m/1000,y=tau_a/1000,fill=value)) +
+    facet_grid(method~paste("noise tau (s) =",round(tau_sigma/1000))) +
+    geom_raster() +
+    scale_x_continuous(name="Mutual Inhibition Tau (s)") +
+    scale_y_continuous(name="Adaptation Tau (s)") +
+    scale_fill_distiller(name="log_10(Ratio)",palette='RdBu',
+                         limits=c(-max(abs(pdf$value),na.rm=T),
+                                  max(abs(pdf$value),na.rm=T)))
+}
+
+
+p = summary %>% filter(measure == 'mean_ratio') %>% tau_plot
+p = p + ggtitle("Time Constants - Log Ratio of Means")
+save_plot(file.path(dir,"mean_time_constants.pdf"),p,nrow=2,ncol=2,base_width=3,
+          base_height=2.5)
+
+
+p = summary %>% filter(measure == 'sd_ratio') %>% tau_plot
+p = p + ggtitle("Time Constants - Log Ratio of SD")
+save_plot(file.path(dir,"sd_time_constants.pdf"),p,nrow=2,ncol=2,base_width=3,
+          base_height=2.5)
+
+p = summary %>% filter(measure == 'N_ratio') %>% tau_plot
+p = p + ggtitle("Time Constants - Log Ratio of Counts")
+save_plot(file.path(dir,"count_time_constants.pdf"),p,nrow=2,ncol=2,base_width=3,
+          base_height=2.5)
+
+p = summary %>% filter(measure == 'N_ratio',method == 'peaks') %>% tau_plot
+p = p + ggtitle("Time Constants - Log Ratio of Counts")
+save_plot(file.path(dir,"count_time_constants_peaks.pdf"),p,nrow=1,ncol=2,
+          base_width=3,base_height=2.5)
+
+width_plot = function(df){
+  pdf = df %>%
+    group_by(W_m_sig,c_m,method) %>%
+    summarize(value=median(value,na.rm=T))
+
+  m_breaks = c(0.1,1,10)
+  w_breaks = c(0.1,1,10,100)
+  ggplot(pdf,aes(x = log10(W_m_sig),y = log10(c_m),fill=value)) +
+    facet_wrap(~method) +
+    geom_raster() +
+    scale_x_continuous(name="Mutual Inhibition Width",breaks=log10(w_breaks),
+                       labels=w_breaks) +
+    scale_y_continuous(name="Mutual Inhibition",breaks=log10(m_breaks),
+                       labels=m_breaks) +
+    scale_fill_distiller(name="log_10(Ratio)",palette='RdBu',
+                         limits=c(-max(abs(pdf$value),na.rm=T),
+                                  max(abs(pdf$value),na.rm=T)))
+}
+
+p = summary %>% filter(measure == 'mean_ratio') %>% width_plot
+p = p + ggtitle("Inhibition Width - Log Ratio of Means")
+save_plot(file.path(dir,"inhibit_width_mean.pdf"),p,base_aspect_ratio=1.3,
+          ncol=2)
+
+p = summary %>% filter(measure == 'sd_ratio') %>% width_plot
+p = p + ggtitle("Inhibition Width - Log Ratio of SDs")
+save_plot(file.path(dir,"inhibit_width_sd.pdf"),p,base_aspect_ratio=1.3,
+          ncol=2)
+
+p = summary %>% filter(measure == 'N_ratio') %>% width_plot
+p = p + ggtitle("Inhibition Width - Log Ratio of Counts")
+save_plot(file.path(dir,"inhibit_width_count.pdf"),p,base_aspect_ratio=1.3,
+          ncol=2)
 
 # TODO: though, although I was missing something before,
 # this view also obscures whatever I saw in the prior plots
