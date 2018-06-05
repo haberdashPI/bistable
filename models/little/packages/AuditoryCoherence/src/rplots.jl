@@ -55,8 +55,6 @@ function rplot(C::CoherenceComponent{M,T,3} where {M,T};λ_digits=:automatic,
                  scale = vec(round.(ustrip.(scales(C)[at(2)]),2)),
                  freq_bin = vec(at(3)))
 
-  @show df[1:10,:]
-
   fbreaks,findices = freq_ticks(C)
   p = raster_plot(df;value=:value,x=:time,y=:freq_bin,kwds...)
 
