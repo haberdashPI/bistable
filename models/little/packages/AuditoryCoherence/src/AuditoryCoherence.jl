@@ -19,6 +19,7 @@ include("cohere.jl")
 include("nmf.jl")
 include("simple_tracking.jl")
 include("prior_tracking.jl")
+include("multi_prior_tracking.jl")
 
 # after we stop revising this package use can use the conditionl
 # dependency (it interferes with 'Revise' automatic updates)

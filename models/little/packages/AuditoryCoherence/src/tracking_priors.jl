@@ -129,6 +129,12 @@ function IsoMultiNormalStats(data::AbstractMatrix,n=size(data,1),α=1)
   IsoMultiNormalStats{eltype(data)}(μ,S,n,n,α)
 end
 
+function IsoMultiNormalStats(s::Number,n::Number,C::Coherence,α=1)
+  d = prod(size(C,2,3))
+  IsoMultiNormalStats(fill(zero(s),d),fill(s,d),Float64(n),Float64(n),
+                      Float64(α))
+end
+
 function update!(stats::IsoMultiNormalStats{T},x::AbstractVector{T},w=1.0) where T
   δ = x .- stats.μ
   stats.n1 += w

@@ -120,13 +120,15 @@ function track(C::Coherence,params::PriorTracking)
   source_out = copy(C_out)
   sourceS_out = copy(C_out)
 
-  @show decay = 1.0 - 1.0 / max(1.0,params.tc / Δt(C))
+  decay = 1.0 - 1.0 / max(1.0,params.tc / Δt(C))
+  lp_out = AxisArray(fill(0.0,ntimes(C)),axes(C,1))
 
   @showprogress "Tracking Sources..." for t in eachindex(times(C))
     # find the MAP grouping of sources
     MAPgrouping = maximumby(grouping -> logpdf(track,C[time(t)],grouping),
                             possible_groupings(params.max_sources,
                                                ncomponents(C)))
+    lp_out[time(t)] = logpdf(track,C[time(t)],MAPgrouping)
 
     # arrange the sources
     for (kk,i) in iterable(MAPgrouping)
@@ -152,5 +154,5 @@ function track(C::Coherence,params::PriorTracking)
   order = sortperm(component_means(C_out),rev=true)
   C_out .= C_out[component(order)]
 
-  C_out,source_out,sourceS_out
+  C_out,source_out,sourceS_out,lp_out
 end

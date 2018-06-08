@@ -6,15 +6,15 @@ using Feather
 using JLD2
 using Parameters
 
-push!(LOAD_PATH,joinpath(@__DIR__,"packages"))
+push!(LOAD_PATH,joinpath(@__DIR__,"..","packages"))
 using AuditoryModel
 using AuditoryCoherence
 
-include(joinpath(@__DIR__,"util","stim.jl"))
-include(joinpath(@__DIR__,"util","peaks.jl"))
-include(joinpath(@__DIR__,"util","lengths.jl"))
-include(joinpath(@__DIR__,"util","biscales.jl"))
-include(joinpath(@__DIR__,"util","threshold.jl"))
+include(joinpath(@__DIR__,"..","util","stim.jl"))
+include(joinpath(@__DIR__,"..","util","peaks.jl"))
+include(joinpath(@__DIR__,"..","util","lengths.jl"))
+include(joinpath(@__DIR__,"..","util","biscales.jl"))
+include(joinpath(@__DIR__,"..","util","threshold.jl"))
 
 # TODO: use a more robust format to save binary data
 # I don't like how easy it is to screw the below up with different versions
