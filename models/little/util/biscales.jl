@@ -12,7 +12,7 @@ function meanabs(A,n)
   squeeze(result,n)
 end
 
-function bistable_scales(cs,params)
+function bistable_scales(cs,params;intermediate_results=false)
   noise_params = Dict(:τ_σ=>params[:τ_σ],:c_σ=>params[:c_σ])
   other_keys = [:τ_σ,:c_σ,:W_m_σ]
   adapt_params = Dict(k => params[k] for k in setdiff(keys(params),other_keys))
@@ -31,4 +31,9 @@ function bistable_scales(cs,params)
   end
 
   cs .= sqrt.(abs.(cs) .* swna) .* exp.(angle.(cs).*im)
+  if intermediate_results
+    cs,a,m
+  else
+    cs
+  end
 end

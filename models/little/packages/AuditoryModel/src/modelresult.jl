@@ -90,6 +90,8 @@ end
 Base.show(io::IO,::MIME"text/plain",x::Result) = show(io,x)
 
 AxisArrays.axisdim(x::Result,ax) = axisdim(AxisArray(x),ax)
-AxisArrays.axes(x::Result,i...) = axes(AxisArray(x),i...)
+AxisArrays.axes(x::Result,i::Int...) = axes(AxisArray(x),i...)
+AxisArrays.axes(x::Result,T::Type{<:Axis}...) = axes(AxisArray(x),T...)
+AxisArrays.axes(x::Result) = axes(AxisArray(x))
 AxisArrays.axisnames(x::Result) = axisnames(AxisArray(x))
 AxisArrays.axisvalues(x::Result) = axisvalues(AxisArray(x))
