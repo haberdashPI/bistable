@@ -98,7 +98,7 @@ function logpdf_mvt(v,μ,Σ,x)
 end
 
 function logpdf_thresh(stats::MultiNormalStats,x::AbstractVector,thresh)
-  ii = find(stats.S ./ stats.n .> thresh)
+  ii = find(diagonal(stats.S) ./ stats.n .> thresh)
 
   d = length(ii)
   Λ = stats.S[ii,ii] ./ stats.n2
@@ -184,4 +184,23 @@ function logpdf_thresh(stats::IsoMultiNormalStats,x::AbstractVector,thresh)
   sum(logpdf.(TDist(2α),(x[ii] .- μ)./σ)) +
     sum(logpdf.(Normal(0,thresh),x[jj] .- stats.μ[jj]))
 end
+
+# TODO: an auto-correlation approach: only track auto-correlations
+# between indices that are 'close' enough
+#=
+struct VelocityNormalStats{T}
+  μ::Vector{T}
+  S::SparseMatrixCSC{T,Int} # correlation of [x_t-w,x_t-w+1,...x_t]
+  w::Int
+  n1::Float64
+  n2::Float64
+  x2_offset::Float64
+  distance::Function
+  distance_thresh::Float64
+end
+
+function logpdf_thresh(stats::VelocityNormalStats,x::AbstractMatrix,thresh)
+  ii = find(diagonal(stats.S) ./ stats.n2 .> thresh)
+
+=#
 
