@@ -120,38 +120,45 @@ function adaptmi(x,params::AdaptMI,progressbar=true)
 
   a = approx_similar(y) # a = adaptation
   m = approx_similar(y) # m = mutual inhibition
+  n = approx_similar(y) # n = normalization
+  x_out = approx_similar(y)
 
-  y_t = approx_zeros(y[time(1)])
-  n_t = copy(y_t)
-  yam_t = copy(y_t)
-  shape_y_t = copy(y_t)
-  a_t = copy(y_t)
-  m_t = copy(y_t)
+  x_t = approx_zeros(y[time(1)])
+  n_t = copy(x_t)
+  y_t = copy(x_t)
+  a_t = copy(x_t)
+  m_t = copy(x_t)
 
   dt_n = eltype(a_t)(Δt(x) / τ_n)
   dt_x = eltype(a_t)(Δt(x) / τ_x)
   dt_a = eltype(a_t)(Δt(x) / τ_a)
   dt_m = eltype(a_t)(Δt(x) / τ_m)
 
+  @show dt_n
+
   progress = progressbar ? Progress(desc="Adapt/Inhibit: ",ntimes(y)) : nothing
   for ti in indices(times(y),1)
     t = time(ti)
 
-    y[t],a[t],m[t] = approx(x[t]) do x_t
-      @. begin
-        y_t += (c_x*x_t - y_t)*dt_x
+    y[t],m[t],a[t],x_out[t],n[t] = approx(x[t]) do raw_x_t
+      @. begin # across all indices...
+        # smooth input
+        x_t += (c_x*raw_x_t - x_t)*dt_x
+
+        # apply adaptation and inhibition
+        y_t = shape_y((1 - c_a*a_t)*x_t - c_m*m_t) # / max(1/c_n,n_t)
+
+        # update adaptation and inhibition
+        a_t += (y_t - a_t)*dt_a
         n_t += (y_t - n_t)*dt_n
-        yam_t = (1 - c_a*a_t)*(y_t./max(1/c_n,n_t)) - c_m*m_t
-        shape_y_t = shape_y(yam_t)
-        a_t += (shape_y_t - a_t)*dt_a
-        m_t += ($W_m(shape_y_t) - m_t)*dt_m
+        m_t += ($W_m(y_t) - m_t)*dt_m
       end
-      shape_y_t,a_t,m_t
+      y_t,m_t,a_t,x_t,n_t
     end
 
     next!(progress)
   end
-  y,a,m
+  y,a,m,x_out,n
 end
 
 ################################################################################

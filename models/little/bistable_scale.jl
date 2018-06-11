@@ -26,11 +26,11 @@ sweights = AxisArray(squeeze(mean(abs.(cs),axisdim(cs,Axis{:freq})),3),
                      axes(cs,Axis{:scale}))
 
 swn = drift(sweights,τ_σ = 500ms,c_σ = 0.3);
-swna,a,m = adaptmi(swn,
+swna,m,a,x = adaptmi(swn,
                    τ_x=300ms, c_x=3.0,
-                   τ_n = 1s, c_n = 15,
-                   c_m=30,τ_m=350ms,W_m=scale_weighting(cs,10.0),
-                   c_a=10,τ_a=3s,shape_y = x -> max(0,x))
+                   τ_n = 2s, c_n = 5,
+                   c_m=30, τ_m=350ms, W_m=scale_weighting(cs,10.0),
+                   c_a=10, τ_a=3s, shape_y = x -> clamp(x,0,20))
 
 csa = similar(cs);
 csa .= sqrt.(abs.(cs) .* swna) .* exp.(angle.(cs)*im)
