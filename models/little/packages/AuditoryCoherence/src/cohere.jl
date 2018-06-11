@@ -119,7 +119,7 @@ function cohere(x::AbstractArray{T},params::CParams) where T
   K = ncomponents(params)
   C_data = zeros(eltype(params.method,x),length(windows),size(x)[3:end]...,K)
   C = AxisArray(C_data,
-                Axis{:time}(times(x)[map(last,windows)]),
+                Axis{:time}((1:length(windows)) * Δt(params)),
                 axes(x)[3:end]...,
                 Axis{:component}(1:K))
 

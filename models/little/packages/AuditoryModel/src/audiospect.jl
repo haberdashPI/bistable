@@ -57,7 +57,7 @@ freqs(as::AxisArray) = axisvalues(axes(as,Axis{:freq}))[1]
 ntimes(x) = length(times(x))
 times(as::Result) = times(AxisArray(as))
 times(as::AxisArray) = axisvalues(axes(as,Axis{:time}))[1]
-times(p::Params,x::AbstractArray) = indices(x,1) .* Δt(p)
+times(p::Params,x::AbstractArray) = indices(x,1) * Δt(p)
 
 delta_t(x) = Δt(x)
 delta_f(x) = Δf(x)
