@@ -45,19 +45,28 @@ csa .= sqrt.(abs.(cs) .* swna) .* exp.(angle.(cs)*im)
 crs = cortical(csa[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
 C = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=2,
             delta=100ms,maxiter=100,tol=1e-3)
-rplot(C)
-alert()
 
-crs = cortical(cs[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
-C = cohere(crs,ncomponents=3,window=100ms,method=:nmf,skipframes=2,
-           delta=50ms,maxiter=100,tol=1e-3)
-rplot(C)
-alert()
+# crs = cortical(cs[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
+# C = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=2,
+#            delta=100ms,maxiter=100,tol=1e-3)
+# rplot(C)
+# alert()
 
 Ct,source,sourceS,lp,tracks = track(C,method=:prior,tc=2s,
-                                    source_prior=isoprior(0.05,10),
-                                    freq_prior=freqprior(0.9,2),thresh=1e-1,
-                                    max_sources=5)
+                                    source_prior=isonorm(0.15,1),
+                                    freq_prior=freqprior(0,2),thresh=1e-3,
+                                    max_sources=5,unmodeled_prior=0)
+alert()
+rplot(Ct)
+
+# CURRENT STATE: I can reliably generate what
+# look like good separations of the bistable
+# scales using the prior tracking algorithm
+
+# Ct,source,sourceS,lp,tracks = track(C,method=:prior,tc=2s,
+#                                     source_prior=isonorm(0.05,10),
+#                                     freq_prior=freqprior(0.9,2),thresh=1e-1,
+#                                     max_sources=5)
 
 # NOTE: this analysis works quite quickly, so the
 # issue with it not working with the bistable stimulus
@@ -72,12 +81,12 @@ alert()
 # and identify what about the stimulus is a problem
 
 # Ct1, = track(C1,method=:prior,tc=250ms,
-#             source_prior=isoprior(0.1,10),
+#             source_prior=isonorm(0.1,10),
 #             freq_prior=freqprior(0,2),thresh=1e-1,max_sources=5)
 # rplot(Ct1)
 
 Ct,source,sourceS,lp,tracks = track(C[:,:,:,1:3],method=:prior,tc=1s,
-                              source_prior=isoprior(0.1,2),
+                              source_prior=isonorm(0.1,2),
                               freq_prior=freqprior(0,100),thresh=0,
                               max_sources=5)
 rplot(Ct)
@@ -99,7 +108,7 @@ C2n = deepcopy(C2)
 C2n ./= max.(1e-2,mean(C2,[2,3]))
 
 Cnt,source,sourceS,lp = track(C2n[12s .. 14s,9:9,:],method=:prior,tc=1s,
-                              source_prior=isoprior(0.01,10),
+                              source_prior=isonorm(0.01,10),
                               freq_prior=freqprior(0,2),thresh=1e-1,
                               max_sources=5)
 rplot(Cnt)
@@ -120,7 +129,7 @@ as the top interpretation) would be a function of sums across frames
 =#
 
 Cnt,source,sourceS,lp = track(C2n,method=:prior,tc=250ms,
-                              source_prior=isoprior(0.01,10),
+                              source_prior=isonorm(0.01,10),
                               freq_prior=freqprior(0,2),thresh=1e-1,
                               max_sources=5)
 
