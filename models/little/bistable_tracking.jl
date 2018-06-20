@@ -30,13 +30,13 @@ freq_prior = AuditoryCoherence.BinomialCond(
 );
 
 priors = []
-for c in [0.5,1,2]
+for c in [1] #[0.5,1,2]
   cur_prior = deepcopy(base_prior)
   cur_prior.S *= c;
   push!(priors,cur_prior)
 end
 
-Ct,lps,tcs,ps = track(C,method=:multi_prior,tcs = [100ms,250ms,500ms],
+Ct,lps,tcs,ps = track(C,method=:multi_prior,tcs = [100ms,250ms],
                thresh=1e-1,source_priors = priors,
                max_sources = 3, freq_prior = freq_prior)
 
@@ -66,3 +66,8 @@ owna,m,a,x,n = adaptmi(own,
                    c_m=20, τ_m=350ms, W_m=even_weightings(length(lps)),
                    c_a=10, τ_a=3s, shape_y = x -> clamp(x,0,20))
 
+rplot(owna)
+rplot(m)
+rplot(a)
+rplot(x)
+rplot(n)

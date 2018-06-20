@@ -120,19 +120,14 @@ mutable struct IsoMultiNormalStats{T}
   α::Float64
 end
 Base.std(x::IsoMultiNormalStats) = x.n2 > 0 ? x.S ./ x.n2 : Inf
-Base.zero(x::IsoMultiNormalStats{T}) where T =
+Base.zero(x::IsoMultiNormalStats{T},C::Coherence) where T =
   IsoMultiNormalStats(zero(x.μ),zero(x.S),0.0,0.0,0.0)
 
-function IsoMultiNormalStats(data::AbstractMatrix,n=size(data,1),α=1)
+function isoprior(prior::Coherence,n,α=1)
+  data = reshape(mean(prior,4),size(prior,1),:)
   μ = squeeze(mean(data,1),1)
   S = squeeze(sum(data.^2,1),1) .* n./size(data,1)
   IsoMultiNormalStats{eltype(data)}(μ,S,n,n,α)
-end
-
-function IsoMultiNormalStats(s::Number,n::Number,C::Coherence,α=1)
-  d = prod(size(C,2,3))
-  IsoMultiNormalStats(fill(zero(s),d),fill(s,d),Float64(n),Float64(n),
-                      Float64(α))
 end
 
 function update!(stats::IsoMultiNormalStats{T},x::AbstractVector{T},w=1.0) where T
@@ -182,12 +177,41 @@ function logpdf_thresh(stats::IsoMultiNormalStats,x::AbstractVector,thresh)
 
   jj = setdiff(1:length(x),ii)
   sum(logpdf.(TDist(2α),(x[ii] .- μ)./σ)) +
-    sum(logpdf.(Normal(0,thresh),x[jj] .- stats.μ[jj]))
+    thresh > 0 ? sum(logpdf.(Normal(0,thresh),x[jj] .- stats.μ[jj])) : 0
+end
+
+struct ConstIsoPrior{T}
+  S::T
+  N::Float64
+  α::Float64
+end
+function isoprior(prior::Number,N,α=1)
+  ConstIsoPrior{typeof(prior)}(prior,N,α)
+end
+function Base.zero(prior::ConstIsoPrior,C::Coherence)
+  d = prod(size(C,2,3))
+  IsoMultiNormalStats(fill(zero(prior.S),d),fill(prior.S,d),
+                      prior.N,prior.N,prior.α)
+end
+
+function Base.:(+)(a::ConstIsoPrior{T},b::IsoMultiNormalStats{T}) where T
+  d = length(b.μ)
+  n1 = b.n1 + a.N
+  n2 = b.n2 + a.N
+  IsoMultiNormalStats(b.μ.*(b.n1/n1),a.S.+b.S,n1,n2,a.α+b.α)
+end
+
+function logpdf_thresh(stats::ConstIsoPrior,x::AbstractVector,thresh)
+  α = stats.N/2 + stats.α
+  β = 0.5stats.S
+  σ = β./α .* ((stats.N + 1) ./ stats.N)
+
+  sum(logpdf.(TDist(2α),x./σ))
 end
 
 # TODO: an auto-correlation approach: only track auto-correlations
 # between indices that are 'close' enough
-#=
+
 struct VelocityNormalStats{T}
   μ::Vector{T}
   S::SparseMatrixCSC{T,Int} # correlation of [x_t-w,x_t-w+1,...x_t]
@@ -202,5 +226,4 @@ end
 function logpdf_thresh(stats::VelocityNormalStats,x::AbstractMatrix,thresh)
   ii = find(diagonal(stats.S) ./ stats.n2 .> thresh)
 
-=#
 

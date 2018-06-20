@@ -58,7 +58,7 @@ end
 function approx
 end
 
-# get a timeslice in the same format used for values
+# get a time slice in the same format used for values
 # within the function called by approx
 function approx_empty_timeslice
 end
@@ -80,7 +80,7 @@ approx_zeros(x,dims...) = zeros(x,dims...)
 
 ########################################
 # complex number implementation
-# - we 'approximate' values by their mangitude
+# - we 'approximate' values by their magnitude
 #   so that m and a remain real, the resulting output
 #   can be multiplied by the phase of the original signal
 #   to find the final, complex output
@@ -104,7 +104,7 @@ approx_zeros(y::AbstractArray{<:Complex{T}},dims...) where T =
   zeros(eltype(y),dims...)
 
 ################################################################################
-# genertic adaptation and mutual-inhibition operation
+# generic adaptation and mutual-inhibition operation
 adaptmi(x;progressbar=true,kw...) = adaptmi(x,AdaptMI(;kw...),progressbar)
 function adaptmi(x,params::AdaptMI,progressbar=true)
   @assert :time ∈ axisnames(x)
@@ -167,7 +167,7 @@ end
 drift(x,along_axes...;progressbar=true,kw...) =
   drift(x,AdaptMI(;kw...),along_axes,progressbar)
 function drift(x,params::AdaptMI,along_axes=typeof.(axes(x)),progressbar=true)
-  τ_σ, c_σ = params.τ_σ, params.c_σ
+  τ_σ, c_σ = params.τ_σ, log(1+params.c_σ)
   time = Axis{:time}
 
   y = similar(x)
@@ -179,7 +179,7 @@ function drift(x,params::AdaptMI,along_axes=typeof.(axes(x)),progressbar=true)
     ya_t = x[time(t)]
     ya_t,σ_t = approx(ya_t,σ_t) do ya_t,σ_t
       σ_t .+= -σ_t.*(Δt(x)/τ_σ) .+ randn(dims).*(c_σ*sqrt(2Δt(x)/τ_σ))
-      ya_t .*= (1 .+ σ_t)
+      ya_t .*= exp.(σ_t)
 
       ya_t,σ_t
     end

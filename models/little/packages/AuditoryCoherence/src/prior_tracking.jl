@@ -44,8 +44,8 @@ struct TrackedSources{S,F}
   params::PriorTracking
   last_observed::Vector{Bool}
 end
-function TrackedSources(params::PriorTracking)
-  TrackedSources([zero(params.source_prior) for i in 1:params.max_sources],
+function TrackedSources(C::Coherence,params::PriorTracking)
+  TrackedSources([zero(params.source_prior,C) for i in 1:params.max_sources],
                  [BinomialCond(:old => Beta(0.0,0.0),:new => Beta(0.0,0.0))
                   for i in 1:params.max_sources],
                  params,
@@ -104,7 +104,8 @@ function update!(track::TrackedSources,Csource,grouping,w=1.0)
 end
 
 
-function track(C::Coherence,params::PriorTracking)
+function track(C::Coherence,params::PriorTracking,progressbar=true,
+               progress = track_progress(progressbar,ntimes(C),"prior"))
   @show params.max_sources
   time = Axis{:time}
   component = Axis{:component}
@@ -113,7 +114,7 @@ function track(C::Coherence,params::PriorTracking)
   @assert axisdim(C,time) == 1
   @assert axisdim(C,component) == 4
 
-  track = TrackedSources(params)
+  track = TrackedSources(C,params)
 
   C_out = similar(C,axes(C)[1:end-1]...,component(1:params.max_sources))
   C_out .= 0
@@ -121,6 +122,7 @@ function track(C::Coherence,params::PriorTracking)
   sourceS_out = copy(C_out)
 
   decay = 1.0 - 1.0 / max(1.0,params.tc / Δt(C))
+  @show decay
   lp_out = AxisArray(fill(0.0,ntimes(C)),axes(C,1))
 
   @showprogress "Tracking Sources..." for t in eachindex(times(C))
@@ -145,8 +147,8 @@ function track(C::Coherence,params::PriorTracking)
     update!(track,C_out[time(t)],MAPgrouping)
 
     for i in 1:params.max_sources
-      source_out[t,:,:,i] = track.sources[i].μ
-      sourceS_out[t,:,:,i] = std(track.sources[i])
+      source_out[t,:,:,i] = (track.params.source_prior + track.sources[i]).μ
+      sourceS_out[t,:,:,i] = std(track.params.source_prior + track.sources[i])
     end
   end
 
@@ -154,5 +156,5 @@ function track(C::Coherence,params::PriorTracking)
   order = sortperm(component_means(C_out),rev=true)
   C_out .= C_out[component(order)]
 
-  C_out,source_out,sourceS_out,lp_out
+  C_out,source_out,sourceS_out,lp_out,track
 end

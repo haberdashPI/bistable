@@ -11,6 +11,7 @@ abstract type CoherenceMethod end
 struct CParams{M,P} <: AuditoryModel.Params
   cort::P
   ncomponents::Int
+  skipframes::Int
   window::typeof(1.0s)
   minwindow::typeof(1.0s)
   delta::typeof(1.0s)
@@ -77,11 +78,11 @@ AuditoryModel.frame_length(params::CParams,x) =
   max(1,floor(Int,params.delta / Δt(x)))
 
 function CParams(x;ncomponents=1,window=1s,minwindow=window,
-                  method=:nmf,delta=10ms,
+                  method=:nmf,delta=10ms,skipframes=0,
                   normalize_phase=true,method_kwds...)
   method = CoherenceMethod(Val{method},method_kwds)
 
-  CParams(AuditoryModel.Params(x),ncomponents,
+  CParams(AuditoryModel.Params(x),ncomponents,skipframes,
           convert(typeof(1.0s),window),
           convert(typeof(1.0s),minwindow),
           convert(typeof(1.0s),delta),
@@ -102,9 +103,18 @@ function nunits(params::CParams,x)
   end
 end
 
-cohere(x::AuditoryModel.Result;params...) = cohere(x,CParams(x;params...))
+cohere(x::AuditoryModel.Result;progressbar=true,params...) =
+  cohere(x,CParams(x;params...),progressbar)
 
-function cohere(x::AbstractArray{T},params::CParams) where T
+function cohere_progress(progressbar,x,params)
+  if progressbar
+    windows = windowing(x,1,params)
+    Progress(length(windows),desc="Temporal Coherence Analysis: ")
+  end
+end
+
+function cohere(x::AbstractArray,params::CParams,progressbar=true,
+                progress = cohere_progress(progressbar,x,params))
   @assert axisdim(x,Axis{:time}) == 1
   @assert axisdim(x,Axis{:rate}) == 2
 
@@ -124,8 +134,8 @@ function cohere(x::AbstractArray{T},params::CParams) where T
                 Axis{:component}(1:K))
 
   with_method(params.method,K) do extract
-    progress = Progress(length(windows),desc="Temporal Coherence Analysis: ")
     for (i,w_inds) in enumerate(windows)
+      skipped = w_inds[1:1+params.skipframes:end]
       components = extract(x[Axis{:time}(w_inds)])
       C[i,indices(components)...] = components
 

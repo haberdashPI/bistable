@@ -15,7 +15,8 @@ function expand_params(params::MultiPriorTracking)
    for tc in params.tcs for prior in params.source_priors]
 end
 
-function track(C::Coherence,params::MultiPriorTracking)
+function track(C::Coherence,params::MultiPriorTracking,progressbar=true,
+               progress=track_progress(progressbar,ntimes(C),"multi-prior"))
   @show params.max_sources
   time = Axis{:time}
   component = Axis{:component}
@@ -54,6 +55,11 @@ function track(C::Coherence,params::MultiPriorTracking)
       mult!(track,decay)
       update!(track,C_out_tr[track_index][time(t)],MAPgrouping)
     end
+  end
+
+  for i in eachindex(C_out_tr)
+    order = sortperm(component_means(C_out_tr[i]),rev=true)
+    C_out_tr[i]  .= C_out_tr[i][component(order)]
   end
 
   tcs = [track.params.tc for track in tracks]
