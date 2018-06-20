@@ -48,7 +48,7 @@ cs = cortical(sp;scales=cycoct.*round.(2.0.^linspace(-1,2,9),1))
 #  rplot(Ctp)
 #  alert()
 
-crs = cortical(cs[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
+crs = cortical(cs[:,:,400Hz .. 1200Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
 Cna = cohere(crs,ncomponents=3,window=200ms,method=:nmf,
              delta=50ms,maxiter=100,tol=1e-3)
 
