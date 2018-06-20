@@ -57,9 +57,10 @@ function logpdf(track::TrackedSources,C::AxisArray,grouping::Grouping)
   logsum = sum(grouping) do kk_i
     (kk,i) = kk_i
     observed = sum(k -> vec(component(C,k)),kk)
-    logpdf_thresh(track.params.source_prior+track.sources[i], observed, track.params.thresh) +
-    logpdf(track.params.freq_prior + track.freqs[i],
-           track.last_observed[i] ? :old : :new,true)
+    logpdf_thresh(track.params.source_prior+track.sources[i], observed,
+                  track.params.thresh) +
+      logpdf(track.params.freq_prior + track.freqs[i],
+             track.last_observed[i] ? :old : :new,true)
   end
 
   # unobserved (but modeled) sources
