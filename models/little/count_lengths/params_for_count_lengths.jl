@@ -9,12 +9,14 @@ push!(LOAD_PATH,joinpath(@__DIR__,"packages"))
 using AuditoryModel
 using AuditoryCoherence
 
+# match these parameters better with the manual output I've been looking at
 params = Dict(
+  :condition => [:scales],
   :c_σ => 10.^linspace(-1,-0.1,5),  :τ_σ => linspace(0.0s,2.0s,3)[2:end],
   :c_m => 10.^linspace(-1,1,5),     :τ_m => linspace(50.0ms,500.0ms,3),
   :c_a => 10.^linspace(-1.0,1.0,5), :τ_a => linspace(100.0ms,10.0s,3),
 
-  :W_m_σ => 10.^linspace(-1.0,2.0,3),
+  :W_m_σ => [2.0]
   :τ_x => linspace(100ms,300ms,2), :c_x => linspace(0.75,5,2),
   :c_n => [15], :τ_n => [1s],
 )
@@ -33,6 +35,7 @@ function byparams(params)
   end
 end
 df = byparams(params)
+categorical!(df,:condition)
 
 in_ms(x) = Float64.(ustrip.(uconvert.(ms,x)))
 
@@ -47,15 +50,6 @@ Feather.write(filename,df,transforms = Dict(
     "τ_a" => in_ms,
     "τ_x" => in_ms,
     "τ_n" => in_ms
-  ))
-
-test = df[1:10,:]
-
-Feather.write(filename,test,transforms = Dict(
-    "τ_σ" => in_ms,
-    "τ_m" => in_ms,
-    "τ_a" => in_ms,
-    "τ_x" => in_ms,
-    "τ_n" => in_ms
+    "condition" => CategoricalArray
   ))
 

@@ -19,12 +19,27 @@ zero.to.na = function(xs){
   ys
 }
 
+
+W = function(x){
+  if(length(x) > 5000){
+    shapiro.test(sample(x,5000))[[1]]
+  }else if(length(x) < 3){
+    0
+  }else if(all(x == x[1])){
+    0
+  }else{
+    shapiro.test(x)[[1]]
+  }
+}
+
 summary = df %>% group_by(pindex,method) %>%
   summarize(N1 = sum(stimulus == 1),
 	    N2 = sum(stimulus > 1),
 	    N_ratio = log10((N1+1)/(N2+1)),
 	    mean_length_1 = mean(log10(zero.to.na(length[stimulus == 1])),na.rm=T),
 	    mean_length_2 = mean(log10(zero.to.na(length[stimulus > 1])),na.rm=T),
+      W = W(log10(length)),
+      N = sum(stimulus > -1),
 	    mean_ratio = mean_length_1 - mean_length_2,
 	    sd_length_1 = sd(log10(zero.to.na(length[stimulus == 1])),na.rm=T),
 	    sd_length_2 = sd(log10(zero.to.na(length[stimulus > 1])),na.rm=T),
@@ -34,7 +49,8 @@ summary = df %>% group_by(pindex,method) %>%
 
 ################################################################################
 # By Threshold
-strength_plot = function(df){
+
+strength_plot = function(df,uselog=T){
   val_breaks=c(0.2,0.5,1,2,5)
   m_breaks = c(0.1,1,10)
   a_breaks = m_breaks
@@ -45,16 +61,33 @@ strength_plot = function(df){
 
   ggplot(pdf,aes(x = log10(c_m),y=log10(c_a),fill=value)) +
     facet_grid(method~paste("noise =",round(c_sigma,3))) + geom_raster() +
-    scale_x_continuous(name="Mutual Inhibition",breaks=log10(m_breaks),labels=m_breaks) +
+    scale_x_continuous(name="Mutual Inhibition",breaks=log10(m_breaks),
+                       labels=m_breaks) +
     scale_y_continuous(name="Adaptation",breaks=log10(a_breaks),labels=a_breaks) +
-    scale_fill_distiller(name="log_10(Ratio)",palette='RdBu',
-                         limits=c(-max(abs(pdf$value),na.rm=T),
-                                  max(abs(pdf$value),na.rm=T)))
+    if(uselog){
+      scale_fill_distiller(name="log_10(Ratio)",palette='RdBu',
+                           limits=c(-max(abs(pdf$value),na.rm=T),
+                                    max(abs(pdf$value),na.rm=T)))
+    }
 }
 
 p = summary %>% filter(measure == 'mean_ratio') %>% strength_plot
 p = p + ggtitle("Strengths - Log Ratio of Means")
 save_plot(file.path(dir,"mean_strengths.pdf"),p,nrow=2,ncol=5,base_width=2,
+          base_height=2.5)
+
+p = summary %>% filter(measure == 'W') %>% strength_plot(uselog=F)
+p = p + ggtitle("Strengths - Shapiro-Wilk Statistic")
+save_plot(file.path(dir,"shapiro_strengths.pdf"),p,nrow=2,ncol=5,base_width=2,
+          base_height=2.5)
+
+# hold on a second, why are the aboslute N's between 10 and 20?
+# is this right?? if so something about the saved data is wrong
+# if that's the case, then re-run for one parameter test
+# and verify that new code records more than 10
+p = summary %>% filter(measure == 'N') %>% strength_plot(uselog=F)
+p = p + ggtitle("Strengths - Counts")
+save_plot(file.path(dir,"absolute_N_strengths.pdf"),p,nrow=2,ncol=5,base_width=2,
           base_height=2.5)
 
 p = summary %>% filter(measure == 'sd_ratio') %>% strength_plot

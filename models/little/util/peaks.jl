@@ -45,7 +45,7 @@ function map_window(fn,x,window,delta;showprogress=false)
   vals = map(indices) do i
     fn(slicerange(x,clamp.(i:i+width,1,ntimes(x)),Axis{:time}))
   end
-  AxisArray(vals,Axis{:time}(times(x)[indices]))
+  AxisArray(vals,Axis{:time}(linspace(0s,duration(x),length(vals))))
 end
 
 function source_bumps(cs;window=1s,delta=0.25s)
