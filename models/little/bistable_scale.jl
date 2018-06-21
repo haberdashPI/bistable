@@ -15,17 +15,16 @@ R"library(cowplot)"
 quartz() = R"quartz()"
 lplot(x) = R"qplot(x=1:$(length(x)),y=$(Array(x)),geom='line')"
 
+# TODO: next step, try to add more high scale
+# fields, to see if this helps the tracking
+
 x        = ab(120ms,120ms,1,40,500Hz,6) |> normpower |> amplify(-10dB)
 sp       = audiospect(x)
-cs       = cortical(sp;scales=cycoct.*round.(2.0.^linspace(-1,2,9),1))
+cs       = cortical(sp;scales=cycoct.*round.(2.0.^linspace(-1,2.5,9),1))
+
 sweights = AxisArray(squeeze(mean(abs.(cs),axisdim(cs,Axis{:freq})),3),
                      axes(cs,Axis{:time}),
                      axes(cs,Axis{:scale}))
-
-# TODO: think through these parameters
-# NOTE: one very simple thing to do would be to saturate
-# weights, so that the lower and higher scales have similar
-# input to the adapt/MI process
 
 bound(x,min,max) = 1/(1+exp(-4((x - min)/(max - min) - 0.5)))
 saturated  = AxisArray(bound.(sweights,0.0,0.08),axes(sweights)...)
@@ -43,25 +42,85 @@ csa  = similar(cs);
 csa .= sqrt.(abs.(cs) .* swna) .* exp.(angle.(cs)*im)
 
 crs = cortical(csa[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
-C = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=2,
+Ca = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=1,
             delta=100ms,maxiter=100,tol=1e-3)
 
-# crs = cortical(cs[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
-# C = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=2,
-#            delta=100ms,maxiter=100,tol=1e-3)
-# rplot(C)
-# alert()
+crs = cortical(cs[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
+C = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=2,
+           delta=100ms,maxiter=100,tol=1e-3)
+rplot(C)
+alert()
 
-Ct,source,sourceS,lp,tracks = track(C,method=:prior,tc=2s,
+# TODO: overall - get tracking to not always sum, when sum is possible
+# for the bistable scales
+
+# TODO: it looks like the some of the problem might be
+# the strong presence of the weak (unplaying) component
+# which makes the sum of components more appealing
+# (I can test this by adding a baseline to C when
+# not in the bistable state)
+#
+# at the moment I'm trying out a slightly different better NMF resolution
+# to see if that leads to weaker components
+# that doesn't seem to help, that theory seems likely to be unpracticable
+# (but might be worth looking at toy example)
+
+Ct,source,sourceS,lp,tracks = track(C,method=:prior,tc=1s,
+                                    source_prior=isonorm(C[0s .. 4s],10),
+                                    freq_prior=freqprior(0,2),thresh=1e-3,
+                                    max_sources=4,unmodeled_prior=0)
+alert()
+rplot(Ct)
+
+# example of fusing for low scale
+Caw = Ca[17s .. 20s,1:3,:,:]
+Caw ./= mean(Caw,(2,3))
+isop = isonorm(C[17s .. 20s,1:3,:,:],3)
+isop.S .*= 2
+isop.μ .= 0
+Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=0.5s,
+                                    source_prior=isop,
+                                    freq_prior=freqprior(0.9,2),thresh=1e-3,
+                                    max_sources=4,unmodeled_prior=0)
+rplot(Ct)
+
+# example of fusing for low scale
+Caw = Ca[10s .. 15s,9:9,:,:]
+Caw ./= clamp.(mean(Caw,(2,3,4)),1e-1,Inf)
+isop = isonorm(C[0s .. 4s,9:9,:,:],0.5)
+isop.S .*= 2
+isop.μ .= 0
+Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=0.5s,
+                                    source_prior=isop,
+                                    freq_prior=freqprior(0.9,2),thresh=1e-3,
+                                    max_sources=4,unmodeled_prior=0)
+rplot(Ct)
+
+# example of fusing across many scales
+Caw = Ca[1s .. 5s,1:3,:,:]
+Caw ./= clamp.(mean(Caw,3),1e-1,Inf)
+Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=2s,
+                                    source_prior=isonorm(0.4,0.25),
+                                    freq_prior=freqprior(0.9,2),thresh=1e-3,
+                                    max_sources=4,unmodeled_prior=0)
+rplot(Ct)
+
+# example of splitting across many scales
+Caw = Ca[13s .. 17s,7:9,:,:]
+# Caw ./= clamp.(mean(Caw,3),1e-1,Inf)
+Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=1s,
+                                    source_prior=isonorm(0.15,0.25),
+                                    freq_prior=freqprior(0.9,2),thresh=1e-3,
+                                    max_sources=4,unmodeled_prior=0)
+rplot(Ct)
+
+########################################
+Ct,source,sourceS,lp,tracks = track(Ca[14s .. 16s],method=:prior,tc=2s,
                                     source_prior=isonorm(0.15,1),
                                     freq_prior=freqprior(0,2),thresh=1e-3,
                                     max_sources=5,unmodeled_prior=0)
 alert()
 rplot(Ct)
-
-# CURRENT STATE: I can reliably generate what
-# look like good separations of the bistable
-# scales using the prior tracking algorithm
 
 # Ct,source,sourceS,lp,tracks = track(C,method=:prior,tc=2s,
 #                                     source_prior=isonorm(0.05,10),

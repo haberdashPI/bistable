@@ -32,7 +32,7 @@ end
 possible_groupings(n_sources,n_obs) =
   (Grouping(grouping,mapping)
    for observations in combinations(1:n_obs)
-   for grouping in [map(x -> [x],observations)] #partitions(observations)
+   for grouping in partitions(observations)
    for sources in combinations(1:n_sources,length(grouping))
    for mapping in permutations(sources))
 
