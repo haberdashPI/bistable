@@ -68,20 +68,22 @@ logabsdet(x::AbstractArray) = Base.logabsdet(x)
 logabsdet(x::AbstractSparseMatrix) = sum(log ∘ abs,diag(x)), nothing
 
 function logpdf_mvt(v,μ,Σ,x)
-  # try
+  C = NaN
+  diff = NaN*ones(μ)
+  try
     d = length(μ)
     C = (lgamma((v+d)/2)) - (lgamma(v/2)+(d/2)log(v*π)) - (0.5logabsdet(Σ)[1])
-    @show diag(Σ)
+    # @show diag(Σ)
     diff = abs.(μ.-x)
-    @show diff'/Σ
+    # @show diff'/Σ
 
     C + log(1+1/v*(diff'/Σ)*diff)*-(v+d)/2
-  # catch e
-  #   @show diff
-  #   @show diff'/Σ
-  #   @show(1+1/v*(diff'/Σ)*diff)
-  #   rethrow(e)
-  # end
+  catch e
+    @show diff
+    @show diff'/Σ
+    @show(1+1/v*(diff'/Σ)*diff)
+    rethrow(e)
+  end
 end
 
 function logpdf_thresh(stats::MultiNormalStats,x::AbstractVector,thresh)

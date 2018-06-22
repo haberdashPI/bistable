@@ -31,14 +31,15 @@ function findcorr(dims,dist)
   corr
 end
 
-function ridgenorm(prior::Coherence,n,x2_offset=1;scale=nothing,freq=nothing)
-  ridgenorm(prior,n,rdist(;scale=scale,freq=freq),x2_offset)
+function ridgenorm(prior::Coherence,n,x2_offset=1;thresh=1e-3,scale=nothing,
+                   freq=nothing)
+  ridgenorm(prior,n,rdist(;scale=scale,freq=freq),x2_offset,thresh)
 end
 
-function ridgenorm(prior::Coherence,n,dist,x2_offset =1)
+function ridgenorm(prior::Coherence,n,dist,x2_offset=1,thresh=1e-3)
   data = reshape(mean(prior,4),size(prior,1),:)
   μ = squeeze(mean(data,1),1)
-  S = squeeze(sum(data.^2,1),1) .* n./size(data,1)
+  S = squeeze(sum(data.^2,1),1) .* n./size(data,1) .+ n.*thresh.^2
   corr = findcorr(size(prior,2,3),dist)
   RidgeMultiNormalStats{eltype(data)}(μ,S,n,n,x2_offset,corr)
 end
@@ -69,20 +70,14 @@ function Base.:(+)(a::RidgeMultiNormalStats{T},b::RidgeMultiNormalStats{T}) wher
                         n1,n2,a.x2_offset+b.x2_offset,a.corr)
 end
 
-
-function logpdf_thresh(stats::RidgeMultiNormalStats,x::AbstractVector,thresh)
-  ii = find(stats.S ./ stats.n2 .> thresh)
-
-  d = length(ii)
-  μ = stats.μ[ii]
-  σ = sqrt.(stats.S[ii] ./ stats.n2)
-  Λ = (Diagonal(σ) * stats.corr[ii,ii]) * Diagonal(σ)
+function logpdf(stats::RidgeMultiNormalStats,x::AbstractVector)
+  d = length(stats.μ)
+  σ = sqrt.(stats.S ./ stats.n2)
+  Λ = (Diagonal(σ) * stats.corr) * Diagonal(σ)
   n = stats.n1
   nu = max(1,floor(Int,stats.n2 + stats.x2_offset - d + 1))
 
-  jj = setdiff(1:length(x),ii)
-  logpdf_mvt(nu,μ,Λ .* ((n + 1)/(n * nu)),x[ii]) +
-    sum(logpdf.(Normal(0,2thresh),x[jj] .- stats.μ[jj]))
+  logpdf_mvt(nu,stats.μ,Λ .* ((n + 1)/(n * nu)),x)
 end
 
 struct ConstRidgePrior{T} <: Stats{T}
@@ -108,7 +103,7 @@ function Base.:(+)(a::ConstRidgePrior{T},b::RidgeMultiNormalStats{T}) where T
                        prior.corr)
 end
 
-function logpdf_thresh(stats::ConstRidgePrior,x::AbstractVector,thresh)
+function logpdf(stats::ConstRidgePrior,x::AbstractVector)
   μ = 0
   σ = sqrt(stats.S / stats.N)
   Λ = (Diagonal(σ) * stats.corr) * Diagonal(σ)
