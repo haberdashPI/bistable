@@ -61,12 +61,27 @@ function logpdf(stats::MultiNormalStats,x::AbstractVector)
 end
 pdf(stats::MultiNormalStats,x::AbstractVector) = exp(logpdf(stats,x))
 
-function logpdf_mvt(v,μ,Σ,x)
-  d = length(μ)
-  C = lgamma((v+1)/2) - (lgamma(v/2)+log(v*π)^(d/2)) - 0.5logabsdet(Σ)[1]
-  diff = abs.(μ.-x)
+logabsdet(x::AbstractArray) = Base.logabsdet(x)
+# this method isn't yet implemented in base for sparse matrices, so we just use
+# a naive implementation and do not return the sign, since I don't need it for
+# this application
+logabsdet(x::AbstractSparseMatrix) = sum(log ∘ abs,diag(x)), nothing
 
-  C*log(1+1/v*(diff'/Σ)*diff)*-(v+d)/2
+function logpdf_mvt(v,μ,Σ,x)
+  # try
+    d = length(μ)
+    C = (lgamma((v+d)/2)) - (lgamma(v/2)+(d/2)log(v*π)) - (0.5logabsdet(Σ)[1])
+    @show diag(Σ)
+    diff = abs.(μ.-x)
+    @show diff'/Σ
+
+    C + log(1+1/v*(diff'/Σ)*diff)*-(v+d)/2
+  # catch e
+  #   @show diff
+  #   @show diff'/Σ
+  #   @show(1+1/v*(diff'/Σ)*diff)
+  #   rethrow(e)
+  # end
 end
 
 function logpdf_thresh(stats::MultiNormalStats,x::AbstractVector,thresh)

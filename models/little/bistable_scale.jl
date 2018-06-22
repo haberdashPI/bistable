@@ -15,12 +15,10 @@ R"library(cowplot)"
 quartz() = R"quartz()"
 lplot(x) = R"qplot(x=1:$(length(x)),y=$(Array(x)),geom='line')"
 
-# TODO: next step, try to add more high scale
-# fields, to see if this helps the tracking
 
 x        = ab(120ms,120ms,1,40,500Hz,6) |> normpower |> amplify(-10dB)
 sp       = audiospect(x)
-cs       = cortical(sp;scales=cycoct.*round.(2.0.^linspace(-1,2.5,9),1))
+cs       = cortical(sp;scales=cycoct.*round.(2.0.^linspace(-2,2.5,9),1))
 
 sweights = AxisArray(squeeze(mean(abs.(cs),axisdim(cs,Axis{:freq})),3),
                      axes(cs,Axis{:time}),
@@ -41,29 +39,53 @@ swna,m,a,x = adaptmi(
 csa  = similar(cs);
 csa .= sqrt.(abs.(cs) .* swna) .* exp.(angle.(cs)*im)
 
-crs = cortical(csa[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
-Ca = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=1,
-            delta=100ms,maxiter=100,tol=1e-3)
+# crs = cortical(csa[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
+# Ca = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=1,
+#             delta=100ms,maxiter=100,tol=1e-3)
 
 crs = cortical(cs[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
 C = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=2,
            delta=100ms,maxiter=100,tol=1e-3)
-rplot(C)
-alert()
+# rplot(C)
+# alert()
 
 # TODO: overall - get tracking to not always sum, when sum is possible
 # for the bistable scales
 
-# TODO: it looks like the some of the problem might be
-# the strong presence of the weak (unplaying) component
-# which makes the sum of components more appealing
-# (I can test this by adding a baseline to C when
-# not in the bistable state)
+# still seem to be problems in splitting high scales and
+# fusing small ones at the same time for the bistable scales
 #
-# at the moment I'm trying out a slightly different better NMF resolution
-# to see if that leads to weaker components
-# that doesn't seem to help, that theory seems likely to be unpracticable
-# (but might be worth looking at toy example)
+# one possibility is that we could have an assumed ridge in the
+# correlation matrix, that would make the broader scale
+# components appear more similar, this might allow for gradual
+# shifts in the distribution across channels
+
+# TODO: testing new ridge normal prior currently doing some sanity checks using
+# test_ridge.jl, maybe do a few more (even though it says "okay..." in the file
+# ) and then try out the code below
+
+
+# TODO: I should not need the threshold parameter if I'm doing
+# the prior right. I can get rid of that implementation detail.
+
+dist(a,b) = (a[1] - b[1])^2 / (0.5^2) + (a[2] - b[2])^2 / (0.5^2)
+
+Ct,source,sourceS,lp,tracks = track(
+  C,
+  method=:prior,
+  tc=1s,
+  source_prior=ridgenorm(C[0s .. 4s],10,scale=0.25,freq=0.25),
+  freq_prior=freqprior(0,2),
+  thresh=1e-3,
+  max_sources=4,
+  unmodeled_prior=0
+)
+
+alert()
+rplot(Ct)
+
+################################################################################
+# OLD STUFF (this is what convinced me to try the ridge prior)
 
 Ct,source,sourceS,lp,tracks = track(C,method=:prior,tc=1s,
                                     source_prior=isonorm(C[0s .. 4s],10),
@@ -72,29 +94,46 @@ Ct,source,sourceS,lp,tracks = track(C,method=:prior,tc=1s,
 alert()
 rplot(Ct)
 
-# example of fusing for low scale
-Caw = Ca[17s .. 20s,1:3,:,:]
-Caw ./= mean(Caw,(2,3))
-isop = isonorm(C[17s .. 20s,1:3,:,:],3)
-isop.S .*= 2
-isop.μ .= 0
-Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=0.5s,
+# fusing at low scales
+Cw = C[0s .. 4s,1:3,:,:]
+isop = isonorm(C[0s .. 2s,1:3,:,:],1)
+isop.S .*= 1
+# isop.μ .= 0
+Ct,source,sourceS,lp,tracks = track(Cw,method=:prior,tc=0.5s,
                                     source_prior=isop,
-                                    freq_prior=freqprior(0.9,2),thresh=1e-3,
+                                    freq_prior=freqprior(0,2),thresh=1e-3,
+                                    max_sources=4,unmodeled_prior=0)
+rplot(Ct)
+
+# splitting at high scales
+Cw = C[0s .. 4s,6:9,:,:]
+isop = isonorm(C[0s .. 2s,6:9,:,:],1)
+Ct,source,sourceS,lp,tracks = track(Cw,method=:prior,tc=0.5s,
+                                    source_prior=isop,
+                                    freq_prior=freqprior(0,2),thresh=1e-3,
                                     max_sources=4,unmodeled_prior=0)
 rplot(Ct)
 
 # example of fusing for low scale
-Caw = Ca[10s .. 15s,9:9,:,:]
-Caw ./= clamp.(mean(Caw,(2,3,4)),1e-1,Inf)
-isop = isonorm(C[0s .. 4s,9:9,:,:],0.5)
-isop.S .*= 2
-isop.μ .= 0
+Caw = Ca[0s .. 2s,1:3,:,:]
+isop = isonorm(C[0s .. 1s,1:3,:,:],1)
 Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=0.5s,
                                     source_prior=isop,
-                                    freq_prior=freqprior(0.9,2),thresh=1e-3,
+                                    freq_prior=freqprior(0,2),thresh=1e-3,
                                     max_sources=4,unmodeled_prior=0)
 rplot(Ct)
+
+# example of splitting at high scales
+Caw = Ca[13s .. 20s,9:9,:,:]
+isop = isonorm(C[0s .. 1s,9:9,:,:],1)
+Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=0.5s,
+                                    source_prior=isop,
+                                    freq_prior=freqprior(0,2),thresh=1e-3,
+                                    max_sources=4,unmodeled_prior=0)
+rplot(Ct)
+
+
+################################################################################
 
 # example of fusing across many scales
 Caw = Ca[1s .. 5s,1:3,:,:]
