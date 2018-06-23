@@ -9,7 +9,13 @@ push!(LOAD_PATH,joinpath(@__DIR__,"packages"))
 using AuditoryModel
 using AuditoryCoherence
 
-# match these parameters better with the manual output I've been looking at
+# TODO: match these parameters better with the manual output I've been looking
+# at
+
+# NOTE: I dont' need to vary the time constants - I can pick them to be
+# reasonable, I also should have to bick the inhibition sigma
+# or the parameters for n (removed now) and x (reasonable values will be
+# picked).
 params = Dict(
   :condition => [:scales],
   :c_σ => 10.^linspace(-1,-0.1,5),  :τ_σ => linspace(0.0s,2.0s,3)[2:end],

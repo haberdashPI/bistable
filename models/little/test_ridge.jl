@@ -1,4 +1,3 @@
-
 push!(LOAD_PATH,"packages")
 using AuditoryModel
 using AuditoryCoherence
@@ -16,13 +15,23 @@ prior = ridgenorm(C,1,scale=0.25,freq=0.25)
 prior.μ .= 0
 alert()
 
-AuditoryCoherence.logpdf_thresh(prior,zero(vec(C[1,:,:,1])),1e-3)
-AuditoryCoherence.logpdf_thresh(prior,vec(C[1,:,:,1]),1e-3)
+AuditoryCoherence.logpdf(prior,zero(vec(C[2,:,:,1])))
+AuditoryCoherence.logpdf(prior,vec(C[1,:,:,1]))
+
+prior_add = deepcopy(prior)
+AuditoryCoherence.update!(prior_add,ones(vec(C[1,:,:,1])))
+AuditoryCoherence.downdate!(prior_add,ones(vec(C[1,:,:,1])))
+
+prior_add.μ ≈ prior.μ
+prior_add.S ≈ prior.S
 
 prior2 = isonorm(C,1)
+prior.μ .= 0
 
-AuditoryCoherence.logpdf_thresh(prior2,zero(vec(C[1,:,:,1])),1e-3)
-AuditoryCoherence.logpdf_thresh(prior2,vec(C[1,:,:,1]),1e-3)
+AuditoryCoherence.logpdf(prior2,zero(vec(C[1,:,:,1])))
+AuditoryCoherence.logpdf(prior2,vec(C[1,:,:,1]))
 
 # TODO: okay, we've tested out a few things for logpdf_mvt
 # now try looking at the results of tracking again
+
+# The key test will be examining logpdf's with low and high scales

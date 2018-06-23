@@ -1,4 +1,4 @@
-import Distributions: TDist, Normal, logpdf
+import Distributions: TDist, Normal, logpdf, pdf
 
 abstract type Stats{T} end
 
@@ -10,3 +10,4 @@ include(joinpath(@__DIR__,"priors","multi_norm.jl"))
 include(joinpath(@__DIR__,"priors","beta.jl"))
 include(joinpath(@__DIR__,"priors","ridge_norm.jl"))
 include(joinpath(@__DIR__,"priors","vel_norm.jl"))
+include(joinpath(@__DIR__,"priors","grouping.jl"))

@@ -11,10 +11,10 @@ Base.std(x::IsoMultiNormalStats) = x.n2 > 0 ? x.S ./ x.n2 : Inf
 Base.zero(x::IsoMultiNormalStats{T},C::Coherence) where T =
   IsoMultiNormalStats(zero(x.μ),zero(x.S),0.0,0.0,0.0)
 
-function isonorm(prior::Coherence,n,α=1)
+function isonorm(prior::Coherence,n,α=1,thresh=1e-3)
   data = reshape(mean(prior,4),size(prior,1),:)
   μ = squeeze(mean(data,1),1)
-  S = squeeze(sum(data.^2,1),1) .* n./size(data,1)
+  S = squeeze(sum(data.^2,1),1) .* n./size(data,1) .+ thresh
   IsoMultiNormalStats{eltype(data)}(μ,S,n,n,α)
 end
 
@@ -53,26 +53,13 @@ function logpdf(stats::IsoMultiNormalStats,x::AbstractVector)
   sum(logpdf(TDist(2α),(x .- μ)./σ))
 end
 
-function logpdf_thresh(stats::IsoMultiNormalStats,x::AbstractVector,thresh)
-  ii = find(stats.S ./ stats.n2 .> thresh)
-
-  μ = stats.μ[ii]
-  α = stats.n1/2 + stats.α
-  β = 0.5stats.S[ii]
-  σ = β./α .* ((stats.n2 + 1) ./ stats.n2)
-
-  jj = setdiff(1:length(x),ii)
-  (sum(logpdf.(TDist(2α),(x[ii] .- μ)./σ))) +
-    (length(jj) > 0 ? sum(logpdf.(Normal(0,thresh),x[jj] .- stats.μ[jj])) : 0)
-end
-
 struct ConstIsoPrior{T} <: Stats{T}
   S::T
   N::Float64
   α::Float64
 end
-function isonorm(prior::Number,N,α=1)
-  ConstIsoPrior{typeof(prior)}(prior,N,α)
+function isonorm(prior::Number,N,α=1,thresh=1e-3)
+  ConstIsoPrior{typeof(prior)}(prior.+1e-3,N,α)
 end
 function Base.zero(prior::ConstIsoPrior,C::Coherence)
   d = prod(size(C,2,3))
@@ -87,7 +74,7 @@ function Base.:(+)(a::ConstIsoPrior{T},b::IsoMultiNormalStats{T}) where T
   IsoMultiNormalStats(b.μ.*(b.n1/n1),a.S.+b.S,n1,n2,a.α+b.α)
 end
 
-function logpdf_thresh(stats::ConstIsoPrior,x::AbstractVector,thresh)
+function logpdf(stats::ConstIsoPrior,x::AbstractVector)
   α = stats.N/2 + stats.α
   β = 0.5stats.S
   σ = β./α .* ((stats.N + 1) ./ stats.N)
