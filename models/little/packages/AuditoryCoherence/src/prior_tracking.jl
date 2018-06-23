@@ -59,7 +59,8 @@ function logpdf(track::TrackedSources,C::AxisArray,grouping::Grouping)
   logsum = sum(grouping) do kk_i
     (kk,i) = kk_i
     observed = sum(k -> vec(component(C,k)),kk)
-    logpdf(track.params.source_prior+track.sources[i], observed) +
+    logpdf_thresh(track.params.source_prior+track.sources[i], observed,
+                  track.params.thresh) +
       logpdf(track.params.freq_prior + track.freqs[i],
              track.last_observed[i] ? :old : :new,true)
   end
@@ -77,7 +78,8 @@ function logpdf(track::TrackedSources,C::AxisArray,grouping::Grouping)
   unmodeled = setdiff(1:ncomponents(C),components(grouping))
   if !isempty(unmodeled)
     logsum += sum(unmodeled) do k
-      logpdf(track.params.source_prior,vec(component(C,k)))
+      logpdf_thresh(track.params.source_prior,vec(component(C,k)),
+                    track.params.thresh)
     end
     logsum += log(track.params.unmodeled_prior)
   end
