@@ -37,7 +37,7 @@ csa .= sqrt.(abs.(cs) .* swna) .* exp.(angle.(cs)*im)
 
 crs = cortical(csa[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
 Ca = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=1,
-            delta=75ms,maxiter=100,tol=1e-3)
+            delta=25ms,maxiter=100,tol=1e-3)
 # rplot(Ca)
 # alert()
 
@@ -189,8 +189,8 @@ rplot(Ct)
 # to test this, look at lp for both windows
 
 # example of entire Ca
-Caw = Ca[6.5s .. 12s]
-ridgep = ridgenorm(C[0s .. 1s,:,:,:],10,scale=0.25,freq=0.25,thresh=0.3)
+Caw = Ca[6.5s .. 10s]
+ridgep = ridgenorm(C[0s .. 1s,:,:,:],10,scale=0.25,freq=0.25,thresh=0.05)
 Ct,source,sourceS,lp1,tracks = track(Caw,method=:prior,tc=2s,
                                     source_prior=ridgep,
                                     freq_prior=freqprior(0,2),
@@ -198,8 +198,8 @@ Ct,source,sourceS,lp1,tracks = track(Caw,method=:prior,tc=2s,
 rplot(Ct)
 
 # example of entire Ca
-Caw = Ca[7.5s .. 12s]
-ridgep = ridgenorm(C[0s .. 1s,:,:,:],10,scale=0.25,freq=0.25,thresh=0.3)
+Caw = Ca[7.5s .. 10s,:,:,:]
+ridgep = ridgenorm(C[0s .. 1s,:,:,:],10,scale=0.25,freq=0.25,thresh=0.05)
 Ct,source,sourceS,lp2,tracks = track(Caw,method=:prior,tc=2s,
                                     source_prior=ridgep,
                                     freq_prior=freqprior(0,2),
@@ -214,6 +214,26 @@ R"""
 ggplot($df,aes(x,y,color=window)) + geom_line() +
   scale_color_brewer(palette='Set1')
 """
+
+# example of entire Ca
+Caw = Ca
+ridgep = ridgenorm(C[0s .. 1s,:,:,:],10,scale=0.25,freq=0.25,thresh=0.05)
+Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=2s,
+                                    source_prior=ridgep,
+                                    freq_prior=freqprior(0,2),
+                                    max_sources=5,unmodeled_prior=0)
+rplot(Ct)
+
+# TODO: okay, see if this is good enough to get a ratio
+# of the components (maybe N1 vs. N2+N3)
+
+window_size = 1s
+step_size = 250ms
+
+win = window_size / Δt(Ct)
+step = step_size / Δt(Ct)
+
+# WIP
 
 # STOPPED HERE
 ################################################################################
