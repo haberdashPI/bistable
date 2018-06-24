@@ -8,7 +8,8 @@ import DSP.Filters.freqs
 import Sounds: Sound
 
 export freqs, times, nfreqs, ntimes, delta_t, delta_f, Δt, Δf, frame_length,
-  audiospect, Sound, freq_ticks, duration
+  audiospect, Sound, freq_ticks, duration, hastimes, HasTimes, HasNoTimes,
+  timedim
 
 ########################################
 # cochlear filters
@@ -58,6 +59,14 @@ ntimes(x) = length(times(x))
 times(as::Result) = times(AxisArray(as))
 times(as::AxisArray) = axisvalues(axes(as,Axis{:time}))[1]
 times(p::Params,x::AbstractArray) = indices(x,1) * Δt(p)
+
+type HasTimes end
+type HasNoTimes end
+hastimes(x::AuditorySpectrogram) = HasTimes()
+hastimes(x::AxisArray) = :time ∈ axisnames(x) ? HasTimes() : HasNoTimes()
+timedim(x::Result) = axisdim(x,Axis{:time})
+timedim(x::AxisArray) = axisdim(x,Axis{:time})
+
 Sounds.duration(x::AxisArray) = last(times(x)) - first(times(x))
 Sounds.duration(x::Result) = last(times(x)) - first(times(x))
 

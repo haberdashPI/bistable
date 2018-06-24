@@ -1,9 +1,11 @@
 push!(LOAD_PATH,"packages")
 using AuditoryModel
 using AuditoryCoherence
+using ProgressMeter
 using DataFrames
 using AxisArrays
 using RCall
+using DSP
 
 include("util/stim.jl")
 include("util/lengths.jl")
@@ -15,7 +17,8 @@ lplot(x) = R"qplot(x=1:$(length(x)),y=$(Array(x)),geom='line')"
 
 x        = ab(120ms,120ms,1,40,500Hz,6) |> normpower |> amplify(-10dB)
 sp       = audiospect(x)
-cs       = cortical(sp;scales=cycoct.*round.(2.0.^linspace(-2,2.5,9),1))
+cs       = cortical(sp;scales=cycoct.*round.(2.0.^linspace(-2,2.5,9),1),
+                   bandonly=true)
 
 sweights = AxisArray(squeeze(mean(abs.(cs),axisdim(cs,Axis{:freq})),3),
                      axes(cs,Axis{:time}),
@@ -29,22 +32,45 @@ swna,m,a,x = adaptmi(
   c_m=30, τ_m=350ms, W_m=scale_weighting(cs,15,6),
   c_a=10, τ_a=50s, shape_y=x->clamp(x,0,20)
 )
+
+# once swna is done, use a low pass filter on it
+# so we only get the main emphasis
+low = digitalfilter(Lowpass(1.5;fs=ustrip(1/Δt(swna))),Butterworth(3))
+swna_low = AxisArray(max.(0,filt(low,swna)),Axis{:time}(times(swna)))
+rplot(swna_low)
 # rplot(swna)
 # alert()
 
 csa  = similar(cs);
-csa .= sqrt.(abs.(cs) .* swna) .* exp.(angle.(cs)*im)
+csa .= sqrt.(abs.(cs) .* swna_low) .* exp.(angle.(cs)*im)
 
 crs = cortical(csa[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
 Ca = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=1,
-            delta=25ms,maxiter=100,tol=1e-3)
+            delta=75ms,maxiter=100,tol=1e-3)
 # rplot(Ca)
 # alert()
 
-crs = cortical(cs[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
-C = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=2,
+crs = cortical(cs[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz],
+               bandonly=true)
+C = cohere(crs[17s .. 20s],ncomponents=3,window=100ms,method=:nmf,skipframes=2,
            delta=75ms,maxiter=100,tol=1e-3)
+
+crs = cortical(csa[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz],
+              bandonly=true)
+Caw = cohere(crs[17s .. 20s],ncomponents=3,window=100ms,method=:nmf,skipframes=2,
+           delta=75ms,maxiter=100,tol=1e-3)
+
+# Okay, so the below works, which means the main problem
+# with the bistable scales is probably that there is a ramping
+# of individual events, if I can get rid of this the NMF
+# analysis will hopefully work a little better
 # rplot(C)
+# alert()
+crs_select = deepcopy(crs)
+crs_select[:,:,1:6,:] .= 0
+C_select = cohere(crs_select[0s .. 4s],ncomponents=3,window=100ms,method=:nmf,skipframes=2,
+           delta=75ms,maxiter=100,tol=1e-3)
+# rplot(C_select)
 # alert()
 
 # TODO: overall - get tracking to not always sum, when sum is possible
@@ -198,13 +224,27 @@ Ct,source,sourceS,lp1,tracks = track(Caw,method=:prior,tc=2s,
 rplot(Ct)
 
 # example of entire Ca
-Caw = Ca[7.5s .. 10s,:,:,:]
+Caw = Ca[19s .. 20s,:,:,:]
 ridgep = ridgenorm(C[0s .. 1s,:,:,:],10,scale=0.25,freq=0.25,thresh=0.05)
 Ct,source,sourceS,lp2,tracks = track(Caw,method=:prior,tc=2s,
                                     source_prior=ridgep,
                                     freq_prior=freqprior(0,2),
                                     max_sources=4,unmodeled_prior=0)
 rplot(Ct)
+
+strs = map_windowing(Ct,length=500ms,step=250ms) do window
+  component_means(window)
+end
+strmat = AxisArray(hcat(strs...)',Axis{:time}(times(strs)))
+quartz(); rplot(strmat)
+
+progress = Progress(length(windowing(Ct,length=500ms,step=250ms)))
+ratios = map_windowing(Ct,length=500ms,step=250ms) do window
+  strengths = sort(component_means(window),rev=true)
+  ProgressMeter.next!(progress)
+  strengths[1] / sum(strengths[2:end])
+end
+rplot(ratios)
 
 df = DataFrame(x = [ustrip.(times(lp1)); ustrip.(times(lp2))],
                y = [lp1; lp2],
@@ -221,19 +261,29 @@ ridgep = ridgenorm(C[0s .. 1s,:,:,:],10,scale=0.25,freq=0.25,thresh=0.05)
 Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=2s,
                                     source_prior=ridgep,
                                     freq_prior=freqprior(0,2),
-                                    max_sources=5,unmodeled_prior=0)
+                                    max_sources=4,unmodeled_prior=0)
 rplot(Ct)
+alert()
 
 # TODO: okay, see if this is good enough to get a ratio
 # of the components (maybe N1 vs. N2+N3)
 
-window_size = 1s
-step_size = 250ms
+progress = Progress(length(windowing(Ct,length=500ms,step=250ms)))
+ratios = map_windowing(Ct,length=500ms,step=250ms) do window
+  strengths = sort(component_means(window),rev=true)
+  ProgressMeter.next!(progress)
+  strengths[1] / sum(strengths[2:end])
+end
+rplot(ratios)
 
-win = window_size / Δt(Ct)
-step = step_size / Δt(Ct)
+rplot(cs)
 
-# WIP
+strs = map_windowing(Ct,length=500ms,step=250ms) do window
+  component_means(window)
+end
+
+strmat = AxisArray(hcat(strs...)',Axis{:time}(times(strs)))
+rplot(strmat)
 
 # STOPPED HERE
 ################################################################################

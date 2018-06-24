@@ -116,6 +116,20 @@ R"""
 """
 end
 
+function rplot(v::AbstractVector)
+  if hastimes(v) != HasTimes()
+    error("Can't plot something without a time dimension.")
+  else
+    df = DataFrame(time = ustrip.(uconvert.(s,times(v))), value = Array(v))
+
+    R"""
+    library(ggplot2)
+
+    ggplot($df,aes(x=time,y=value)) + geom_line()
+    """
+  end
+end
+
 function rplot(cort::CorticalRates;rates=AuditoryModel.rates(cort))
   cort = cort[:,atvalue.(rates),:]
   @show size(cort)
