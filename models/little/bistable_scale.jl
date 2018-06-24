@@ -17,7 +17,7 @@ lplot(x) = R"qplot(x=1:$(length(x)),y=$(Array(x)),geom='line')"
 
 x        = ab(120ms,120ms,1,40,500Hz,6) |> normpower |> amplify(-10dB)
 sp       = audiospect(x)
-cs       = cortical(sp;scales=cycoct.*round.(2.0.^linspace(-2,2.5,9),1),
+cs       = cortical(sp;scales=cycoct.*round.(2.0.^linspace(-1,3,8),1),
                    bandonly=true)
 
 sweights = AxisArray(squeeze(mean(abs.(cs),axisdim(cs,Axis{:freq})),3),
@@ -44,189 +44,21 @@ rplot(swna_low)
 csa  = similar(cs);
 csa .= sqrt.(abs.(cs) .* swna_low) .* exp.(angle.(cs)*im)
 
-crs = cortical(csa[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz])
-Ca = cohere(crs,ncomponents=3,window=150ms,method=:nmf,skipframes=1,
-            delta=75ms,maxiter=100,tol=1e-3)
-# rplot(Ca)
-# alert()
-
+# without adaptmi
 crs = cortical(cs[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz],
                bandonly=true)
-C = cohere(crs[17s .. 20s],ncomponents=3,window=100ms,method=:nmf,skipframes=2,
+C = cohere(crs[0s .. 2s],ncomponents=3,window=100ms,method=:nmf,skipframes=2,
            delta=75ms,maxiter=100,tol=1e-3)
 
+
+# with adaptmi
 crs = cortical(csa[:,:,400Hz .. 800Hz];rates=[(-2.0.^(1:5))Hz; (2.0.^(1:5))Hz],
               bandonly=true)
-Caw = cohere(crs[17s .. 20s],ncomponents=3,window=100ms,method=:nmf,skipframes=2,
+Ca = cohere(crs,ncomponents=3,window=100ms,method=:nmf,skipframes=2,
            delta=75ms,maxiter=100,tol=1e-3)
 
-# Okay, so the below works, which means the main problem
-# with the bistable scales is probably that there is a ramping
-# of individual events, if I can get rid of this the NMF
-# analysis will hopefully work a little better
-# rplot(C)
-# alert()
-crs_select = deepcopy(crs)
-crs_select[:,:,1:6,:] .= 0
-C_select = cohere(crs_select[0s .. 4s],ncomponents=3,window=100ms,method=:nmf,skipframes=2,
-           delta=75ms,maxiter=100,tol=1e-3)
-# rplot(C_select)
-# alert()
-
-# TODO: overall - get tracking to not always sum, when sum is possible
-# for the bistable scales
-
-# still seem to be problems in splitting high scales and
-# fusing small ones at the same time for the bistable scales
-#
-# one possibility is that we could have an assumed ridge in the
-# correlation matrix, that would make the broader scale
-# components appear more similar, this might allow for gradual
-# shifts in the distribution across channels
-#
-# that's what I'm working on now
-
-# THOUGHT: might be able to handle larger scales in the ridge by excluding some
-# number of indices for the lower scales (so we can "expand" the ridge at these
-# lower scales without increasing computational complexity)
-#
-# NOTE: right now the ridge doesn't seem necessary, though
-# the formulation defined by the ridge code is working better
-# probably because of a math error in isonorm
-#
-# TODO: right now I'm trying to get a better windowing
-# approach, that can depend less on older samples
-
-dist(a,b) = (a[1] - b[1])^2 / (0.5^2) + (a[2] - b[2])^2 / (0.5^2)
-
-Ct,source,sourceS,lp,tracks = track(
-  C,
-  method=:prior,
-  tc=1.5s,
-  source_prior=ridgenorm(C[0s .. 4s],10,scale=0.25,freq=0.25),
-  freq_prior=freqprior(0,2),
-  max_sources=4,
-  unmodeled_prior=0
-)
-rplot(Ct)
-
-# great, with a slightly larger window, that now seems to work
-
-# next steps:
-# 1. try ridge prior on all the below
-# code, confirm that we're in the same place as before
-# (since with out the ridge it should be equivalent)
-
-# fusing at low scales
-Cw = C[0s .. 4s,1:3,:,:]
-ridgep = ridgenorm(C[0s .. 2s,1:3,:,:],10,
-                 scale=0.25,freq=0.25)
-ridgep.S .*= 1
-# ridgep.μ .= 0
-Ct,source,sourceS,lp,tracks = track(Cw,method=:prior,tc=2s,
-                                    source_prior=ridgep,
-                                    freq_prior=freqprior(0,2),
-                                    max_sources=4,unmodeled_prior=0)
-rplot(Ct)
-
-# splitting at high scales
-Cw = C[0s .. 4s,6:9,:,:]
-ridgep = ridgenorm(C[0s .. 2s,6:9,:,:],10,
-                 scale=0.25,freq=0.25)
-Ct,source,sourceS,lp,tracks = track(Cw,method=:prior,tc=2s,
-                                    source_prior=ridgep,
-                                    freq_prior=freqprior(0,2),
-                                    max_sources=4,unmodeled_prior=0)
-rplot(Ct)
-
-# example of fusing for low scale (with adaptmi)
-Caw = Ca[0s .. 3s,1:3,:,:]
-ridgep = ridgenorm(C[0s .. 1s,1:3,:,:],10,scale=0.25,freq=0.25, thresh=0.3)
-Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=2s,
-                                    source_prior=ridgep,
-                                    freq_prior=freqprior(0,2),
-                                    max_sources=4,unmodeled_prior=0)
-rplot(Ct)
-
-# example of splitting at high scales (with adaptmi)
-# not working very well....
-Caw = Ca[6s .. 10s,7:9,:,:]
-ridgep = ridgenorm(C[0s .. 1s,7:9,:,:],10, scale=0.25,freq=0.25, thresh=0.3)
-Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=2s,
-                                    source_prior=ridgep,
-                                    freq_prior=freqprior(0,2),
-                                    max_sources=4,unmodeled_prior=0)
-rplot(Ct)
-
-# example of splitting at high scales (with adaptmi)
-# not working very well....
-Caw = Ca[9s .. 13s,8:9,:,:]
-ridgep = ridgenorm(C[0s .. 1s,8:9,:,:],10, scale=0.25,freq=0.25,thresh=0.1)
-Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=2s,
-                                    source_prior=ridgep,
-                                    freq_prior=freqprior(0,2),
-                                    max_sources=4,unmodeled_prior=0)
-rplot(Ct)
-
-# ugh... the above isn't working super well,
-# it looks like it's fragile to differences in how
-# things start because with the stimulus I was using
-# 9s .. 11s doesn't work, but 6s .. 10s does
-
-# TODO: this is where I left off
-# think about the next steps
-# (I think I need to do more than
-# just change windowing of individual sources
-# there is still a lot of reliance on prior state
-# that I don't like, probalby about
-# the greedy approach I'm using).
-
-# okay, we're in a pretty good place now
-# let's try looking across all scales, and then all times
-
-# example of splitting (with adaptmi)
-# not working very well at first, but....
-
-# NOTE: the thresh needs to be high enough
-# to make sure the all the zeros in non-responses scales
-# don't outweigh what's happening with the stronger scales
-
-Caw = Ca[7.5s .. 12s,1:9,:,:]
-ridgep = ridgenorm(C[0s .. 1s,1:9,:,:],10, scale=0.25,freq=0.25,thresh=0.3)
-Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=2s,
-                                    source_prior=ridgep,
-                                    freq_prior=freqprior(0,2),
-                                    max_sources=4,unmodeled_prior=0)
-rplot(Ct)
-
-# example of fusing (with adaptmi)
-Caw = Ca[0s .. 3s,:,:,:]
-ridgep = ridgenorm(C[0s .. 1s,:,:,:],10,scale=0.25,freq=0.25,thresh=0.3)
-Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=2s,
-                                    source_prior=ridgep,
-                                    freq_prior=freqprior(0,2),
-                                    max_sources=4,unmodeled_prior=0)
-rplot(Ct)
-
-# can we handle this fragility with start window
-# by have occasional restarts, where we check the probability
-# of that restart? then just reset when the restart is better
-
-# to test this, look at lp for both windows
-
-# example of entire Ca
-Caw = Ca[6.5s .. 10s]
 ridgep = ridgenorm(C[0s .. 1s,:,:,:],10,scale=0.25,freq=0.25,thresh=0.05)
-Ct,source,sourceS,lp1,tracks = track(Caw,method=:prior,tc=2s,
-                                    source_prior=ridgep,
-                                    freq_prior=freqprior(0,2),
-                                    max_sources=4,unmodeled_prior=0)
-rplot(Ct)
-
-# example of entire Ca
-Caw = Ca[19s .. 20s,:,:,:]
-ridgep = ridgenorm(C[0s .. 1s,:,:,:],10,scale=0.25,freq=0.25,thresh=0.05)
-Ct,source,sourceS,lp2,tracks = track(Caw,method=:prior,tc=2s,
+Ct,source,sourceS,lp2,tracks = track(Ca,method=:prior,tc=2s,
                                     source_prior=ridgep,
                                     freq_prior=freqprior(0,2),
                                     max_sources=4,unmodeled_prior=0)
@@ -244,78 +76,10 @@ ratios = map_windowing(Ct,length=500ms,step=250ms) do window
   ProgressMeter.next!(progress)
   strengths[1] / sum(strengths[2:end])
 end
-rplot(ratios)
 
-df = DataFrame(x = [ustrip.(times(lp1)); ustrip.(times(lp2))],
-               y = [lp1; lp2],
-               window = [fill("from6.5",length(lp1));
-                         fill("from7.5",length(lp2))])
+p = rplot(ratios)
 R"""
-ggplot($df,aes(x,y,color=window)) + geom_line() +
-  scale_color_brewer(palette='Set1')
+$p + geom_hline(yintercept=2,linetype=2)
 """
 
-# example of entire Ca
-Caw = Ca
-ridgep = ridgenorm(C[0s .. 1s,:,:,:],10,scale=0.25,freq=0.25,thresh=0.05)
-Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=2s,
-                                    source_prior=ridgep,
-                                    freq_prior=freqprior(0,2),
-                                    max_sources=4,unmodeled_prior=0)
-rplot(Ct)
-alert()
-
-# TODO: okay, see if this is good enough to get a ratio
-# of the components (maybe N1 vs. N2+N3)
-
-progress = Progress(length(windowing(Ct,length=500ms,step=250ms)))
-ratios = map_windowing(Ct,length=500ms,step=250ms) do window
-  strengths = sort(component_means(window),rev=true)
-  ProgressMeter.next!(progress)
-  strengths[1] / sum(strengths[2:end])
-end
-rplot(ratios)
-
-rplot(cs)
-
-strs = map_windowing(Ct,length=500ms,step=250ms) do window
-  component_means(window)
-end
-
-strmat = AxisArray(hcat(strs...)',Axis{:time}(times(strs)))
-rplot(strmat)
-
-# STOPPED HERE
-################################################################################
-
-# doesn't work so well now... is this because of the transitions?
-# or a longer effect on the prior?
-
-# example of entire Ca
-Caw = Ca[5.5s .. 7.5s]
-ridgep = ridgenorm(C[0s .. 1s,:,:,:],10,scale=0.25,freq=0.25,thresh=0.3)
-Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=2s,
-                                    source_prior=ridgep,
-                                    freq_prior=freqprior(0,2),
-                                    max_sources=4,unmodeled_prior=0)
-rplot(Ct)
-
-# seems to be due to the transition. does this happen with
-# just the specific, active scales?
-
-# example of entire Ca
-Caw = Ca[5.5s .. 10s,6:9,:,:]
-ridgep = ridgenorm(C[0s .. 1s,6:9,:,:],10,scale=0.25,freq=0.25,thresh=0.3)
-Ct,source,sourceS,lp,tracks = track(Caw,method=:prior,tc=2s,
-                                    source_prior=ridgep,
-                                    freq_prior=freqprior(0,2),
-                                    max_sources=4,unmodeled_prior=0)
-rplot(Ct)
-
-# okay, so yeah, it works a little better, but the bottom line seems to be that
-# there is too much dependences on older state, because just 500ms added to the
-# front really screws things up, what we need is a sharper
-# dropoff than the obvious decay process provides. I could do windowing or I
-# could change the decay formula
-
-################################################################################
+percept_lengths(AxisArray(ratios .> 2)
