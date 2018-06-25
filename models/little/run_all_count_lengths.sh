@@ -1,6 +1,6 @@
 #!/bin/sh
 S=1
-# S=2200 # start from where N=2000 leaves off
+# S=2201 # start from where N=2000 leaves off
 N=`cat projects/bistable/models/little/count_lengths_N.txt`
 # N=2000 # start with just 10 jobs for now, and see how that goes.
 K=200
