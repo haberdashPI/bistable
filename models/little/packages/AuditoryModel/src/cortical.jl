@@ -66,6 +66,8 @@ nscales(x) = length(scales(x))
 Δt(c::CParams) = Δt(c.aspect)
 Δf(c::CParams) = Δf(c.aspect)
 
+hastimes(c::Cortical) = HasTimes()
+
 const default_rates = sort([-2.^(1:0.5:5); 2.^(1:0.5:5)]).*Hz
 const default_scales = (2.^(-2:0.5:3)).*cycoct
 

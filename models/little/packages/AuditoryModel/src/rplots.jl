@@ -32,7 +32,8 @@ function raster_plot(df::DataFrame;value=:z,kwds...)
 end
 
 function raster_plot__real(df::DataFrame;value=:z,x=:x,y=:y,
-                           limits=extrema(real.(df[value])),real_suffix=:_real)
+                           limits=extrema(filter(!isinf,real.(df[value]))),
+                           real_suffix=:_real)
   value_r = Symbol(string(value,real_suffix))
   df = copy(df)
   df[value_r] = real.(df[value])
@@ -113,6 +114,20 @@ R"""
     ylab('Frequency (Hz)') + xlab('Time (s)')
 
 """
+end
+
+function rplot(v::AbstractVector)
+  if hastimes(v) != HasTimes()
+    error("Can't plot something without a time dimension.")
+  else
+    df = DataFrame(time = ustrip.(uconvert.(s,times(v))), value = Array(v))
+
+    R"""
+    library(ggplot2)
+
+    ggplot($df,aes(x=time,y=value)) + geom_line()
+    """
+  end
 end
 
 function rplot(cort::CorticalRates;rates=AuditoryModel.rates(cort))

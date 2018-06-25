@@ -1,5 +1,6 @@
-export track
+export track, topN
 using Combinatorics
+using DataStructures
 
 abstract type Tracking end
 @with_kw struct SimpleTracking <: Tracking
@@ -7,22 +8,47 @@ abstract type Tracking end
 end
 Tracking(::Val{:simple};params...) = SimpleTracking(;params...)
 
-function track(C::Coherence;method=:simple,params...)
+function track(C::Coherence;method=:simple,progressbar=true,params...)
   method = Tracking(Val{method}();params...)
-  track(C,method)
+  track(C,method,progressbar)
+end
+
+function topN(by,N,xs)
+  state = start(xs)
+  if done(xs,state)
+    error("Empty iterable.")
+  end
+  x, state = next(xs,state)
+  by_x = by(x)
+  queue = PriorityQueue{typeof(by_x),typeof(x)}()
+  enqueue!(queue,x,by_x)
+
+  while !done(xs,state)
+    x, state = next(xs,state)
+    by_x = by(x)
+    enqueue!(queue,x,by_x)
+    if length(queue) > N
+      dequeue!(queue)
+    end
+  end
+
+  result = Array{eltype(xs)}(length(queue))
+  i = 0
+  while !isempty(queue)
+    result[i += 1] = dequeue!(queue)
+  end
+  result
 end
 
 function maximumby(by,xs)
   state = start(xs)
-  # NOTE: in general shoud check for empty iterator
-  # but I know there will be at least one value in usage below
-  # and this avoids poor performance in julia 0.6 due to type stability
-  # (should be fixed in 0.7)
-  # if done(xs,state)
-  # return nothing
-  # else
+  if done(xs,state)
+    error("Empty iterable.")
+  end
+
   result, state = next(xs,state)
   maxval = by(result)
+
   while !done(xs,state)
     x, state = next(xs,state)
     val = by(x)
@@ -32,7 +58,6 @@ function maximumby(by,xs)
     end
   end
   result
-  # end
 end
 
 function bestordering(x,y)
@@ -47,7 +72,14 @@ function bestordering(x,y)
   end
 end
 
-function track(C::Coherence,params::SimpleTracking)
+function track_progress(progressbar,n,name)
+  if progressbar
+    Progress(n,desc="Source Tracking ($name): ")
+  end
+end
+
+function track(C::Coherence,params::SimpleTracking,progressbar=true,
+               progress = track_progress(progressbar,ntimes(C),"simple"))
   C = copy(C)
   time = Axis{:time}
   component = Axis{:component}
@@ -55,11 +87,13 @@ function track(C::Coherence,params::SimpleTracking)
   λ = Δt(C)/params.tc
   Ĉ = C[time(1)]
 
-  @showprogress "Tracking Sources..." for t in eachindex(times(C))
+  for t in eachindex(times(C))
     ordering = bestordering([Ĉ[component(k)] for k in 1:K],
                             [C[time(t),component(k)] for k in 1:K])
     C[time(t)] = C[time(t),component(ordering)]
     Ĉ .= (1-λ).*Ĉ .+ (λ).*C[time(t)]
+
+    next!(progress)
   end
 
   # rearrange so largest is first
@@ -67,19 +101,3 @@ function track(C::Coherence,params::SimpleTracking)
   C .= C[component(ordering)]
 end
 
-# next simplest
-# steps:
-
-# at each step take an MAP approach
-# 1. for each scale:
-#   a. eliminate components below a threshold
-#   b. group remaing observed components with their closest source
-#   c. any source not included is marked as inactive
-#   d. use the model prior to compute a score
-# 2. select the model with the highest score
-
-# NOTE: not quite gonna work, since NMF doens't work well when there's
-# noise.
-
-# function track_sources(C::NMFSeries,params::SimpleTracker)
-# end

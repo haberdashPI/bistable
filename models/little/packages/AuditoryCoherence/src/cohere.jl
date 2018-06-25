@@ -4,15 +4,17 @@ using Match
 using Parameters
 using Parameters
 using AxisArrays
+using Unitful
 
-export cohere, component, mask, ncomponents, components, component_means
+export cohere, component, mask, ncomponents, components, component_means,
+  windowing, map_windowing
 
 abstract type CoherenceMethod end
 struct CParams{M,P} <: AuditoryModel.Params
   cort::P
   ncomponents::Int
+  skipframes::Int
   window::typeof(1.0s)
-  minwindow::typeof(1.0s)
   delta::typeof(1.0s)
   method::M
 end
@@ -61,11 +63,14 @@ end
 
 ncomponents(x::CParams) = x.ncomponents
 ncomponents(x::AuditoryModel.Result) = length(components(x))
+ncomponents(x::AxisArray) = size(x,axisdim(x,Axis{:component}))
 components(x::CParams) = 1:ncomponents(x)
 components(x::AuditoryModel.Result) = components(AxisArray(x))
 components(x::AxisArray) = axisvalues(axes(x,Axis{:component}))[1]
 
-component(x::Coherence,n) = x[Axis{:component}(n)]
+component(x::Union{AxisArray,Coherence},n) = x[Axis{:component}(n)]
+
+AuditoryModel.hastimes(x::Coherence) = HasTimes()
 
 function component_means(C)
   mdims = filter(x -> x != axisdim(C,Axis{:component}),1:ndims(C))
@@ -75,35 +80,64 @@ end
 AuditoryModel.frame_length(params::CParams,x) =
   max(1,floor(Int,params.delta / Δt(x)))
 
-function CParams(x;ncomponents=1,window=1s,minwindow=window,
-                  method=:nmf,delta=10ms,
+function CParams(x;ncomponents=1,window=1s,
+                  method=:nmf,delta=10ms,skipframes=0,
                   normalize_phase=true,method_kwds...)
   method = CoherenceMethod(Val{method},method_kwds)
 
-  CParams(AuditoryModel.Params(x),ncomponents,
-          convert(typeof(1.0s),window),
-          convert(typeof(1.0s),minwindow),
-          convert(typeof(1.0s),delta),
-          method)
+  CParams(AuditoryModel.Params(x), ncomponents, skipframes,
+          convert(typeof(1.0s),window), convert(typeof(1.0s),delta), method)
 end
 
-windowing(x,dim,params::CParams) =
-  windowing(x,dim,length=windowlen(params,x),step=frame_length(params,x),
-            minlength=min_windowlen(params,x))
-windowing(x,dim;length=nothing,step=nothing,minlength=nothing) =
+windowing(x,params::CParams) =
+  windowing(x,length=params.window,step=params.delta)
+
+windowing(x,dim=timedim(x);kwds...) = windowing(hastimes(x),x,dim;kwds...)
+map_windowing(fn,x,dim=timedim(x);kwds...) =
+  map_windowing(fn,hastimes(x),x,dim;kwds...)
+function map_windowing(fn,::HasTimes,x,dim;step=nothing,kwds...)
+  xs = map(windowing(x,dim;step=step,kwds...)) do ixs
+    fn(x[Axis{:time}(ixs)])
+  end
+  AxisArray(xs,Axis{:time}(linspace(times(x)[1],times(x)[end]-step,length(xs))))
+end
+map_windowing(fn,::HasNoTimes,x,dim;kwds...) =
+  map(ixs -> fn(x[Axis{:time}(ixs)]),windowing(HasNoTimes(),x,dim;kwds...))
+
+function windowing(::HasNoTimes,x::AbstractArray,dim;
+                   length=nothing,step=nothing,minlength=length)
   (max(1,t-length+1):t for t in indices(x,dim)[minlength:step:end])
+end
+
+function windowing(::HasTimes,data::AbstractArray,dim;
+                   length=nothing,step=nothing,minlength=length)
+  helper(x::Number) = x
+  helper(x::Quantity) = max(1,floor(Int,x / Δt(data)))
+  length_,step_,minlength_ = helper.((length,step,minlength))
+
+  windowing(HasNoTimes(),data,dim,
+            length=length_,step=step_,minlength=minlength_)
+end
 
 windowlen(params::CParams,x) = round(Int,params.window/Δt(x))
-min_windowlen(params::CParams,x) = round(Int,params.minwindow / Δt(x))
 function nunits(params::CParams,x)
   mapreduce(*,axes(x)) do ax
     isa(ax,Axis{:time}) || isa(ax,Axis{:rate}) ? 1 : length(ax)
   end
 end
 
-cohere(x::AuditoryModel.Result;params...) = cohere(x,CParams(x;params...))
+cohere(x::AuditoryModel.Result;progressbar=true,params...) =
+  cohere(x,CParams(x;params...),progressbar)
 
-function cohere(x::AbstractArray{T},params::CParams) where T
+function cohere_progress(progressbar,x,params)
+  if progressbar
+    windows = windowing(x,params)
+    Progress(length(windows),desc="Temporal Coherence Analysis: ")
+  end
+end
+
+function cohere(x::AbstractArray,params::CParams,progressbar=true,
+                progress = cohere_progress(progressbar,x,params))
   @assert axisdim(x,Axis{:time}) == 1
   @assert axisdim(x,Axis{:rate}) == 2
 
@@ -113,18 +147,18 @@ function cohere(x::AbstractArray{T},params::CParams) where T
     return Coherence(x,params)
   end
 
-  windows = windowing(x,1,params)
+  windows = windowing(x,params)
 
   K = ncomponents(params)
   C_data = zeros(eltype(params.method,x),length(windows),size(x)[3:end]...,K)
   C = AxisArray(C_data,
-                Axis{:time}(times(x)[map(last,windows)]),
+                Axis{:time}((1:length(windows)) * Δt(params)),
                 axes(x)[3:end]...,
                 Axis{:component}(1:K))
 
   with_method(params.method,K) do extract
-    progress = Progress(length(windows),desc="Temporal Coherence Analysis: ")
     for (i,w_inds) in enumerate(windows)
+      skipped = w_inds[1:1+params.skipframes:end]
       components = extract(x[Axis{:time}(w_inds)])
       C[i,indices(components)...] = components
 
@@ -144,7 +178,7 @@ function mask(cr::AbstractArray{T},C::CoherenceComponent) where T
   @assert axisdim(cr,Axis{:rate}) == 2
   @assert size(cr)[3:end] == size(C)[2:end] "Dimension mismatch"
 
-  windows = enumerate(windowing(cr,1,AuditoryModel.Params(C)))
+  windows = enumerate(windowing(cr,AuditoryModel.Params(C)))
   y = zeros(AxisArray(cr))
   norm = similar(y,real(T))
   norm .= zero(real(T))

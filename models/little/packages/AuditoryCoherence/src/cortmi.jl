@@ -1,14 +1,15 @@
 export scale_weighting, freq_weighting
 
-function scale_weight(cort,σ)
+function scale_weight(cort,σ,c)
   s = log.(ustrip.(scales(cort)))
-  W = @. 1 - exp(-(s - s')^2 / (σ*log(2))^2)
+  W = @. c*(1 - exp(-(s - s')^2 / (σ*log(2))^2))
 
   W
 end
 
-function scale_weighting(cort,σ)
-  W = scale_weight(cort,σ)
+function scale_weighting(cort,σ,c)
+  W = scale_weight(cort,σ,c)
+  @show W
   function helper(x::AbstractArray{T,2}) where T
     reshape(W*vec(sum(x,2)),:,1)
   end
@@ -24,9 +25,9 @@ function scale_weighting(cort,σ)
   helper
 end
 
-function freq_weighting(spect,σ)
+function freq_weighting(spect,σ,c)
   f = log.(ustrip.(freqs(spect)))
-  W = @. 1 - exp(-(f - f')^2 / (σ*log(2))^2)
+  W = @. c*(1 - exp(-(f - f')^2 / (σ*log(2))^2))
 
   x -> W*x
 end

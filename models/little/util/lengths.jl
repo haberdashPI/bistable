@@ -24,8 +24,7 @@ function mergelengths(lens,vals,threshold)
 end
 
 function percept_lengths(counts,minlen=0.5s)
-  thresh = ustrip(minlen/Δt(counts))
-  lens,vals = findlengths(counts)
+  lens,vals = findlengths(Array(counts))
   slens = lens * ustrip(Δt(counts))
 
   mergelengths(slens,vals,ustrip(minlen))

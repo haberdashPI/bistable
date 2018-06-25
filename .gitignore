@@ -8,9 +8,7 @@
 .juliahistory
 stimuli/*.wav
 *.swp
-.ctags
-.gutctags
 tags
 .undo
-models/little/count_lengths_N.txt
-
+models/little/count_lengths/count_lengths_N.txt
+presentation/pitch
