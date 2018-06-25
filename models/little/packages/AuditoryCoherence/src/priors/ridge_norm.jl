@@ -30,14 +30,15 @@ function findcorr(dims,dist)
   corr
 end
 
-function ridgenorm(prior::Coherence,n,x2_offset=prod(size(prior,2,3));
+function ridgenorm(prior::Coherence,n::Number,
+                   x2_offset::Number=prod(size(prior,2,3));
                    thresh=1e-3,scale=nothing,
                    freq=nothing)
-  ridgenorm(prior,n,rdist(;scale=scale,freq=freq),x2_offset,thresh)
+  ridgenorm(prior,n,rdist(scale=scale,freq=freq),x2_offset,thresh=thresh)
 end
 
-function ridgenorm(prior::Coherence,n,dist,x2_offset=prod(size(prior,2,3)),
-                   thresh=1e-3)
+function ridgenorm(prior::Coherence,n::Number,dist::Function,
+                   x2_offset::Number=prod(size(prior,2,3));thresh=1e-3)
   data = reshape(mean(prior,4),size(prior,1),:)
   μ = squeeze(mean(data,1),1)
   S = squeeze(sum(data.^2,1),1) .* n./size(data,1) .+ n.*thresh.^2
@@ -109,10 +110,21 @@ struct ConstRidgePrior{T} <: Stats{T}
   x2_offset::Float64
   corr::SparseMatrixCSC{T,Int}
 end
-function ridgenorm(prior::Number,N,dims,dist,x2_offset=1)
+
+function ridgenorm(prior::Number,N::Number,dims::Tuple,dist::Function,
+                   x2_offset::Number=prod(dims))
   ConstRidgePrior{typeof(prior)}(prior,N,x2_offset,findcorr(dims,dist))
 end
+
+function ridgenorm(prior::Number,N::Number,dims::Tuple,
+                   x2_offset::Number=prod(dims);
+                   scale=nothing,freq=nothing)
+  dist = rdist(scale=scale,freq=freq)
+  ridgenorm(prior,N,dims,dist,x2_offset)
+end
+
 function Base.zero(prior::ConstRidgePrior,C::Coherence)
+  d = prod(size(C,2,3))
   RidgeMultiNormalStats(fill(zero(prior.S),d),fill(prior.S,d),
                         prior.N,prior.x2_offset,prior.corr)
 end
@@ -121,15 +133,14 @@ function Base.:(+)(a::ConstRidgePrior{T},b::RidgeMultiNormalStats{T}) where T
   d = length(b.μ)
   n = b.n + a.N
   RidgeMultiNormalStats(b.μ.*(b.n/n),a.S.+b.S,n,a.x2_offset+b.x2_offset,
-                       prior.corr)
+                        a.corr)
 end
 
 function logpdf(stats::ConstRidgePrior,x::AbstractVector)
-  μ = 0
-  σ = sqrt(stats.S / stats.N)
-  Λ = (Diagonal(σ) * stats.corr) * Diagonal(σ)
-  n = stats.N
+  d = size(stats.S,1)
+  σ = stats.S / stats.N
+  Λ = stats.corr .* σ
   nu = max(1,floor(Int,stats.N + stats.x2_offset - d + 1))
 
-  logpdf_mvt(nu,μ,Λ .* ((n + 1)/(n * nu)),x)
+  logpdf_mvt(nu,0,Λ .* ((stats.N + 1)/(stats.N * nu)),x)
 end

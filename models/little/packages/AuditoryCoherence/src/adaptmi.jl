@@ -9,9 +9,6 @@ sig(x) = 1/(1+exp(-10(x-0.5)))
   c_x::Float64 = 1.0
   τ_x::typeof(1.0s) = 300ms
 
-  c_n::Float64 = 10.0
-  τ_n::typeof(1.0s) = 1s
-
   shape_y::S = identity
 
   c_a::Float64 = 5
@@ -114,7 +111,6 @@ function adaptmi(x,params::AdaptMI,progressbar=true)
 
   shape_y = params.shape_y
   τ_x = params.τ_x; c_x = params.c_x
-  τ_n = params.τ_n; c_n = params.c_n
   τ_a = params.τ_a; c_a = params.c_a
   τ_m = params.τ_m; c_m = params.c_m; W_m = params.W_m
 
@@ -129,12 +125,9 @@ function adaptmi(x,params::AdaptMI,progressbar=true)
   a_t = copy(x_t)
   m_t = copy(x_t)
 
-  dt_n = eltype(a_t)(Δt(x) / τ_n)
   dt_x = eltype(a_t)(Δt(x) / τ_x)
   dt_a = eltype(a_t)(Δt(x) / τ_a)
   dt_m = eltype(a_t)(Δt(x) / τ_m)
-
-  @show dt_n
 
   progress = progressbar ? Progress(desc="Adapt/Inhibit: ",ntimes(y)) : nothing
   for ti in indices(times(y),1)
@@ -146,11 +139,10 @@ function adaptmi(x,params::AdaptMI,progressbar=true)
         x_t += (c_x*raw_x_t - x_t)*dt_x
 
         # apply adaptation and inhibition
-        y_t = shape_y((1 - c_a*a_t)*x_t - c_m*m_t) # / max(1/c_n,n_t)
+        y_t = shape_y((1 - c_a*a_t)*x_t - c_m*m_t)
 
         # update adaptation and inhibition
         a_t += (y_t - a_t)*dt_a
-        n_t += (y_t - n_t)*dt_n
         m_t += ($W_m(y_t) - m_t)*dt_m
       end
       y_t,m_t,a_t,x_t,n_t
