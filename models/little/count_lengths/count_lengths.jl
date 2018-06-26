@@ -44,15 +44,25 @@ function count_lengths(args::Dict)
   try
     count_lengths(args["first_index"],args["last_index"],
                   params=args["params"],
+                  git_hash=args["git_hash"],
                   sim_repeat=args["sim_repeat"],
                   stim_count=args["stim_count"],
                   datadir=args["datadir"],
                   logfile=args["logfile"],
-                  settings=args["settings"])
+                  settingsfile=args["settings"])
   catch ex
     str = sprint(io->Base.show_backtrace(io, catch_backtrace()))
     err("$ex: $str")
   end
+end
+
+function read_git_hash()
+  olddir = pwd()
+  cd(@__DIR__)
+  hash = readstring(`git rev-parse HEAD`)
+  cd(olddir)
+
+  hash
 end
 
 totime(x) = x.*ms
@@ -60,19 +70,17 @@ tofreq(x) = x.*Hz
 const data_dir = joinpath(@__DIR__,"..","..","..","data")
 function count_lengths(first_index,last_index;
                        params=joinpath(@__DIR__,"params.jld2"),
+                       git_hash="DETECT",
                        sim_repeat=2,
                        stim_count=25,
                        datadir=joinpath(data_dir,"count_lengths"),
                        logfile=joinpath(data_dir,"count_lengths","run.log"),
-                       settings=joinpath(@__DIR__,"settings.toml"),
+                       settingsfile=joinpath(@__DIR__,"settings.toml"),
                        progressbar=false)
   dir = abspath(datadir)
   isdir(dir) || mkdir(dir)
 
-  olddir = pwd()
-  cd(@__DIR__)
-  info("Source code hash: "*readstring(`git rev-parse HEAD`))
-  cd(olddir)
+  info("Source code hash: "*(git_hash == "DETECT" ? read_git_hash() : git_hash))
 
   info("Loading parameters from "*params)
   params = load(params,"params")
@@ -85,13 +93,12 @@ function count_lengths(first_index,last_index;
   indices = first_index:last_index
   info("Reading parameters for indices $indices")
 
-  settings = TOML.parsefile(settings)
-  info("Reading settings from file $settings")
+  settings = TOML.parsefile(settingsfile)
+  info("Reading settings from file $settingsfile")
 
-  @assert log10(nrow(params)) < 6
+  @assert log10(nrow(params)) < 4
 
-  info("Total threads: $(Threads.nthreads())")
-  #=Threads.@threads=# for i in repeat(indices,inner=sim_repeat)
+  for i in repeat(indices,inner=sim_repeat)
     start_time = now()
     params_dict = Dict(k => params[i,k] for k in names(params))
     len,stim = bistable_model(stim_count,params_dict,settings,
@@ -101,7 +108,7 @@ function count_lengths(first_index,last_index;
       CountLength(length=len,stimulus=stim,pindex=i,created=start_time)
     end
 
-    name = @sprintf("results_params%06d_%06d_t%02d.jld2",
+    name = @sprintf("results_params%04d_%04d_t%02d.jld2",
                     first_index,last_index,Threads.threadid())
     filename = joinpath(dir,name)
     jldopen(filename,"a+") do file
@@ -109,14 +116,8 @@ function count_lengths(first_index,last_index;
       file[@sprintf("rows%02d",count)] = rows
     end
 
-    # only update thread 1, since we can't yet coordinate output across threads
-    # in julia very easily. This gives us some sense about how quickly
-    # parameters are being processed during the simulation, since we can assume
-    # the threads working *roughly* equally.
-    if Threads.threadid() == 1
-      info("Completed a run for paramter $i.")
-      info("Saved $(length(rows)) to $name.")
-    end
+    info("Completed a run for paramter $i.")
+    info("Saved $(length(rows)) row(s) to $name.")
   end
   info("DONE")
   info("------------------------------------------------------------")

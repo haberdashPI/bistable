@@ -1,9 +1,7 @@
 include("count_lengths.jl")
 
-dir = joinpath("..","..","data","count_lengths")
+dir = joinpath("..","..","..","data","count_lengths")
 isdir(dir) || mkdir(dir)
-
-settings = TOML.parsefile("settings.toml")
 
 params = Dict(
     :delta_t    => 240ms, :delta_f   => 6,
@@ -15,7 +13,11 @@ params = Dict(
     :τ_σ        => 500ms, :c_σ       => 0.3,
 )
 
-count_lengths(1,2,stim_count=10,settings="fast_settings.toml",progressbar=true)
-alert()
-# x = ab(120ms,120ms,1,50,500Hz,6) |> normpower |> amplify(-10dB)
-# rows = count_lengths_helper(x,methods,params)
+count_lengths(
+  1,2,
+  stim_count=10,
+  git_hash="UNKNOWN",
+  settingsfile="fast_settings.toml",
+  progressbar=true
+)
+

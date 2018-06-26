@@ -13,9 +13,14 @@ parse_settings = ArgParseSettings()
     required = false
     arg_type = Int
     default = 0
+  "--git_hash"
+    help = "The git hash of the source code used to run this simulation."
+    required = false
+    arg_type = String
+    default = "DETECT"
   "--params"
     help = "The file specifying a databse of parameters to explore."
-    requried = false
+    required = false
     arg_type = String
     default = joinpath(@__DIR__,"params.jld2")
   "--sim_repeat", "-r"

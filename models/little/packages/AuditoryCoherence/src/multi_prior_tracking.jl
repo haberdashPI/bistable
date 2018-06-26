@@ -20,7 +20,7 @@ end
 
 function track(C::Coherence,params::MultiPriorTracking,progressbar=true,
                progress=track_progress(progressbar,nitr(C,params),"multi-prior"))
-  map(expand_params(params)) do params
-    track(C,params,true,progress)
+  map(expand_params(params)) do p
+    track(C,p,true,progress)
   end
 end
