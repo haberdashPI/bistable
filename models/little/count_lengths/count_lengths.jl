@@ -108,8 +108,7 @@ function count_lengths(first_index,last_index;
       CountLength(length=len,stimulus=stim,pindex=i,created=start_time)
     end
 
-    name = @sprintf("results_params%04d_%04d_t%02d.jld2",
-                    first_index,last_index,Threads.threadid())
+    name = @sprintf("results_params%04d_%04d.jld2",first_index,last_index)
     filename = joinpath(dir,name)
     jldopen(filename,"a+") do file
       count = length(keys(file))
