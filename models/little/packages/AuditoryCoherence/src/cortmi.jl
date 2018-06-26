@@ -9,7 +9,6 @@ end
 
 function scale_weighting(cort,σ,c)
   W = scale_weight(cort,σ,c)
-  @show W
   function helper(x::AbstractArray{T,2}) where T
     reshape(W*vec(sum(x,2)),:,1)
   end

@@ -25,7 +25,6 @@ possible_groupings(n_sources,n_obs) =
 
 function track(C::Coherence,params::PriorTracking,progressbar=true,
                progress = track_progress(progressbar,ntimes(C),"prior"))
-  @show params.max_sources
   time = Axis{:time}
   component = Axis{:component}
   # hopefully one day I can remove these assertions
@@ -41,7 +40,6 @@ function track(C::Coherence,params::PriorTracking,progressbar=true,
   sourceS_out = copy(C_out)
 
   window = ceil(Int,params.tc / Δt(C))
-  @show window
   lp_out = AxisArray(fill(0.0,ntimes(C)),axes(C,1))
 
   groupings = CircularDeque{Grouping}(window+1)
@@ -81,5 +79,5 @@ function track(C::Coherence,params::PriorTracking,progressbar=true,
   order = sortperm(component_means(C_out),rev=true)
   C_out .= C_out[component(order)]
 
-  C_out,source_out,sourceS_out,lp_out,track
+  C_out,lp_out,source_out,sourceS_out,track
 end

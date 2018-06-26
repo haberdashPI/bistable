@@ -1,0 +1,41 @@
+[config]
+bandonly = true
+
+[scales]
+values = [0.5,0.75,1.1,1.6,2.4,3.6,5.4,8.0]
+
+  [scales.bistable]
+  input_bound = 0.05
+  lowpass = 1.5
+  lowpass_order = 3.0
+
+[rates]
+values = [-32, -12, -5, -2, 2, 5, 12, 32]
+freq_limits = [400.0, 1200.0]
+
+[nmf]
+K = 3
+window_ms = 100
+delta_ms = 75
+skipframes = 0
+maxiter = 100
+tol = 1e-3
+
+[track]
+time_constants_s = [2]
+max_sources = 4
+unmodeled_prior = 0
+
+  [track.source_prior]
+  sds = [0.01,0.05,0.1,0.5,1.0,5.0]
+  Ns = [4]
+
+  [track.freq_prior]
+  bias = 0
+  N = 2
+
+[percept_lengths]
+window_ms = 500
+delta_ms = 250
+threshold = 2
+min_length_ms = 500

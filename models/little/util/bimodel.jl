@@ -1,67 +1,86 @@
-
 include(joinpath(@__DIR__,"biscales.jl"))
 using AuditoryCoherence
 
-function build_priors(scales,early,N)
-  p = reshape(mean(early,4),size(early,1),:)
-  base_prior = AuditoryCoherence.IsoMultiNormalStats(p,N);
+function count_streams(tracks;window=500ms,step=250ms,threshold=2,min_length=1s,
+                      progressbar=false)
+  Ct1 = tracks[1][1]
+  @assert axisdim(Ct1,Axis{:time}) == 1
+  windows = windowing(Ct1,length=window,step=step)
+  ts = linspace(times(Ct1)[1],times(Ct1)[end]-step,length(windows))
+  ratios = fill(0.0,length(windows))
 
-  map(scales) do c
-    cur_prior = deepcopy(base_prior)
-    cur_prior.S *= c;
-    cur_prior
+  for (i,ixs) in enumerate(windows)
+    best_track = map(tracks) do results
+      mean(results[2][ixs])
+    end |> indmax
+    track_window = tracks[best_track][1][Axis{:time}(ixs)]
+
+    strengths = sort(component_means(track_window),rev=true)
+    ratios[i] = strengths[1] / sum(strengths[2:end])
+
   end
+  percept_lengths(AxisArray(ratios .> threshold,Axis{:time}(ts)),min_length)
 end
 
-function bistable_model(cs,params,args;progressbar=false,
-                        intermediate_results=false)
-  csa = bistable_scales(cs,params,args,progressbar=progressbar,
+function bistable_model(stim_count,params,settings;interactive=false,
+                        progressbar=interactive,
+                        intermediate_results=interactive)
+
+  scales = cycoct.*settings["scales"]["values"]
+  stim = ab(params[:delta_t]/2,params[:delta_t]/2,1,stim_count,
+            params[:standard_f],params[:delta_f]) |>
+         normpower |> amplify(-10dB)
+  cs = cortical(audiospect(stim,progressbar=progressbar),
+                progressbar=progressbar,scales=scales,
+                bandonly=settings["config"]["bandonly"])
+
+  csat = bistable_scales(cs,params,settings,progressbar=progressbar,
                         intermediate_results=intermediate_results)
-  rates = 2.^linspace(args["rate_start"],args["rate_stop"],
-                      args["rate_N"])
-  crs = cortical(csa[:,:,args["min_Hz"] .. resoultion["max_Hz"]];
-                 rates=[-rates;rates])
+  csa = csat[1]
+  rates = Float64.(settings["rates"]["values"]).*Hz
+  start,stop = settings["rates"]["freq_limits"]
+  crs = cortical(csa[:,:,start*Hz .. stop*Hz], rates=[-rates;rates],
+                 bandonly=settings["config"]["bandonly"])
+
   C = cohere(
     crs,
-    ncomponents=args["nmf_K"],
-    window=args["nmf_window"]*ms,
+    ncomponents=settings["nmf"]["K"],
+    window=settings["nmf"]["window_ms"]*ms,
     method=:nmf,
-    delta=args["nmf_delta"]*ms,
-    maxitor=args["nmf_itr"],
-    tol=1e-3,
+    skipframes=settings["nmf"]["skipframes"],
+    delta=settings["nmf"]["delta_ms"]*ms,
+    maxiter=settings["nmf"]["maxiter"],
+    tol=settings["nmf"]["tol"],
     progressbar=progressbar
   )
 
-  freq_N = args["track_prior_freq_N"]
-  freq_bias = args["track_prior_freq_bias"]
-
-  Ct,lp,tc,ps = track(
+  tracks = track(
     C,
     method=:multi_prior,
-    max_sources = args["track_max_sources"],
-    tcs = linspace(args["track_tc_start"],args["track_tc_stop"],
-                   args["track_N"]),
-    thresh=args["track_zero_thresh"],
+    max_sources = settings["track"]["max_sources"],
+    tcs = settings["track"]["time_constants_s"].*s,
 
-    source_priors = build_priors([1.0],C[0s .. args["track_early_C"]*s],
-                                 args["track_prior_strength"])
-    freq_prior = AuditoryCoherence.BinomialCond(
-      :old => AuditoryCoherence.Beta(freq_N*(1-freq_bias),freq_N),
-      :new => AuditoryCoherence.Beta(freq_N*freq_bias,freq_N)
-    ),
+    source_priors = [ridgenorm(sd,N,size(C,2,3),scale=0.25,freq=0.25)
+                     for sd in settings["track"]["source_prior"]["sds"]
+                     for N in settings["track"]["source_prior"]["Ns"]],
+
+    freq_prior = freqprior(settings["track"]["freq_prior"]["bias"],
+                           settings["track"]["freq_prior"]["N"]),
     progressbar=progressbar
   )
 
-  lengths = count_streams(Ct,lp)
+  lengths = count_streams(
+    tracks,
+    window=settings["percept_lengths"]["window_ms"].*ms,
+    step=settings["percept_lengths"]["delta_ms"].*ms,
+    threshold=settings["percept_lengths"]["threshold"],
+    min_length=settings["percept_lengths"]["min_length_ms"].*ms,
+  )
 
   if intermediate_results
-    lengths,csa,C,Ct,lp,tc,ps
+    lengths,tracks,C,csat...
   else
     lengths
   end
 end
-
-
-
-
 

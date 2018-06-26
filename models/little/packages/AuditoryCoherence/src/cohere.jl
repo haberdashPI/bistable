@@ -140,6 +140,8 @@ function cohere(x::AbstractArray,params::CParams,progressbar=true,
                 progress = cohere_progress(progressbar,x,params))
   @assert axisdim(x,Axis{:time}) == 1
   @assert axisdim(x,Axis{:rate}) == 2
+  @assert ndims(x) == 4 # AxisArray can't handle skipped indices so we assum
+                        # the right dimensionality
 
   # if we already have components, just wrap up the values with
   # parameters (since we've already computed components)
@@ -159,7 +161,9 @@ function cohere(x::AbstractArray,params::CParams,progressbar=true,
   with_method(params.method,K) do extract
     for (i,w_inds) in enumerate(windows)
       skipped = w_inds[1:1+params.skipframes:end]
-      components = extract(x[Axis{:time}(w_inds)])
+      # axis array can't handle skipped indices, so we assume
+      # the right dimensionality
+      components = extract(x.val.data[skipped,:,:,:])
       C[i,indices(components)...] = components
 
       next!(progress)
@@ -191,6 +195,5 @@ function mask(cr::AbstractArray{T},C::CoherenceComponent) where T
   y ./= maximum(abs,y)
   y .= sqrt.(abs.(cr) .* y) .* exp.(angle.(cr).*im)
 
-  @show nfreqs(y)
   cortical(y,AuditoryModel.Params(cr))
 end

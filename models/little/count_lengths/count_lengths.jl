@@ -5,6 +5,7 @@ using DataStructures
 using Feather
 using JLD2
 using Parameters
+using TOML
 
 push!(LOAD_PATH,joinpath(@__DIR__,"..","packages"))
 using AuditoryModel
@@ -13,15 +14,15 @@ using AuditoryCoherence
 include(joinpath(@__DIR__,"..","util","stim.jl"))
 include(joinpath(@__DIR__,"..","util","peaks.jl"))
 include(joinpath(@__DIR__,"..","util","lengths.jl"))
+include(joinpath(@__DIR__,"..","util","bimodel.jl"))
 include(joinpath(@__DIR__,"..","util","biscales.jl"))
 include(joinpath(@__DIR__,"..","util","threshold.jl"))
 
 @with_kw struct CountLength
-  length::Float64 = 0.0
-  stimulus::Int = 0
-  error_code::Int = 0
+  length::Float64
+  stimulus::Int
   pindex::Int
-  created::DateTime = DateTime()
+  created::DateTime
 end
 
 function for_count_lengths(fn,dir)
@@ -36,67 +37,69 @@ function for_count_lengths(fn,dir)
   end
 end
 
-const RESPONSE_OVERFLOW=1
-function count_lengths_helper(x,param_index,start_time,params,resolution)
+function count_lengths(args::Dict)
+  info("Results will be saved to $(args["datadir"]).")
+  info("All logging data will be saved to $(args["logfile"]).")
+  Logging.configure(output=open(args["logfile"], "a"),level=INFO)
   try
-    len,stim = bistable_model(x,params,args) |> percept_lengths
-    map(zip(len,stim)) do len_stim
-      len,stim = len_stim
-      CountLength(length=len,stimulus=stim,pindex=param_index,created=start_time)
-    end
-    vcat(values(vals)...)
-  catch e
-    if e isa ResponseOverflow
-      [CountLength(error_code=RESPONSE_OVERFLOW,created=start_time,
-                   pindex=param_index)]
-    else
-      rethrow(e)
-    end
+    count_lengths(args["first_index"],args["last_index"],
+                  params=args["params"],
+                  sim_repeat=args["sim_repeat"],
+                  stim_count=args["stim_count"],
+                  datadir=args["datadir"],
+                  logfile=args["logfile"],
+                  settings=args["settings"])
+  catch ex
+    str = sprint(io->Base.show_backtrace(io, catch_backtrace()))
+    err("$ex: $str")
   end
 end
 
 totime(x) = x.*ms
 tofreq(x) = x.*Hz
-function count_lengths_runner(args)
-  dir = abspath(args["datadir"])
+const data_dir = joinpath(@__DIR__,"..","..","..","data")
+function count_lengths(first_index,last_index;
+                       params=joinpath(@__DIR__,"params.jld2"),
+                       sim_repeat=2,
+                       stim_count=25,
+                       datadir=joinpath(data_dir,"count_lengths"),
+                       logfile=joinpath(data_dir,"count_lengths","run.log"),
+                       settings=joinpath(@__DIR__,"settings.toml"),
+                       progressbar=false)
+  dir = abspath(datadir)
   isdir(dir) || mkdir(dir)
 
-  info("Loading parameters from "*args["params"])
-  params = Feather.read(args["params"],transforms = Dict(
-    "τ_σ" => totime,
-    "τ_m" => totime,
-    "τ_a" => totime,
-    "τ_x" => totime,
-    "τ_n" => totime
-    "condition" => x -> Symbol.(x)
-  ))
-  first_index = args["first_index"]
+  olddir = pwd()
+  cd(@__DIR__)
+  info("Source code hash: "*readstring(`git rev-parse HEAD`))
+  cd(olddir)
+
+  info("Loading parameters from "*params)
+  params = load(params,"params")
+  first_index = first_index
   if first_index > nrow(params)
     err("First parameter index ($first_index) is outside the range of",
         " parameters.")
   end
-  last_index = clamp(args["last_index"],first_index,nrow(params))
+  last_index = clamp(last_index,first_index,nrow(params))
   indices = first_index:last_index
-  info("Reading parameters for indices $(indices)")
+  info("Reading parameters for indices $indices")
 
-  scales = cycoct.*2.0.^linspace(args["scale_start"],args["scale_stop"],
-                                 args["scale_N"])
-
-  stim = ab(120ms,120ms,1,args["stim_count"],500Hz,6) |>
-    normpower |> amplify(-10dB)
-  stim_resp = cortical(audiospect(stim,progressbar=false),progressbar=false,
-                       scales=scales)
-  info("Generated stimulus with cortical scales from 2^$(args["scale_start"])",
-       " to 2^$(args["scale_stop"]) in $(args["scale_N"]) steps.")
+  settings = TOML.parsefile(settings)
+  info("Reading settings from file $settings")
 
   @assert log10(nrow(params)) < 6
 
   info("Total threads: $(Threads.nthreads())")
-  sim_repeat = args["repeat"]
   #=Threads.@threads=# for i in repeat(indices,inner=sim_repeat)
-    rows = count_lengths_helper(stim_resp,methods,i,now(),
-                                Dict(k => params[i,k] for k in names(params)),
-                                args)
+    start_time = now()
+    params_dict = Dict(k => params[i,k] for k in names(params))
+    len,stim = bistable_model(stim_count,params_dict,settings,
+                              progressbar=progressbar)
+    rows = map(zip(len,stim)) do len_stim
+      len,stim = len_stim
+      CountLength(length=len,stimulus=stim,pindex=i,created=start_time)
+    end
 
     name = @sprintf("results_params%06d_%06d_t%02d.jld2",
                     first_index,last_index,Threads.threadid())
@@ -106,6 +109,10 @@ function count_lengths_runner(args)
       file[@sprintf("rows%02d",count)] = rows
     end
 
+    # only update thread 1, since we can't yet coordinate output across threads
+    # in julia very easily. This gives us some sense about how quickly
+    # parameters are being processed during the simulation, since we can assume
+    # the threads working *roughly* equally.
     if Threads.threadid() == 1
       info("Completed a run for paramter $i.")
       info("Saved $(length(rows)) to $name.")
@@ -115,14 +122,3 @@ function count_lengths_runner(args)
   info("------------------------------------------------------------")
 end
 
-function count_lengths(args)
-  info("Results will be saved to $(args["datadir"]).")
-  info("All logging data will be saved to $(args["logfile"]).")
-  Logging.configure(output=open(args["logfile"], "a"),level=INFO)
-  try
-    count_lengths_runner(args)
-  catch ex
-    str = sprint(io->Base.show_backtrace(io, catch_backtrace()))
-    err("$ex: $str")
-  end
-end
