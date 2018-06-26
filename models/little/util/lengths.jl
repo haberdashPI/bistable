@@ -3,7 +3,6 @@ function findlengths(x)
   filter(!iszero,diff(indices)), x[indices[1:end-1]]
 end
 
-
 mergelengths(threshold) = lens -> mergelengths(lens,threshold)
 function mergelengths(lens,vals,threshold)
   mergedlen = similar(lens)

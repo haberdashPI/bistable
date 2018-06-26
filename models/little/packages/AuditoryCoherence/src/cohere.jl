@@ -195,6 +195,5 @@ function mask(cr::AbstractArray{T},C::CoherenceComponent) where T
   y ./= maximum(abs,y)
   y .= sqrt.(abs.(cr) .* y) .* exp.(angle.(cr).*im)
 
-  @show nfreqs(y)
   cortical(y,AuditoryModel.Params(cr))
 end
