@@ -93,15 +93,15 @@ end
 function logpdf(stats::RidgeMultiNormalStats,x::AbstractVector)
   d = length(stats.μ)
   σ = sqrt.(stats.S ./ stats.n)
-  Λ = (Diagonal(σ) * stats.corr) * Diagonal(σ)
   nu = stats.n + stats.x2_offset - d + 1
+  Λ = ((Diagonal(σ) * stats.corr) * Diagonal(σ)) .* ((stats.n + 1)/(stats.n * nu))
 
   if nu < 1
     error("Insufficient data for predictive distribution, ",
           "try collecting more data or increasing x2_offset")
   end
 
-  logpdf_mvt(nu,stats.μ,Λ .* ((stats.n + 1)/(stats.n * nu)),x)
+  logpdf_mvt(nu,stats.μ,Λ,x)
 end
 
 struct ConstRidgePrior{T} <: Stats{T}
@@ -125,8 +125,7 @@ end
 
 function Base.zero(prior::ConstRidgePrior,C::Coherence)
   d = prod(size(C,2,3))
-  RidgeMultiNormalStats(fill(zero(prior.S),d),fill(prior.S,d),
-                        prior.N,prior.x2_offset,prior.corr)
+  RidgeMultiNormalStats(fill(zero(prior.S),d),fill(zero(prior.S),d),0.0,0.0,prior.corr)
 end
 
 function Base.:(+)(a::ConstRidgePrior{T},b::RidgeMultiNormalStats{T}) where T
@@ -137,7 +136,7 @@ function Base.:(+)(a::ConstRidgePrior{T},b::RidgeMultiNormalStats{T}) where T
 end
 
 function logpdf(stats::ConstRidgePrior,x::AbstractVector)
-  d = size(stats.S,1)
+  d = length(x)
   σ = stats.S / stats.N
   Λ = stats.corr .* σ
   nu = max(1,floor(Int,stats.N + stats.x2_offset - d + 1))

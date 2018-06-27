@@ -13,8 +13,10 @@ params = Dict(
     :τ_σ        => 500ms, :c_σ       => 0.3,
 )
 
-# settings = TOML.parsefile("settings_2018-06-26.toml")
-# result = bistable_model(80,params, settings, interactive=true)
+settings = TOML.parsefile("settings_2018-06-26.toml")
+# settings = TOML.parsefile("fast_settings.toml")
+result1 = bistable_model(40,params, settings, interactive=true)
+
 
 Logging.configure(level=INFO)
 count_lengths(

@@ -1,83 +1,106 @@
 export isonorm
 
-mutable struct IsoMultiNormalStats{T} <: Stats{T}
+mutable struct IsoMultiNormStats{T} <: Stats{T}
   μ::Vector{T}
   S::Vector{T}
-  n1::Float64
-  n2::Float64
-  α::Float64
+  n::Float64
+  x2_offset::Float64
 end
-Base.std(x::IsoMultiNormalStats) = x.n2 > 0 ? x.S ./ x.n2 : Inf
-Base.zero(x::IsoMultiNormalStats{T},C::Coherence) where T =
-  IsoMultiNormalStats(zero(x.μ),zero(x.S),0.0,0.0,0.0)
+Base.std(x::IsoMultiNormStats) = x.n > 0 ? x.S ./ x.n : Inf
+Base.zero(x::IsoMultiNormStats{T},C::Coherence) where T =
+  IsoMultiNormStats(zero(x.μ),zero(x.S),0.0,0.0)
 
-function isonorm(prior::Coherence,n,α=1,thresh=1e-3)
+function isonorm(prior::Coherence,n::Number,
+                   x2_offset::Number=prod(size(prior,2,3));thresh=1e-3)
   data = reshape(mean(prior,4),size(prior,1),:)
   μ = squeeze(mean(data,1),1)
-  S = squeeze(sum(data.^2,1),1) .* n./size(data,1) .+ thresh
-  IsoMultiNormalStats{eltype(data)}(μ,S,n,n,α)
+  S = squeeze(sum(data.^2,1),1) .* n./size(data,1) .+ n.*thresh.^2
+  IsoMultiNormStats{eltype(data)}(μ,S,n,x2_offset)
 end
 
-function update!(stats::IsoMultiNormalStats{T},x::AbstractVector{T},w=1.0) where T
-  δ = x .- stats.μ
-  stats.n1 += w
-  stats.μ .+= δ * (w/stats.n1)
+# https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Online_algorithm
+function update!(stats::IsoMultiNormStats{T},x::AbstractVector{T},
+                 w=1.0) where T
+  stats.n += w
 
-  δ2 = x .- stats.μ
-  stats.n2 += w^2
-  stats.S .+= δ.*δ2 * (w^2/stats.n2)
+  μ₀ = copy(stats.μ)
+  stats.μ .+= (x .- stats.μ).*(w ./ stats.n)
+  stats.S .+= (x .- stats.μ).*(x .- μ₀).*w
 
   stats
 end
 
-function mult!(stats::IsoMultiNormalStats,c)
-  stats.n1 *= c
-  stats.n2 *= c^2
+function downdate!(stats::IsoMultiNormStats{T},x::AbstractVector{T},
+                   w=1.0) where T
+  if w ≈ stats.n
+    stats.μ .= 0
+    stats.S .= 0
+    stats.n = 0
+  elseif w < stats.n
+    μₙ = copy(stats.μ)
+    stats.μ .= (stats.μ .- x.*(w ./ stats.n)) ./ (1 .- (w ./ stats.n))
+    stats.S .-= (x .- stats.μ).*(x .- μₙ).*w
+
+    stats.n -= w
+  else
+    error("Sum of weights would become negative. This happens when trying ",
+          "to remove more samples then were added using `update!`.")
+  end
 
   stats
 end
 
-function Base.:(+)(a::IsoMultiNormalStats{T},b::IsoMultiNormalStats{T}) where T
-  n1 = a.n1 + b.n1
-  n2 = a.n2 + b.n2
-  IsoMultiNormalStats(a.μ.*(a.n1./n1) .+ b.μ.*(b.n1./n1), a.S.+b.S,
-                      n1,n2,a.α+b.α)
+function mult!(stats::IsoMultiNormStats,c)
+  stats.n *= c
+
+  stats
 end
 
-function logpdf(stats::IsoMultiNormalStats,x::AbstractVector)
-  μ = stats.μ
-  α = stats.n1/2 + stats.α
-  β = 0.5stats.S
-  σ = β./α .* ((stats.n1 + 1) ./ stats.n1)
+function Base.:(+)(a::IsoMultiNormStats{T},b::IsoMultiNormStats{T}) where T
+  n = a.n + b.n
+  IsoMultiNormStats(a.μ.*(a.n./n) .+ b.μ.*(b.n./n), a.S.+b.S,
+                        n,a.x2_offset+b.x2_offset)
+end
 
-  sum(logpdf(TDist(2α),(x .- μ)./σ))
+function logpdf(stats::IsoMultiNormStats,x::AbstractVector)
+  d = length(x)
+  σ = stats.S ./ stats.n
+  nu = stats.n + stats.x2_offset - d + 1
+  Λ = Diagonal(σ .* ((stats.n + 1)/(stats.n * nu)))
+
+  if nu < 1
+    error("Insufficient data for predictive distribution, ",
+          "try collecting more data or increasing x2_offset")
+  end
+
+  logpdf_mvt(nu,stats.μ,Λ,x)
 end
 
 struct ConstIsoPrior{T} <: Stats{T}
   S::T
   N::Float64
-  α::Float64
-end
-function isonorm(prior::Number,N,α=1,thresh=1e-3)
-  ConstIsoPrior{typeof(prior)}(prior.+1e-3,N,α)
-end
-function Base.zero(prior::ConstIsoPrior,C::Coherence)
-  d = prod(size(C,2,3))
-  IsoMultiNormalStats(fill(zero(prior.S),d),fill(prior.S,d),
-                      prior.N,prior.N,prior.α)
+  x2_offset::Float64
 end
 
-function Base.:(+)(a::ConstIsoPrior{T},b::IsoMultiNormalStats{T}) where T
+function isonorm(prior::Number,N::Number,dims,x2_offset::Number=prod(dims))
+  ConstIsoPrior{typeof(prior)}(prior,N,x2_offset)
+end
+
+function Base.zero(prior::ConstIsoPrior,C::Coherence)
+  d = prod(size(C,2,3))
+  IsoMultiNormStats(fill(zero(prior.S),d),fill(zero(prior.S),d),0.0,0.0)
+end
+
+function Base.:(+)(a::ConstIsoPrior{T},b::IsoMultiNormStats{T}) where T
   d = length(b.μ)
-  n1 = b.n1 + a.N
-  n2 = b.n2 + a.N
-  IsoMultiNormalStats(b.μ.*(b.n1/n1),a.S.+b.S,n1,n2,a.α+b.α)
+  n = b.n + a.N
+  IsoMultiNormStats(b.μ.*(b.n/n),a.S.+b.S,n,a.x2_offset+b.x2_offset)
 end
 
 function logpdf(stats::ConstIsoPrior,x::AbstractVector)
-  α = stats.N/2 + stats.α
-  β = 0.5stats.S
-  σ = β./α .* ((stats.N + 1) ./ stats.N)
+  d = length(x)
+  σ = stats.S / stats.N
+  nu = max(1,floor(Int,stats.N + stats.x2_offset - d + 1))
 
-  sum(logpdf.(TDist(2α),x./σ))
+  logpdf_mvt(nu,0,I*(σ * ((stats.N + 1)/(stats.N * nu))),x)
 end

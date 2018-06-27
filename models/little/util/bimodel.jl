@@ -68,7 +68,7 @@ function bistable_model(stim_count,params,settings;interactive=false,
     max_sources = settings["track"]["max_sources"],
     tcs = settings["track"]["time_constants_s"].*s,
 
-    source_priors = [ridgenorm(sd,N,size(C,2,3),scale=0.25,freq=0.25)
+    source_priors = [isonorm(sd,N,size(C,2,3))
                      for sd in settings["track"]["source_prior"]["sds"]
                      for N in settings["track"]["source_prior"]["Ns"]],
 

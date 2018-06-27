@@ -61,29 +61,19 @@ function logpdf(stats::MultiNormalStats,x::AbstractVector)
 end
 pdf(stats::MultiNormalStats,x::AbstractVector) = exp(logpdf(stats,x))
 
-logabsdet(x::AbstractArray) = Base.logabsdet(x)
-# this method isn't yet implemented in base for sparse matrices, so we just use
-# a naive implementation and do not return the sign, since I don't need it for
-# this application
-logabsdet(x::AbstractSparseMatrix) = sum(log ∘ abs,diag(x)), nothing
+logabsdet_helper(x::AbstractArray,n) = logabsdet(x)[1]
+logabsdet_helper(x::Diagonal,n) = logdet(x)
+# logabsdet_helper(x::AbstractSparseMatrix,n) = sum(log ∘ abs,diag(lufact(x)[:U]))
+logabsdet_helper(x::AbstractSparseMatrix,n) = sum(log ∘ abs,diag(x))
+logabsdet_helper(x::UniformScaling,n) = n*log(abs(x.λ))
 
 function logpdf_mvt(v,μ,Σ,x)
-  C = NaN
-  diff = NaN*ones(μ)
-  try
-    d = length(μ)
-    C = (lgamma((v+d)/2)) - (lgamma(v/2)+(d/2)log(v*π)) - (0.5logabsdet(Σ)[1])
-    # @show diag(Σ)
-    diff = abs.(μ.-x)
-    # @show diff'/Σ
+  d = length(x)
+  C = (lgamma((v+d)/2)) - (lgamma(v/2)+(d/2)log(v*π)) -
+    (0.5 * (logabsdet_helper(Σ,d)))
+  diff = abs.(μ.-x)
 
-    C + log(1+1/v*(diff'/Σ)*diff)*-(v+d)/2
-  catch e
-    @show diff
-    @show diff'/Σ
-    @show(1+1/v*(diff'/Σ)*diff)
-    rethrow(e)
-  end
+  C + log(1+1/v*(diff'/Σ)*diff)*-(v+d)/2
 end
 
 function logpdf_thresh(stats::MultiNormalStats,x::AbstractVector,thresh)
