@@ -2,7 +2,7 @@ include(joinpath(@__DIR__,"biscales.jl"))
 using AuditoryCoherence
 
 function count_streams(tracks;window=500ms,step=250ms,threshold=2,min_length=1s,
-                      progressbar=false)
+                       progressbar=false,intermediate_results=false)
   Ct1 = tracks[1][1]
   @assert axisdim(Ct1,Axis{:time}) == 1
   windows = windowing(Ct1,length=window,step=step)
@@ -19,7 +19,14 @@ function count_streams(tracks;window=500ms,step=250ms,threshold=2,min_length=1s,
     ratios[i] = strengths[1] / sum(strengths[2:end])
 
   end
-  percept_lengths(AxisArray(ratios .> threshold,Axis{:time}(ts)),min_length)
+
+  counts = percept_lengths(AxisArray(ratios .> threshold,Axis{:time}(ts)),
+                           min_length)
+  if intermediate_results
+    counts,AxisArray(ratios,Axis{:time}(ts))
+  else
+    (counts,)
+  end
 end
 
 function bistable_model(stim_count,params,settings;interactive=false,
@@ -69,18 +76,19 @@ function bistable_model(stim_count,params,settings;interactive=false,
     progressbar=progressbar
   )
 
-  lengths = count_streams(
+  results = count_streams(
     tracks,
     window=settings["percept_lengths"]["window_ms"].*ms,
     step=settings["percept_lengths"]["delta_ms"].*ms,
     threshold=settings["percept_lengths"]["threshold"],
     min_length=settings["percept_lengths"]["min_length_ms"].*ms,
+    intermediate_results=intermediate_results,
   )
 
   if intermediate_results
-    lengths,tracks,C,csat...
+    results...,tracks,C,csat...
   else
-    lengths
+    results[1]
   end
 end
 
