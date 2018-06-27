@@ -13,7 +13,7 @@ cd
 # this just echos the commands, once you verify that it's right, pipe it to sh
 for i in `seq $S $K $N`; do
   echo "sbatch projects/bistable/models/little/count_lengths/run_count_lengths.sh $i \
-    $((i+K-1)) -r 10 -c 50 --git_hash $GIT_HASH \
+    $((i+K-1)) -r 5 -c 100 --git_hash $GIT_HASH \
     --params projects/bistable/model/little/count_lengths/params_2018-06-26.jld2 \
     --settings projects/bistable/model/little/count_lengths/settings_2018-06-26.toml \
     -d /scratch/groups/melhila1/dlittle/bistable_threshold_001/data/ \

@@ -3,14 +3,10 @@ bandonly = true
 
 [scales]
 values = [0.5,0.75,1.1,1.6,2.4,3.6,5.4,8.0]
-
-  [scales.bistable]
-  input_bound = 0.05
-  lowpass = 1.5
-  lowpass_order = 3
+bistable = {input_bound = 0.5, lowpass = 1.5, lowpass_order = 3}
 
 [rates]
-values = [-32, -12, -5, -2, 2, 5, 12, 32]
+values = [-32, -16, -8, -4, -2, 2, 4, 8 , 16, 32]
 freq_limits = [400.0, 1200.0]
 
 [nmf]
