@@ -47,7 +47,8 @@ function bistable_model(stim_count,params,settings;interactive=false,
   rates = Float64.(settings["rates"]["values"]).*Hz
   start,stop = settings["rates"]["freq_limits"]
   crs = cortical(csa[:,:,start*Hz .. stop*Hz], rates=[-rates;rates],
-                 bandonly=settings["config"]["bandonly"])
+                 bandonly=settings["config"]["bandonly"],
+                 progressbar=progressbar)
 
   C = cohere(
     crs,
