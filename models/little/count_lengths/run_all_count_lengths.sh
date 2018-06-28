@@ -1,8 +1,8 @@
 #!/bin/sh
-S=1
-# S=101 # start from where N=100 leaves off
-N=100
-# N=`cat projects/bistable/models/little/count_lengths/count_lengths_N.txt`
+# S=1
+S=101 # start from where N=100 leaves off
+# N=100
+N=`cat projects/bistable/models/little/count_lengths/count_lengths_N.txt`
 # N=2000 # start with just 10 jobs for now, and see how that goes.
 K=10
 

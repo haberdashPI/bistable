@@ -17,6 +17,6 @@ for_count_lengths(dir) do rows
 end
 df = vcat(all_rows...)
 
-Feather.write(joinpath("..","..","data","count_lengths",
+Feather.write(joinpath("..","..","..","data","count_lengths",
                        "scale_percept_lengths_$(Date(now())).feather"),df)
 
