@@ -1,6 +1,8 @@
 using FileIO
 using DataFrames
 using JLD2
+using Feather
+using CategoricalArrays
 using Unitful
 drop = Base.Iterators.drop
 
@@ -42,6 +44,18 @@ open(joinpath(@__DIR__,"count_lengths_N.txt"),"w") do f
 end
 
 filename = joinpath(@__DIR__,"params_$(Date(now())).jld2")
-
 save(filename,"params",df)
+
+filename = joinpath(@__DIR__,"params_$(Date(now())).feather")
+
+Feather.write(filename,df,transforms = Dict{String,Function}(
+  "τ_x" => x -> in_ms.(x),
+  "τ_σ" => x -> in_ms.(x),
+  "τ_a" => x -> in_ms.(x),
+  "τ_m" => x -> in_ms.(x),
+  "delta_t" => x -> in_ms.(x),
+  "standard_f" => x ->in_Hz.(x),
+  "condition" => x -> string.(x)
+ ))
+
 
