@@ -20,7 +20,7 @@ function count_streams(tracks;window=500ms,step=250ms,threshold=2,min_length=1s,
 
   end
 
-  counts = percept_lengths(AxisArray(ratios .> threshold,Axis{:time}(ts)),
+  counts = percept_lengths(AxisArray(ratios .< threshold,Axis{:time}(ts)),
                            min_length)
   if intermediate_results
     counts,AxisArray(ratios,Axis{:time}(ts))

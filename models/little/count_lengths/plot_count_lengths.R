@@ -8,7 +8,7 @@ dir = file.path("..","..","..","plots",paste("scale_percept_lengths_",
                                              Sys.Date(),sep="_"))
 dir.create(dir,showWarnings=F)
 df = read_feather(file.path("..","..","..","data","count_lengths",
-                            "scale_percept_lengths_2018-06-28.feather"))
+                            "scale_percept_lengths_2018-06-29.feather"))
 params = read_feather(file.path("..","..","..","data","count_lengths",
                                 "scale_percept_params_2018-06-28.feather"))
 params$pindex = 1:nrow(params)
