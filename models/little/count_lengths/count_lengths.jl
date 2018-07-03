@@ -15,7 +15,7 @@ include(joinpath(@__DIR__,"..","util","stim.jl"))
 include(joinpath(@__DIR__,"..","util","peaks.jl"))
 include(joinpath(@__DIR__,"..","util","lengths.jl"))
 include(joinpath(@__DIR__,"..","util","bimodel.jl"))
-include(joinpath(@__DIR__,"..","util","biscales.jl"))
+include(joinpath(@__DIR__,"..","util","biapply.jl"))
 include(joinpath(@__DIR__,"..","util","threshold.jl"))
 
 @with_kw struct CountLength

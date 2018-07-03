@@ -1,4 +1,10 @@
-export scale_weighting, freq_weighting
+export scale_weighting, freq_weighting, weighting
+
+function weighting(x,condition,σ,c)
+  condition == :scales ? scale_weighting(x,σ,c) :
+  condition == :freqs ? freq_weighting(x,σ,c) :
+  error("No condition named $condition.")
+end
 
 function scale_weight(cort,σ,c)
   s = log.(ustrip.(scales(cort)))

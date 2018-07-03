@@ -9,7 +9,7 @@ using RCall
 include("util/stim.jl")
 include("util/peaks.jl")
 include("util/lengths.jl")
-include("util/biscales.jl")
+include("util/biapply.jl")
 
 R"library(ggplot2)"
 R"library(cowplot)"
