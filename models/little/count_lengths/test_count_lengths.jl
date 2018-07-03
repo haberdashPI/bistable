@@ -3,16 +3,6 @@ include("count_lengths.jl")
 dir = joinpath("..","..","..","data","count_lengths")
 isdir(dir) || mkdir(dir)
 
-# TODO: test out bistable of frequencies in the pipeline
-
-# TODO: my bound function was a little wacky, I should
-# probably adjust parameters mnaully using the new implementation
-# and then re-run the bistable scales (along with the frequncy
-# version).
-
-# NEXT STEP: evaluate bistable scale bound and
-# get it right again. (just run the bistable part).
-
 params = Dict(
     :delta_t    => 240ms, :delta_f   => 6,
     :standard_f => 500Hz, :condition => :scales,
