@@ -78,6 +78,7 @@ summary = summary %>%
   gather(measure,value,N:match)
 
 ################################################################################
+# percepts per simulation:
 
 # N looks pretty similar across noise levels and
 # delta_f
@@ -226,10 +227,9 @@ ggplot(selected,aes(x=length,fill=factor(stimulus))) + geom_histogram(bins=10) +
 
 # TASKS:
 
-# 1. email mounya graphs
+# 1. test/run more specific scale bistability
 # 2. test/run frequency-level bistability
 # 3. test/run multi-track bistability
-# 4. test/run more specific scale bistability?
 
 # Questions:
 
