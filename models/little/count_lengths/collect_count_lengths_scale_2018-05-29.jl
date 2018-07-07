@@ -4,7 +4,7 @@ using DataFrames
 using Feather
 
 include("count_lengths.jl")
-params = load("params.jld2","params")
+params = load("params_2018-07-03.jld2","params")
 
 # dir = joinpath("..","..","..","data","count_lengths")
 dir = joinpath("work","dlittle","bistable_threshold_001","data")
