@@ -26,9 +26,11 @@ max_sources = 4
 unmodeled_prior = 0
 source_prior = {sds = [0.01,0.05,0.1,0.5,1.0,5.0], Ns = [4]}
 freq_prior = {bias = 0, N = 2}
+bistable = {input_bound = [0.0, 1.0], lowpass = 1.5, lowpass_order = 3}
+buildup_time_s = 2.0
 
 [percept_lengths]
 window_ms = 500
 delta_ms = 250
-threshold = 2
-min_length_ms = 500
+threshold = 2.1
+min_length_ms = 750

@@ -24,9 +24,7 @@ function count_streams(tracks;window=500ms,step=250ms,threshold=2,min_length=1s,
     track_window = tracks[best_track][1][Axis{:time}(ixs)]
 
     strengths = sort(component_means(track_window),rev=true)
-    min_denom = 0.05maximum(strengths)
-    ratios[i] = strengths[1] / max(sum(strengths[2:end]),min_denom)
-
+    ratios[i] = strengths[1] / sum(strengths[2:end])
   end
 
   counts = percept_lengths(AxisArray(ratios .< threshold,Axis{:time}(ts)),
@@ -49,13 +47,14 @@ function findweights(condition,x)
     AxisArray(meanabs(x,axisdim(x,Axis{:freq})) .*
               ustrip.(uconvert.(cycoct,AuditoryModel.scales(x)))',
               axes(x,Axis{:time}), axes(x,Axis{:scale}))
-  elseif condition == :freqs
+  elseif condition ∈ [:freqs,:track]
     x
   end
 end
 
 function apply_bistable(x,condition,params,settings;
-                        interactive=false,intermediate_results=interactive,
+                        interactive=false,
+                        intermediate_results=interactive,
                         progressbar=interactive)
   if params[:condition] != condition
     return (x,)
@@ -77,8 +76,8 @@ function apply_bistable(x,condition,params,settings;
 
   wn = drift(weights;noise_params...,progressbar=progressbar)
   wna,a,m = adaptmi(wn;W_m=weighting(x,condition,params[:W_m_σ],params[:W_m_c]),
-                     shape_y = x -> max(0,x),progressbar=progressbar,
-                     adapt_params...)
+                    shape_y = x -> max(0,x),progressbar=progressbar,
+                    adapt_params...)
 
   freq = settings[string(condition)]["bistable"]["lowpass"]
   order = settings[string(condition)]["bistable"]["lowpass_order"]

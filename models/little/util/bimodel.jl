@@ -4,6 +4,7 @@ using AuditoryCoherence
 function bistable_model(stim_count,params,settings;interactive=false,
                         progressbar=interactive,
                         intermediate_results=interactive)
+  @assert params[:condition] ∈ [:freqs,:scales,:track,:none]
 
   stim = ab(params[:delta_t]/2,params[:delta_t]/2,1,stim_count,
             params[:standard_f],params[:delta_f]) |>
@@ -55,8 +56,27 @@ function bistable_model(stim_count,params,settings;interactive=false,
     progressbar=progressbar
   )
 
+  if params[:condition] == :track
+    track_lp = AxisArray(hcat((x[2] for x in tracks)...),
+                         Axis{:time}(times(C)),
+                         Axis{:prior}(settings["track"]["source_prior"]["sds"]))
+    after_buildup = settings["track"]["buildup_time_s"]*s .. last(times(C))
+    track_lp .-= minimum(track_lp[after_buildup])
+    track_lp ./= maximum(track_lp[after_buildup])
+
+    track_lp_at = apply_bistable(track_lp,:track,params,settings,
+                                 progressbar=progressbar,
+                                 intermediate_results=intermediate_results)
+    tracksa = collect(zip((x[1] for x in tracks),
+                          (view(track_lp_at[1],:,i)
+                           for i in 1:size(track_lp_at[1],2))))
+  else
+    tracksa = tracks
+    track_lp_at = (nothing,)
+  end
+
   results = count_streams(
-    tracks,
+    tracksa,
     window=settings["percept_lengths"]["window_ms"].*ms,
     step=settings["percept_lengths"]["delta_ms"].*ms,
     threshold=settings["percept_lengths"]["threshold"],
@@ -65,7 +85,7 @@ function bistable_model(stim_count,params,settings;interactive=false,
   )
 
   if intermediate_results
-    results...,tracks,C,csat...,spectat...
+    results...,tracksa,track_lp_at[2:end]...,C,csat...,spectat...
   else
     results[1]
   end

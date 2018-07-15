@@ -26,8 +26,8 @@ end
 
 df = vcat(
 byparams(Dict(
-  :delta_t    => [240ms],                          :delta_f     => [2,6,12],
-  :standard_f => [500Hz],                          :condition   => [:scales],
+  :delta_t    => [240ms],                          :delta_f     => [0.5,6,12],
+  :condition   => [:freqs,:scales,:track],         :standard_f  => [500Hz],
   :c_x        => [3.0],                            :τ_x         => [500ms],
   :c_σ        => linspace(0,1,6),                  :τ_σ         => [500ms],
   :c_a        => [0.0;10.^linspace(0.75,1.75,5)],  :τ_a         => [3s],
@@ -35,14 +35,15 @@ byparams(Dict(
   :W_m_σ      => [15.0],                           :W_m_c       => [6.0]
  )),
 byparams(Dict(
-  :delta_t    => [240ms],                          :delta_f     => [2,6,12],
-  :standard_f => [500Hz],                          :condition   => [:freqs],
+  :delta_t    => [240ms],                          :delta_f     => [0.5,6,12],
+  :condition  => [:freqs],                         :standard_f  => [500Hz],
   :c_x        => [3.0],                            :τ_x         => [500ms],
   :c_σ        => [0.2],                            :τ_σ         => [500ms],
   :c_a        => [0.0;10.^linspace(0.75,1.75,5)],  :τ_a         => [3s],
   :c_m        => [0.0;10.^linspace(1.25,2,5)],     :τ_m         => [350ms],
-  :W_m_σ      => linspace(5.0,100.0,6),            :W_m_c       => [6.0]
+  :W_m_σ      => linspace(1.0,24.0,6),             :W_m_c       => [6.0]
  )))
+
 # categorical!(df,:condition)
 
 in_ms(x) = Float64.(ustrip.(uconvert.(ms,x)))
@@ -66,5 +67,4 @@ Feather.write(filename,df,transforms = Dict{String,Function}(
   "standard_f" => x ->in_Hz.(x),
   "condition" => x -> string.(x)
  ))
-
 

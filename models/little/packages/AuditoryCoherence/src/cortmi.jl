@@ -3,6 +3,7 @@ export scale_weighting, freq_weighting, weighting
 function weighting(x,condition,σ,c)
   condition == :scales ? scale_weighting(x,σ,c) :
   condition == :freqs ? freq_weighting(x,σ,c) :
+  condition == :track ? track_weighting(x,σ,c) :
   error("No condition named $condition.")
 end
 
@@ -28,6 +29,13 @@ function scale_weighting(cort,σ,c)
   end
 
   helper
+end
+
+function track_weighting(tracks,σ,c)
+  f = log.(ustrip.(axisvalues(axes(tracks,Axis{:prior}))[1]))
+  W = @. c*(1 - exp(-(f - f')^2 / (σ*log(2))^2))
+
+  x -> W*x
 end
 
 function freq_weighting(spect,σ,c)
