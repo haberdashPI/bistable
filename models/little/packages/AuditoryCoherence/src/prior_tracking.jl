@@ -79,5 +79,5 @@ function track(C::Coherence,params::PriorTracking,progressbar=true,
   order = sortperm(component_means(C_out),rev=true)
   C_out .= C_out[component(order)]
 
-  C_out,lp_out,source_out,sourceS_out,track
+  (C_out,lp_out)
 end

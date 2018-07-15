@@ -4,17 +4,16 @@
 [config]
 bandonly = true
 
-[scales]
-values = [0.5,1.1,2.4,5.4]
+[freqs]
+bistable = {input_bound = [0.005,5.0], lowpass = 1.5, lowpass_order = 3}
 
-  [scales.bistable]
-  input_bound = [0.01, 0.05]
-  lowpass = 1.5
-  lowpass_order = 3
+[scales]
+values = [0.5,1.0,2.0,4.0,8.0]
+bistable = {input_bound = [0.005, 0.1], lowpass = 1.5, lowpass_order = 3}
 
 [rates]
-values = [-32, -5, -2, 2, 5, 32]
-freq_limits = [400.0, 800.0]
+values = [2, 4, 8, 16, 32]
+freq_limits = [400.0, 1200.0]
 
 [nmf]
 K = 3
@@ -26,16 +25,12 @@ tol = 1e-3
 
 [track]
 time_constants_s = [2]
-max_sources = 3
+max_sources = 4
 unmodeled_prior = 0
-
-  [track.source_prior]
-  sds = [0.01,0.1,1.0]
-  Ns = [4]
-
-  [track.freq_prior]
-  bias = 0
-  N = 2
+source_prior = {sds = [0.01,0.05,0.1,0.5,1.0,5.0], Ns = [4]}
+freq_prior = {bias = 0, N = 2}
+buildup_time_s = 0.1
+bistable = {input_bound = [0.0,1.0], lowpass = 1.5, lowpass_order = 3}
 
 [percept_lengths]
 window_ms = 500
