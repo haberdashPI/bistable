@@ -9,9 +9,9 @@ dir = file.path("..","..","..","plots",paste("scale_percept_lengths_",
                                              Sys.Date(),sep="_"))
 dir.create(dir,showWarnings=F)
 df = read_feather(file.path("..","..","..","data","count_lengths",
-                            "scale_percept_lengths_2018-06-29.feather"))
+                            "scale_freq_percept_lengths_2018-07-07.feather"))
 params = read_feather(file.path("..","..","..","data","count_lengths",
-                                "scale_percept_params_2018-06-28.feather"))
+                                "params_2018-07-03.feather"))
 params$pindex = 1:nrow(params)
 
 W = function(x){
@@ -36,6 +36,8 @@ trimby = function(xs,lengths){
 cleaned_df = df %>% group_by(pindex,created) %>%
   mutate(length = trimby(length,length),
          stimulus = trimby(stimulus,length))
+
+# TODO: break up by freq and scales
 
 summary = cleaned_df %>% group_by(pindex) %>%
   summarize(num_sims      = length(unique(created)),
@@ -69,8 +71,13 @@ clamp = function(x,lower,upper){
   pmin(upper,pmax(lower,x))
 }
 
+sim_len = df %>%
+  filter(pindex == 1,created == first(created)) %>%
+  select(length) %>% sum
+
 summary = summary %>%
-  mutate(N_ratio_n     = norm_ratio(N_ratio),
+  mutate(N_per_sec_n   = norm_ratio(N / num_sims/sim_len),
+         N_ratio_n     = norm_ratio(N_ratio),
          mean_ratio_n  = norm_ratio(mean_ratio),
          sd_ratio_n    = norm_ratio(sd_ratio),
          match         = pmax(W,N_ratio_n,mean_ratio_n,sd_ratio_n)) %>%
@@ -78,42 +85,33 @@ summary = summary %>%
   gather(measure,value,N:match)
 
 ################################################################################
+# scale plots
+
+########################################
 # percepts per simulation:
-
-# N looks pretty similar across noise levels and
-# delta_f
-ggplot(filter(summary,measure == "N"),
-       aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=value)) +
-  geom_raster() +
-  facet_grid(delta_f~c_σ,labeller=label_bquote(rows = Delta[f] == .(delta_f),
-                                               cols = c[sigma] == .(c_σ))) +
-  scale_fill_distiller(name="N",palette="Spectral") +
-  xlab(expression(c[a])) + ylab(expression(c[m])) +
-  ggtitle("Total Number of Percepts")
-
-N_agg = summary %>%
-  filter(measure == "N") %>%
-  group_by(c_m,c_a) %>%
-  summarize(N_per_sim = mean(value/num_sims))
 
 sim_len = df %>%
   filter(pindex == 1,created == first(created)) %>%
   select(length) %>% sum
 
-p = ggplot(N_agg,
-       aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=N_per_sim)) +
+# N looks pretty similar across noise levels and
+# delta_f
+p = ggplot(filter(summary,measure == "N",condition == "scales"),
+       aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),
+           fill=value/num_sims/sim_len)) +
   geom_raster() +
+  facet_grid(delta_f~c_σ,labeller=label_bquote(rows = Delta[f] == .(delta_f),
+                                               cols = c[sigma] == .(c_σ))) +
   scale_fill_distiller(name="N",palette="Spectral") +
-  xlab(expression(paste("Adaptation ", (c[a])))) +
-  ylab(expression(paste("Inhibition ", (c[m])))) +
-  ggtitle("Total Number of Percepts per Simulation",
-          subtitle=paste("Simulation Length =",round(sim_len),"s"))
-save_plot(file.path(dir,"bistable_scale_N.pdf"),p,base_aspect_ratio=1.3)
+  xlab(expression(c[a])) + ylab(expression(c[m])) +
+  ggtitle("Number of Percepts per Second")
+save_plot(file.path(dir,"bistable_scale_N.pdf"),p,base_aspect_ratio=1.3,
+          nrow=3,ncol=6,base_width=2,base_height=2)
 
-################################################################################
+########################################
 # good view of the selectivity of bistability
 
-p1 = ggplot(filter(summary,measure == "mean_ratio"),
+p1 = ggplot(filter(summary,measure == "mean_ratio",condition == "scales"),
        aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),
            fill=clamp(value,-1,1))) +
   geom_raster() +
@@ -131,7 +129,7 @@ p1 = ggplot(filter(summary,measure == "mean_ratio"),
 p1
 
 fuse_split = summary %>%
-  filter(measure == "mean_ratio") %>%
+  filter(measure == "mean_ratio", condition == "scales") %>%
   select(-pindex) %>%
   mutate(value = clamp(value,-1,1)) %>%
   spread(delta_f,value) %>%
@@ -150,15 +148,12 @@ p2 = ggplot(fuse_split,
 
 p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align='v')
 save_plot(file.path(dir,"bistable_scales_selectivity.pdf"),p,
-          base_height=2,base_width=3,nrow=4,ncol=6)
+          base_height=2,base_width=2,nrow=4,ncol=6)
 
-################################################################################
+########################################
 # how log-normal are the data?
 
-# TODO: summarize over different delta_t's (by max)
-# TODO: create an aggregate measure
-
-ggplot(filter(summary,measure == "W"),
+ggplot(filter(summary,measure == "W",condition == "scales"),
        aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=value)) +
   geom_raster() +
   facet_grid(delta_f~c_σ,labeller=label_bquote(rows = Delta[f] == .(delta_f),
@@ -166,7 +161,7 @@ ggplot(filter(summary,measure == "W"),
   scale_fill_distiller(name="Wilks-Shapiro",palette="Greens",direction=1) +
   xlab(expression(c[a])) + ylab(expression(c[m]))
 
-maxabs = summary %>% filter(measure == "kurt") %>%
+maxabs = summary %>% filter(measure == "kurt",condition == "scales") %>%
   select(value) %>% abs %>% max(na.rm=T)
 ggplot(filter(summary,measure == "kurt"),
        aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=value)) +
@@ -177,7 +172,7 @@ ggplot(filter(summary,measure == "kurt"),
                        limits=c(-maxabs,maxabs)) +
   xlab(expression(c[a])) + ylab(expression(c[m]))
 
-maxabs = summary %>% filter(measure == "skewness") %>%
+maxabs = summary %>% filter(measure == "skewness",condition == "scales") %>%
   select(value) %>% abs %>% max(na.rm=T)
 ggplot(filter(summary,measure == "skewness"),
        aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=value)) +
@@ -188,50 +183,69 @@ ggplot(filter(summary,measure == "skewness"),
                        limits=c(-maxabs,maxabs)) +
   xlab(expression(c[a])) + ylab(expression(c[m]))
 
-################################################################################
+########################################
 # let's plot a histogram of some parametesr
 sindex = params %>%
-  filter(abs(c_σ-0.2) < 1e-1,abs(c_m-27) < 6e-1,abs(c_a-6) < 6e-1,delta_f==6) %>%
+  filter(abs(c_σ-0.2) < 1e-1,abs(c_m-18) < 6e-1,abs(c_a-10) < 6e-1,
+         delta_f==6,condition == "scales") %>%
   select(pindex) %>% first
 selected = df %>% filter(pindex == sindex)
-ggplot(selected,aes(x=length)) + geom_histogram(bins=10)
-ggplot(selected,aes(x=length,fill=factor(stimulus))) + geom_histogram(bins=10) +
-  scale_fill_brewer(palette='Set1')
-
-sindex = params %>%
-  filter(abs(c_σ-0.2) < 1e-1,abs(c_m-42) < 6e-1,abs(c_a-6) < 6e-1,delta_f==6) %>%
-  select(pindex) %>% first
-selected = df %>% filter(pindex == sindex)
-ggplot(selected,aes(x=length)) + geom_histogram(bins=10)
-ggplot(selected,aes(x=length,fill=factor(stimulus))) + geom_histogram(bins=10) +
-  scale_fill_brewer(palette='Set1')
-
-sindex = params %>%
-  filter(abs(c_σ-0.2) < 1e-1,abs(c_m-42) < 6e-1,abs(c_a-6) < 6e-1,delta_f==12) %>%
-  select(pindex) %>% first
-selected = df %>% filter(pindex == sindex)
-ggplot(selected,aes(x=length)) + geom_histogram(bins=10)
-
-ggplot(selected,aes(x=length,fill=factor(stimulus))) + geom_histogram(bins=10) +
-  scale_fill_brewer(palette='Set1')
-
-sindex = params %>%
-  filter(abs(c_σ-0) < 1e-1,abs(c_m-42) < 6e-1,abs(c_a-6) < 6e-1,delta_f==6) %>%
-  select(pindex) %>% first
-selected = df %>% filter(pindex == sindex)
-ggplot(selected,aes(x=length)) + geom_histogram(bins=10)
-
-ggplot(selected,aes(x=length,fill=factor(stimulus))) + geom_histogram(bins=10) +
-  scale_fill_brewer(palette='Set1')
-################################################################################
+ggplot(selected,aes(x=length)) + geom_histogram(bins=15)
+ggplot(selected,aes(x=length)) + geom_density()
 
 # TASKS:
 
-# 1. test/run more specific scale bistability
-# 2. test/run frequency-level bistability
-# 3. test/run multi-track bistability
+# 1. test/run multi-track bistability
+# 2. examine freqs - they are almost somewhat non-seqsical
+#    for the extreme stimuli
+# 3. run freqs with same params as the scales
+# 4. run a narrower range of W_m_σ
 
-# Questions:
+################################################################################
+# plotting of freq condition
 
-# 3. is there a good measure (something about SD?) to
-# exclude the zero noise condition?
+########################################
+# percepts per simulation:
+
+# N looks pretty similar across noise levels and
+# delta_f
+
+p = ggplot(filter(summary,measure == "N",condition == "freqs"),
+       aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),
+           fill=value/num_sims/sim_len)) +
+  geom_raster() +
+  facet_grid(delta_f~W_m_σ,
+             labeller=label_bquote(rows = Delta[f] == .(delta_f),
+                                   cols = W[m[sigma]] == .(W_m_σ))) +
+  scale_fill_distiller(name="N",palette="Spectral") +
+  xlab(expression(c[a])) + ylab(expression(c[m])) +
+  ggtitle("Number of Percepts per Second")
+
+save_plot(file.path(dir,"bistable_freq_N.pdf"),p,base_aspect_ratio=1.3,
+          nrow=3,ncol=6,base_width=2,base_height=2)
+
+########################################
+# good view of the selectivity of bistability
+
+p1 = ggplot(filter(summary,measure == "mean_ratio",condition == "freqs"),
+       aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),
+           fill=clamp(value,-1,1))) +
+  geom_raster() +
+  facet_grid(delta_f~W_m_σ,
+             labeller=label_bquote(rows = Delta[f] == .(delta_f),
+                                   cols = W[m[sigma]] == .(W_m_σ))) +
+  scale_fill_distiller(name="Fused Percept",palette="RdBu",direction=1,
+                       breaks=c(-1,0,1),
+                       labels=c("-1 (10x shorter)",
+                                " 0 (Equal Lengths)",
+                                " 1 (10x longer)")) +
+  xlab(expression(paste("Adaptation ", (c[a])))) +
+  ylab(expression(paste("Inhibition ", (c[m])))) +
+  ggtitle("Ratio of Percept Lengths")
+p1
+
+
+save_plot(file.path(dir,"bistable_freq_selectivity.pdf"),p1,base_aspect_ratio=1.3,
+          nrow=3,ncol=6,base_width=2,base_height=2)
+
+
