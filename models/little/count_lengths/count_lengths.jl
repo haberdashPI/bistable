@@ -69,7 +69,7 @@ totime(x) = x.*ms
 tofreq(x) = x.*Hz
 const data_dir = joinpath(@__DIR__,"..","..","..","data")
 function count_lengths(first_index,last_index;
-                       params=joinpath(@__DIR__,"params.jld2"),
+                       params=joinpath(@__DIR__,"params.feather"),
                        git_hash="DETECT",
                        sim_repeat=2,
                        stim_count=25,
@@ -80,10 +80,21 @@ function count_lengths(first_index,last_index;
   dir = abspath(datadir)
   isdir(dir) || mkdir(dir)
 
+  verbuf = IOBuffer()
+  versioninfo(verbuf)
+  info("Julia version: "*String(take!(verbuf)))
   info("Source code hash: "*(git_hash == "DETECT" ? read_git_hash() : git_hash))
 
   info("Loading parameters from "*params)
-  params = load(params,"params")
+  params = Feather.read(params,transforms = Dict{String,Function}(
+    "τ_x" => x -> totime.(x),
+    "τ_σ" => x -> totime.(x),
+    "τ_a" => x -> totime.(x),
+    "τ_m" => x -> totime.(x),
+    "delta_t" => x -> totime.(x),
+    "standard_f" => x -> tofreq.(x),
+    "condition" => x -> Symbol.(x)
+  ))
   first_index = first_index
   if first_index > nrow(params)
     err("First parameter index ($first_index) is outside the range of",
