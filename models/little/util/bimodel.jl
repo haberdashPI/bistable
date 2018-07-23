@@ -79,7 +79,7 @@ function bistable_model(stim_count,params,settings;interactive=false,
     tracksa,
     window=settings["percept_lengths"]["window_ms"].*ms,
     step=settings["percept_lengths"]["delta_ms"].*ms,
-    threshold=settings["percept_lengths"]["threshold"],
+    threshold=params[:θ],
     min_length=settings["percept_lengths"]["min_length_ms"].*ms,
     intermediate_results=intermediate_results,
   )
