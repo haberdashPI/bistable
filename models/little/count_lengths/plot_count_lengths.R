@@ -9,9 +9,9 @@ dir = file.path("..","..","..","plots",paste("scale_percept_lengths_",
                                              Sys.Date(),sep="_"))
 dir.create(dir,showWarnings=F)
 df = read_feather(file.path("..","..","..","data","count_lengths",
-                            "scale_freq_percept_lengths_2018-07-07.feather"))
+                            "scale_percept_lengths_2018-07-21.feather"))
 params = read_feather(file.path("..","..","..","data","count_lengths",
-                                "params_2018-07-03.feather"))
+                                "params_2018-07-16.feather"))
 params$pindex = 1:nrow(params)
 
 W = function(x){
@@ -26,49 +26,70 @@ W = function(x){
   }
 }
 
-trimby = function(xs,lengths){
-  xs[cumsum(lengths) < 2] = NA
-  xs[1] = NA
-  xs[length(xs)] = NA
-  xs
+set_bound = function(xs){
+  if (length(xs) == 0){
+    logical(0)
+  } else if (length(xs) == 1){
+    c(T)
+  }else if (length(xs) == 2){
+    c(T,T)
+  }else {
+    c(T,rep(F,length(xs)-2),T)
+  }
+}
+
+clamp = function(x,lower,upper){
+  pmin(upper,pmax(lower,x))
+}
+
+clean_ratio = function(stimulus,length,is_bound){
+  clean_length = sum(length[!is_bound])
+  full_length = sum(length)
+
+  if (full_length - clean_length > 0.1*full_length){
+    stim = stimulus
+    len = length
+    use_full=T
+  }else{
+    stim = stimulus[!is_bound]
+    len = length[!is_bound]
+    use_full=F
+  }
+
+  if (any(stim == 0) && any(stim == 1)){
+    m1 = mean(log10(len[stim == 0]))
+    m2 = mean(log10(len[stim == 1]))
+    if (!use_full){
+      clamp(m1 - m2,-1,1)
+    }else{
+      if (m1 > m2) 1 else -1
+    }
+  }else if (any(stim == 0)){
+    1
+  }else{
+    -1
+  }
 }
 
 cleaned_df = df %>% group_by(pindex,created) %>%
-  mutate(length = trimby(length,length),
-         stimulus = trimby(stimulus,length))
+  mutate(is_bound = set_bound(stimulus))
 
 # TODO: break up by freq and scales
 
 summary = cleaned_df %>% group_by(pindex) %>%
   summarize(num_sims      = length(unique(created)),
 
-            N             = sum(!is.na(stimulus)),
-            N1            = sum(stimulus == 0,na.rm=T),
-            N2            = sum(stimulus == 1,na.rm=T),
-            N_ratio       = log10( (N1+1) / (N2+1) ),
+            N             = sum(!is_bound),
 
-            W             = W(log10(length)),
-            kurt          = kurtosis(log10(length),na.rm=T),
-            skewness      = skewness(log10(length),na.rm=T),
+            W             = W(log10(length[!is_bound])),
+            kurt          = kurtosis(log10(length[!is_bound])),
+            skewness      = skewness(log10(length[!is_bound])),
 
-            mean_length   = mean(log10(length),na.rm=T),
-            mean_length_1 = mean(log10(length[stimulus == 0]),na.rm=T),
-            mean_length_2 = mean(log10(length[stimulus == 1]),na.rm=T),
-            mean_ratio    = mean_length_1 - mean_length_2,
-
-            sd_length     = sd(log10(length),na.rm=T),
-            sd_length_1   = sd(log10(length[stimulus == 0]),na.rm=T),
-            sd_length_2   = sd(log10(length[stimulus == 1]),na.rm=T),
-            sd_ratio      = sd_length_1 - sd_length_2,
-            sd_ratio_n    = abs(sd_ratio / quantile(sd_ratio,0.95,na.rm=T)))
+            mean_ratio    = clean_ratio(stimulus,length,is_bound))
 
 norm_ratio = function(x){
   span = quantile(x[!is.infinite(x)],c(0.05,0.95),na.rm=T)
   (x / pmax(1e-8,span[2] - span[1],na.rm=T))
-}
-
-clamp = function(x,lower,upper){
-  pmin(upper,pmax(lower,x))
 }
 
 sim_len = df %>%
@@ -77,10 +98,8 @@ sim_len = df %>%
 
 summary = summary %>%
   mutate(N_per_sec_n   = norm_ratio(N / num_sims/sim_len),
-         N_ratio_n     = norm_ratio(N_ratio),
          mean_ratio_n  = norm_ratio(mean_ratio),
-         sd_ratio_n    = norm_ratio(sd_ratio),
-         match         = pmax(W,N_ratio_n,mean_ratio_n,sd_ratio_n)) %>%
+         match         = pmax(W,mean_ratio_n)) %>%
   left_join(params) %>%
   gather(measure,value,N:match)
 
@@ -133,7 +152,7 @@ fuse_split = summary %>%
   select(-pindex) %>%
   mutate(value = clamp(value,-1,1)) %>%
   spread(delta_f,value) %>%
-  mutate(quality = -(abs(`6`) + abs(1-`2`) + abs(-1 - `12`)))
+  mutate(quality = -(abs(`3`) + abs(1-`0.5`) + abs(-1 - `12`)))
 
 p2 = ggplot(fuse_split,
             aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=quality)) +
@@ -142,8 +161,8 @@ p2 = ggplot(fuse_split,
   scale_fill_distiller(name="Selectivity",palette="Greens",direction=1) +
   xlab(expression(paste("Adaptation ", (c[a])))) +
   ylab(expression(paste("Inhibition ", (c[m])))) +
-  ggtitle(expression(paste("Selectivity to ",Delta[f],"= 6: -(",
-                           abs(Delta[6]) - abs(1-Delta[2]) -
+  ggtitle(expression(paste("Selectivity to ",Delta[f],"= 3: -(",
+                           abs(Delta[3]) - abs(1-Delta[0.5]) -
                              abs(-1 - Delta[12]),") ")))
 
 p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align='v')
@@ -244,8 +263,93 @@ p1 = ggplot(filter(summary,measure == "mean_ratio",condition == "freqs"),
   ggtitle("Ratio of Percept Lengths")
 p1
 
-
 save_plot(file.path(dir,"bistable_freq_selectivity.pdf"),p1,base_aspect_ratio=1.3,
           nrow=3,ncol=6,base_width=2,base_height=2)
+
+p1 = ggplot(filter(summary,measure == "mean_ratio",condition == "freqs"),
+       aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),
+           fill=clamp(value,-1,1))) +
+  geom_raster() +
+  facet_grid(delta_f~c_σ,
+             labeller=label_bquote(rows = Delta[f] == .(delta_f),
+                                   cols = c[sigma] == .(c_σ))) +
+  scale_fill_distiller(name="Fused Percept",palette="RdBu",direction=1,
+                       breaks=c(-1,0,1),
+                       labels=c("-1 (10x shorter)",
+                                " 0 (Equal Lengths)",
+                                " 1 (10x longer)")) +
+  xlab(expression(paste("Adaptation ", (c[a])))) +
+  ylab(expression(paste("Inhibition ", (c[m])))) +
+  ggtitle("Ratio of Percept Lengths")
+p1
+
+save_plot(file.path(dir,"bistable_freq_selectivity_2.pdf"),p1,base_aspect_ratio=1.3,
+          nrow=3,ncol=6,base_width=2,base_height=2)
+#############################################################################
+# plotting of object-level condition
+
+########################################
+# percepts per simulation:
+
+# N looks pretty similar across noise levels and
+# delta_f
+
+p = ggplot(filter(summary,measure == "N",condition == "track"),
+       aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),
+           fill=value/num_sims/sim_len)) +
+  geom_raster() +
+  facet_grid(delta_f~c_σ,
+             labeller=label_bquote(rows = Delta[f] == .(delta_f),
+                                   cols = c[sigma] == .(c_σ))) +
+  scale_fill_distiller(name="N",palette="Spectral") +
+  xlab(expression(c[a])) + ylab(expression(c[m])) +
+  ggtitle("Number of Percepts per Second")
+
+save_plot(file.path(dir,"bistable_track_N.pdf"),p,base_aspect_ratio=1.3,
+          nrow=3,ncol=6,base_width=2,base_height=2)
+
+########################################
+# selectivity of bistability
+
+p1 = ggplot(filter(summary,measure == "mean_ratio",condition == "track"),
+       aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),
+           fill=clamp(value,-1,1))) +
+  geom_raster() +
+  facet_grid(delta_f~c_σ,labeller=
+             label_bquote(rows = Delta[f] == .(delta_f),
+                          cols = paste("Noise ",(c[sigma] == .(c_σ))))) +
+  scale_fill_distiller(name="Fused Percept",palette="RdBu",direction=1,
+                       limits=c(-1,1),
+                       breaks=c(-1,0,1),
+                       labels=c("-1 (10x shorter)",
+                                " 0 (Equal Lengths)",
+                                " 1 (10x longer)")) +
+  xlab(expression(paste("Adaptation ", (c[a])))) +
+  ylab(expression(paste("Inhibition ", (c[m])))) +
+  ggtitle("Ratio of Percept Lengths")
+p1
+
+fuse_split = summary %>%
+  filter(measure == "mean_ratio", condition == "track") %>%
+  select(-pindex) %>%
+  mutate(value = clamp(value,-1,1)) %>%
+  spread(delta_f,value) %>%
+  mutate(quality = -(abs(`3`) + abs(1-`0.5`) + abs(-1 - `12`)))
+
+p2 = ggplot(fuse_split,
+            aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=quality)) +
+  geom_raster() +
+  facet_grid(~c_σ,labeller=label_bquote(cols = paste("Noise ",(c[sigma]) == .(c_σ)))) +
+  scale_fill_distiller(name="Selectivity",palette="Greens",direction=1) +
+  xlab(expression(paste("Adaptation ", (c[a])))) +
+  ylab(expression(paste("Inhibition ", (c[m])))) +
+  ggtitle(expression(paste("Selectivity to ",Delta[f],"= 3: -(",
+                           abs(Delta[3]) - abs(1-Delta[0.5]) -
+                             abs(-1 - Delta[12]),") ")))
+
+p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align='v')
+save_plot(file.path(dir,"bistable_track_selectivity.pdf"),p,
+          base_height=2,base_width=2,nrow=4,ncol=6)
+
 
 
