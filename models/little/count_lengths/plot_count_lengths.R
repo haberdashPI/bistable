@@ -46,7 +46,7 @@ clean_ratio = function(stimulus,length,is_bound){
   clean_length = sum(length[!is_bound])
   full_length = sum(length)
 
-  if (full_length - clean_length > 0.1*full_length){
+  if (full_length - clean_length > 0.5*full_length){
     stim = stimulus
     len = length
     use_full=T
@@ -56,7 +56,7 @@ clean_ratio = function(stimulus,length,is_bound){
     use_full=F
   }
 
-  if (any(stim == 0) && any(stim == 1)){
+  find_ratio = function(stim,len,use_full){
     m1 = mean(log10(len[stim == 0]))
     m2 = mean(log10(len[stim == 1]))
     if (!use_full){
@@ -64,10 +64,21 @@ clean_ratio = function(stimulus,length,is_bound){
     }else{
       if (m1 > m2) 1 else -1
     }
-  }else if (any(stim == 0)){
-    1
+  }
+
+  if (any(stim == 0) && any(stim == 1)){
+    find_ratio(stim,len,use_full)
   }else{
-    -1
+    stim = stimulus
+    len = length
+    use_full=T
+    if (any(stim == 0) && any(stim == 1)){
+      find_ratio(stim,len,use_full)
+    }else if (any(stimulus == 0)){
+      1
+    }else{
+      -1
+    }
   }
 }
 
@@ -78,13 +89,10 @@ cleaned_df = df %>% group_by(pindex,created) %>%
 
 summary = cleaned_df %>% group_by(pindex) %>%
   summarize(num_sims      = length(unique(created)),
-
             N             = sum(!is_bound),
-
             W             = W(log10(length[!is_bound])),
             kurt          = kurtosis(log10(length[!is_bound])),
             skewness      = skewness(log10(length[!is_bound])),
-
             mean_ratio    = clean_ratio(stimulus,length,is_bound))
 
 norm_ratio = function(x){
@@ -285,6 +293,23 @@ p1
 
 save_plot(file.path(dir,"bistable_freq_selectivity_2.pdf"),p1,base_aspect_ratio=1.3,
           nrow=3,ncol=6,base_width=2,base_height=2)
+
+########################################
+# individual tracks of a single parameter
+sindex = params %>%
+  filter(abs(c_σ-0.2) < 1e-1,abs(c_m-42) < 6e-1,abs(c_a-32) < 6e-1,
+         delta_f==3,condition == "freqs") %>%
+  select(pindex) %>% head(1) %>% first
+
+selected = df %>% filter(pindex == sindex) %>%
+  mutate(.,id = group_indices(.,created)) %>%
+  group_by(created) %>%
+  mutate(time = c(0,cumsum(length[1:length(length)-1])))
+
+ggplot(selected,aes(x=time,y=id,color=factor(stimulus),group=id)) +
+  geom_line(size=5) +
+  scale_color_brewer(palette='Set1')
+
 #############################################################################
 # plotting of object-level condition
 
@@ -350,6 +375,4 @@ p2 = ggplot(fuse_split,
 p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align='v')
 save_plot(file.path(dir,"bistable_track_selectivity.pdf"),p,
           base_height=2,base_width=2,nrow=4,ncol=6)
-
-
 
