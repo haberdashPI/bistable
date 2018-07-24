@@ -16,7 +16,7 @@ for i in `seq $S $K $N`; do
     $((i+K-1)) -r 20 -c 100 --git_hash $GIT_HASH \
     --params projects/bistable/models/little/count_lengths/params_2018-07-24.feather \
     --settings projects/bistable/models/little/count_lengths/settings_2018-07-02.toml \
-    -d /scratch/groups/melhila1/dlittle/bistable_threshold_001/data/ \
-    -l /scratch/groups/melhila1/dlittle/bistable_threshold_001/logs/result_${i}.log"
+    -d /scratch/groups/melhila1/dlittle/bistable_threshold_002/data/ \
+    -l /scratch/groups/melhila1/dlittle/bistable_threshold_002/logs/result_${i}.log"
 done
 
