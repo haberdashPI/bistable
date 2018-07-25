@@ -11,7 +11,7 @@
 
 module load julia
 julia projects/bistable/models/little/count_lengths/run_count_lengths.jl \
-	$@ &> work/dlittle/bistable_threshold_001/logs/output_${1}.log
+	$@ &> work/dlittle/bistable_threshold_002/logs/output_${1}.log
 
 # 40 seconds to run one parameter for a stimulus of with 10 repeats
 # that's 40*(50/10) = 200 seconds to run the full length 50 repeat stimulus
