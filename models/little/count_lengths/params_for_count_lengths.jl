@@ -31,17 +31,17 @@ byparams(Dict(
 
   :s_c_x      => [3.0],                           :s_τ_x     => [500ms],
   :s_c_σ      => [0.2],                           :s_τ_σ     => [500ms],
-  :s_c_a      => [0.0;10.^linspace(0.75,1.75,5)], :s_τ_a     => [3s],
-  :s_c_m      => [0.0;10.^linspace(1.25,2,5)],    :s_τ_m     => [350ms],
+  :s_c_a      => [0.0;10.^linspace(0.75,1.75,4)], :s_τ_a     => [3s],
+  :s_c_m      => [0.0;10.^linspace(1.25,2,4)],    :s_τ_m     => [350ms],
   :s_W_m_σ    => [15.0],                          :s_W_m_c   => [6.0],
 
   :t_c_x      => [3.0],                           :t_τ_x     => [500ms],
   :t_c_σ      => [0.2],                           :t_τ_σ     => [500ms],
-  :t_c_a      => [0.0;10.^linspace(0.75,1.75,5)], :t_τ_a     => [3s],
-  :t_c_m      => [0.0;10.^linspace(1.25,2,5)],    :t_τ_m     => [350ms],
+  :t_c_a      => [0.0;10.^linspace(0.75,1.75,4)], :t_τ_a     => [3s],
+  :t_c_m      => [0.0;10.^linspace(1.25,2,4)],    :t_τ_m     => [350ms],
   :t_W_m_σ    => [15.0],                          :t_W_m_c   => [6.0],
 
-  :θ          => [1.3,1.6,1.75,2.1,2.4]
+  :θ          => [1.3,1.6,1.85,2.1,2.4]
  )))
 
 # categorical!(df,:condition)
@@ -59,10 +59,14 @@ save(filename,"params",df)
 filename = joinpath(@__DIR__,"params_$(Date(now())).feather")
 
 Feather.write(filename,df,transforms = Dict{String,Function}(
-  "τ_x" => x -> in_ms.(x),
-  "τ_σ" => x -> in_ms.(x),
-  "τ_a" => x -> in_ms.(x),
-  "τ_m" => x -> in_ms.(x),
+  "s_τ_x" => x -> in_ms.(x),
+  "s_τ_σ" => x -> in_ms.(x),
+  "s_τ_a" => x -> in_ms.(x),
+  "s_τ_m" => x -> in_ms.(x),
+  "t_τ_x" => x -> in_ms.(x),
+  "t_τ_σ" => x -> in_ms.(x),
+  "t_τ_a" => x -> in_ms.(x),
+  "t_τ_m" => x -> in_ms.(x),
   "delta_t" => x -> in_ms.(x),
   "standard_f" => x ->in_Hz.(x),
   "condition" => x -> string.(x)
