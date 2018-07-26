@@ -26,14 +26,22 @@ end
 
 df = vcat(
 byparams(Dict(
-  :delta_t     => [240ms],                          :delta_f       => [0.5,3,12],
-  :condition   => [:scales],                        :standard_f    => [500Hz],
-  :c_x         => [3.0],                            :τ_x           => [500ms],
-  :c_σ         => linspace(0,0.4,3),                :τ_σ           => [500ms],
-  :c_a         => [0.0;10.^linspace(0.75,1.75,5)],  :τ_a           => [3s],
-  :c_m         => [0.0;10.^linspace(1.25,2,5)],     :τ_m           => [350ms],
-  :W_m_σ       => [15.0],                           :W_m_c         => [6.0],
-  :θ           => linspace(1,2.5,6)
+  :delta_t    => [240ms],                         :delta_f   => [0.5,3,12],
+  :standard_f => [500Hz],                         :condition => [:scales_track],
+
+  :s_c_x      => [3.0],                           :s_τ_x     => [500ms],
+  :s_c_σ      => [0.2],                           :s_τ_σ     => [500ms],
+  :s_c_a      => [0.0;10.^linspace(0.75,1.75,5)], :s_τ_a     => [3s],
+  :s_c_m      => [0.0;10.^linspace(1.25,2,5)],    :s_τ_m     => [350ms],
+  :s_W_m_σ    => [15.0],                          :s_W_m_c   => [6.0],
+
+  :t_c_x      => [3.0],                           :t_τ_x     => [500ms],
+  :t_c_σ      => [0.2],                           :t_τ_σ     => [500ms],
+  :t_c_a      => [0.0;10.^linspace(0.75,1.75,5)], :t_τ_a     => [3s],
+  :t_c_m      => [0.0;10.^linspace(1.25,2,5)],    :t_τ_m     => [350ms],
+  :t_W_m_σ    => [15.0],                          :t_W_m_c   => [6.0],
+
+  :θ          => [1.3,1.6,1.75,2.1,2.4]
  )))
 
 # categorical!(df,:condition)

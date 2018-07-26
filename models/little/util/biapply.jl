@@ -72,12 +72,29 @@ function findweights(condition,x)
   end
 end
 
+function remove_key_prefix!(prefix,dict)
+  for key in keys(dict)
+    if startswith(string(key),prefix)
+      dict[Symbol(string(key)[length(prefix)+1:end])] = dict[key]
+    end
+  end
+end
+
 function apply_bistable(x,condition,params,settings;
                         interactive=false,
                         intermediate_results=interactive,
                         progressbar=interactive)
-  if params[:condition] != condition
+  if !(params[:condition] == condition ||
+       ((params[:condition] == :scales_track) && (condition ∈ [:scales,:track])))
     return (x,)
+  end
+
+  if params[:condition] == :scales_track
+    if condition == :scales
+      remove_key_prefix!("s_",params)
+    elseif condition == :track
+      remove_key_prefix!("t_",params)
+    end
   end
 
   noise_params = Dict(

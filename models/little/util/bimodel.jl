@@ -4,7 +4,7 @@ using AuditoryCoherence
 function bistable_model(stim_count,params,settings;interactive=false,
                         progressbar=interactive,
                         intermediate_results=interactive)
-  @assert params[:condition] ∈ [:freqs,:scales,:track,:none]
+  @assert params[:condition] ∈ [:freqs,:scales,:track,:none,:scales_track]
 
   stim = ab(params[:delta_t]/2,params[:delta_t]/2,1,stim_count,
             params[:standard_f],params[:delta_f]) |>
@@ -56,7 +56,7 @@ function bistable_model(stim_count,params,settings;interactive=false,
     progressbar=progressbar
   )
 
-  if params[:condition] == :track
+  if params[:condition] == :track || params[:condition] == :scales_track
     track_lp = AxisArray(hcat((x[2] for x in tracks)...),
                          Axis{:time}(times(C)),
                          Axis{:prior}(settings["track"]["source_prior"]["sds"]))
