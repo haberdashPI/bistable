@@ -35,5 +35,4 @@ bistable = {input_bound = [0.0,1.0], lowpass = 1.5, lowpass_order = 3}
 [percept_lengths]
 window_ms = 500
 delta_ms = 250
-threshold = 2
 min_length_ms = 500

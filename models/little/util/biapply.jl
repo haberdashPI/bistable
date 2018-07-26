@@ -9,6 +9,26 @@ function bound(x,min,max)
   min + (max-min)*(clamp(y,miny,maxy) - miny)/(maxy - miny)
 end
 
+function strengths(tracks;window=500ms,step=250ms,threshold=2,min_length=1s,
+                   progressbar=false,intermediate_results=false)
+  Ct1 = tracks[1][1]
+  @assert axisdim(Ct1,Axis{:time}) == 1
+  windows = windowing(Ct1,length=window,step=step)
+  ts = linspace(times(Ct1)[1],times(Ct1)[end]-step,length(windows))
+  strengths = zeros(length(ts),ncomponents(Ct1))
+
+  for (i,ixs) in enumerate(windows)
+    best_track = map(tracks) do results
+      mean(results[2][ixs])
+    end |> indmax
+    track_window = tracks[best_track][1][Axis{:time}(ixs)]
+
+    strengths[i,:] = component_means(track_window)
+  end
+
+  AxisArray(strengths,Axis{:time}(ts))
+end
+
 function count_streams(tracks;window=500ms,step=250ms,threshold=2,min_length=1s,
                        progressbar=false,intermediate_results=false)
   Ct1 = tracks[1][1]

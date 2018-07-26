@@ -4,6 +4,7 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(feather)
+source("util.R")
 
 dir = file.path("..","..","..","plots",paste("scale_percept_lengths_",
                                              Sys.Date(),sep="_"))
@@ -13,74 +14,6 @@ df = read_feather(file.path("..","..","..","data","count_lengths",
 params = read_feather(file.path("..","..","..","data","count_lengths",
                                 "params_2018-07-16.feather"))
 params$pindex = 1:nrow(params)
-
-W = function(x){
-  if (sum(!is.na(x)) > 5000){
-    shapiro.test(sample(x,5000))[[1]]
-  }else if (sum(!is.na(x)) < 3){
-    0
-  }else if (all(is.na(x)) || all(x == first(x[!is.na(x)]),na.rm=T)){
-    0
-  }else{
-    shapiro.test(x)[[1]]
-  }
-}
-
-set_bound = function(xs){
-  if (length(xs) == 0){
-    logical(0)
-  } else if (length(xs) == 1){
-    c(T)
-  }else if (length(xs) == 2){
-    c(T,T)
-  }else {
-    c(T,rep(F,length(xs)-2),T)
-  }
-}
-
-clamp = function(x,lower,upper){
-  pmin(upper,pmax(lower,x))
-}
-
-clean_ratio = function(stimulus,length,is_bound){
-  clean_length = sum(length[!is_bound])
-  full_length = sum(length)
-
-  if (full_length - clean_length > 0.5*full_length){
-    stim = stimulus
-    len = length
-    use_full=T
-  }else{
-    stim = stimulus[!is_bound]
-    len = length[!is_bound]
-    use_full=F
-  }
-
-  find_ratio = function(stim,len,use_full){
-    m1 = mean(log10(len[stim == 0]))
-    m2 = mean(log10(len[stim == 1]))
-    if (!use_full){
-      clamp(m1 - m2,-1,1)
-    }else{
-      if (m1 > m2) 1 else -1
-    }
-  }
-
-  if (any(stim == 0) && any(stim == 1)){
-    find_ratio(stim,len,use_full)
-  }else{
-    stim = stimulus
-    len = length
-    use_full=T
-    if (any(stim == 0) && any(stim == 1)){
-      find_ratio(stim,len,use_full)
-    }else if (any(stimulus == 0)){
-      1
-    }else{
-      -1
-    }
-  }
-}
 
 cleaned_df = df %>% group_by(pindex,created) %>%
   mutate(is_bound = set_bound(stimulus))
@@ -255,88 +188,50 @@ save_plot(file.path(dir,"bistable_freq_N.pdf"),p,base_aspect_ratio=1.3,
 
 ########################################
 # good view of the selectivity of bistability
+for (noise in unique(summary$c_σ)){
+  p1 = ggplot(filter(summary,measure == "mean_ratio",condition == "freqs",
+                     c_σ == noise,W_m_σ != 2),
+         aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),
+             fill=clamp(value,-1,1))) +
+    geom_raster() +
+    facet_grid(delta_f~W_m_σ,
+               labeller=label_bquote(rows = Delta[f] == .(delta_f),
+                                     cols = W[m[sigma]] == .(W_m_σ))) +
+    scale_fill_distiller(name="Fused Percept",palette="RdBu",direction=1,
+                         breaks=c(-1,0,1),
+                         labels=c("-1 (10x shorter)",
+                                  " 0 (Equal Lengths)",
+                                  " 1 (10x longer)")) +
+    xlab(expression(paste("Adaptation ", (c[a])))) +
+    ylab(expression(paste("Inhibition ", (c[m])))) +
+    ggtitle(paste("Ratio of Percept Lengths (noise =",noise,")"))
 
-p1 = ggplot(filter(summary,measure == "mean_ratio",condition == "freqs"),
-       aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),
-           fill=clamp(value,-1,1))) +
-  geom_raster() +
-  facet_grid(delta_f~W_m_σ,
-             labeller=label_bquote(rows = Delta[f] == .(delta_f),
-                                   cols = W[m[sigma]] == .(W_m_σ))) +
-  scale_fill_distiller(name="Fused Percept",palette="RdBu",direction=1,
-                       breaks=c(-1,0,1),
-                       labels=c("-1 (10x shorter)",
-                                " 0 (Equal Lengths)",
-                                " 1 (10x longer)")) +
-  xlab(expression(paste("Adaptation ", (c[a])))) +
-  ylab(expression(paste("Inhibition ", (c[m])))) +
-  ggtitle("Ratio of Percept Lengths")
-p1
+  fuse_split = summary %>%
+    filter(measure == "mean_ratio", condition == "freqs", c_σ == noise,
+           W_m_σ != 2) %>%
+    select(-pindex) %>%
+    mutate(value = clamp(value,-1,1)) %>%
+    spread(delta_f,value) %>%
+    mutate(quality = -(abs(`3`) + abs(1-`0.5`) + abs(-1 - `12`)))
 
-fuse_split = summary %>%
-  filter(measure == "mean_ratio", condition == "freqs") %>%
-  select(-pindex) %>%
-  mutate(value = clamp(value,-1,1)) %>%
-  spread(delta_f,value) %>%
-  mutate(quality = -(abs(`3`) + abs(1-`0.5`) + abs(-1 - `12`)))
+  p2 = ggplot(fuse_split,
+              aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=quality)) +
+    geom_raster() +
+    facet_grid(~W_m_σ,labeller=
+               label_bquote(cols = paste("Breadth ",(W[m[sigma]]) == .(W_m_σ)))) +
+    scale_fill_distiller(name="Selectivity",palette="Greens",direction=1,
+                         limits=c(-3,0)) +
+    xlab(expression(paste("Adaptation ", (c[a])))) +
+    ylab(expression(paste("Inhibition ", (c[m])))) +
+    ggtitle(expression(paste("Selectivity to ",
+                             Delta[f],"= 3: -(",
+                             abs(Delta[3]) - abs(1-Delta[0.5]) -
+                               abs(-1 - Delta[12]),") ")))
 
-p2 = ggplot(fuse_split,
-            aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=quality)) +
-  geom_raster() +
-  facet_grid(~W_m_σ,labeller=
-             label_bquote(cols = paste("Breadth ",(W[m[sigma]]) == .(W_m_σ)))) +
-  scale_fill_distiller(name="Selectivity",palette="Greens",direction=1,
-                       limits=c(-3,0)) +
-  xlab(expression(paste("Adaptation ", (c[a])))) +
-  ylab(expression(paste("Inhibition ", (c[m])))) +
-  ggtitle(expression(paste("Selectivity to ",Delta[f],"= 3: -(",
-                           abs(Delta[3]) - abs(1-Delta[0.5]) -
-                             abs(-1 - Delta[12]),") ")))
-
-p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align='v')
-save_plot(file.path(dir,"bistable_freq_selectivity.pdf"),p,
-          base_height=2,base_width=2,nrow=4,ncol=6)
-
-p1 = ggplot(filter(summary,measure == "mean_ratio",condition == "freqs"),
-       aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),
-           fill=clamp(value,-1,1))) +
-  geom_raster() +
-  facet_grid(delta_f~c_σ,
-             labeller=label_bquote(rows = Delta[f] == .(delta_f),
-                                   cols = c[sigma] == .(c_σ))) +
-  scale_fill_distiller(name="Fused Percept",palette="RdBu",direction=1,
-                       breaks=c(-1,0,1),
-                       labels=c("-1 (10x shorter)",
-                                " 0 (Equal Lengths)",
-                                " 1 (10x longer)")) +
-  xlab(expression(paste("Adaptation ", (c[a])))) +
-  ylab(expression(paste("Inhibition ", (c[m])))) +
-  ggtitle("Ratio of Percept Lengths")
-p1
-
-fuse_split = summary %>%
-  filter(measure == "mean_ratio", condition == "freqs") %>%
-  select(-pindex) %>%
-  mutate(value = clamp(value,-1,1)) %>%
-  spread(delta_f,value) %>%
-  mutate(quality = -(abs(`3`) + abs(1-`0.5`) + abs(-1 - `12`)))
-
-p2 = ggplot(fuse_split,
-            aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=quality)) +
-  geom_raster() +
-  facet_grid(~c_σ,labeller=
-             label_bquote(cols = paste("Noise ",(c[sigma]) == .(c_σ)))) +
-  scale_fill_distiller(name="Selectivity",palette="Greens",direction=1,
-                       limits=c(-3,0)) +
-  xlab(expression(paste("Adaptation ", (c[a])))) +
-  ylab(expression(paste("Inhibition ", (c[m])))) +
-  ggtitle(expression(paste("Selectivity to ",Delta[f],"= 3: -(",
-                           abs(Delta[3]) - abs(1-Delta[0.5]) -
-                             abs(-1 - Delta[12]),") ")))
-
-p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align='v')
-save_plot(file.path(dir,"bistable_freq_selectivity_2.pdf"),p,
-          base_height=2,base_width=2,nrow=4,ncol=6)
+  p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align='v')
+  filename = sprintf("bistable_freq_selectivity_noise%02.2f.pdf",noise)
+  save_plot(file.path(dir,filename),p,base_height=2,base_width=2,nrow=4,ncol=6)
+}
 
 ########################################
 # individual tracks of a single parameter
