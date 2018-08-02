@@ -18,7 +18,7 @@ all_params = Feather.read(param_file,transforms = Dict{String,Function}(
   ))
 
 ########################################
-# what's going on with the fusing 12 st percepts?
+# what's going on with fusing 12 st percepts?
 
 sindex = 3183
 params = Dict(k => all_params[sindex,k] for k in names(all_params))
