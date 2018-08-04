@@ -30,27 +30,29 @@ function component_ratio(tracks;min_length=1s,
   end
 end
 
-function estimate_bandwidth(sp;window=500ms,step=250ms)
+function estimate_bandwidth(sp;threshold=0.25,window=500ms,step=250ms)
   map_windowing(sp,length=window,step=step) do window
     means = mean(window,1)
     peak = maximum(means)
-    over = find(means .> 0.25peak)
-    @show over
+    over = find(means .> threshold*peak)
     maximum(over) - minimum(over) + 1
   end
 end
 
-function component_bandwidth_ratio(cs,tracks,settings;min_length=1s,
+function component_bandwidth_ratio(cs,tracks;min_length=1s,
+                                   threshold=0.25,
                                    progressbar=false,window=500ms,
                                    step=250ms)
-  crmask = mask(cs,tracks,settings,window=window,step=step)
+  crmask = mask(cs,tracks,window=window,step=step)
   spmask = audiospect(crmask,progressbar=progressbar)
   sp = audiospect(cs,progressbar=progressbar)
 
-  fullband = estimate_bandwidth(sp,window=window,step=step)
-  maskband = estimate_bandwidth(spmask,window=window,step=step)
+  fullband = estimate_bandwidth(sp,window=window,step=step,
+                               threshold=threshold)
+  maskband = estimate_bandwidth(spmask,window=window,step=step,
+                               threshold=threshold)
 
-  AxisArray(maskband ./ fullband,axes(fullband,Axis{:time})), fullband, maskband
+  AxisArray(maskband ./ fullband,axes(fullband,Axis{:time}))
 end
 
 function meanabs(A,n)

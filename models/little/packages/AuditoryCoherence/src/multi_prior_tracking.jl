@@ -57,8 +57,7 @@ function mask(sp::AuditoryModel.AuditorySpectrogram,
 end
 
 function mask(cr::AuditoryModel.Cortical,
-              tracks::Array{<:Tuple{Coherence,AbstractArray}},
-              settings;
+              tracks::Array{<:Tuple{Coherence,AbstractArray}};
               order=1,window=500ms,step=250ms,progressbar=false)
 
   Ct1 = tracks[1][1]
