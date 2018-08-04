@@ -1,4 +1,6 @@
 using Feather
+using JLD2
+using FileIO
 include("count_lengths.jl")
 
 dir = "../../../plots/freq_ind_$(Date(now()))"
@@ -63,6 +65,55 @@ R"""
 ggsave($(joinpath(dir,"freq_6st_selective.pdf")),$p)
 """
 
-# not super compelling, is this just a bad run?
-# (if so we probably need a seed)
-# might have to check on subsequent stages of the pipeline
+########################################
+# let's look at bistability in a place that might be working
+# by our newer definition
+
+sindex = 4256
+params = Dict(k => all_params[sindex,k] for k in names(all_params))
+params[:θ] = 2.1
+settings = TOML.parsefile("settings_2018-07-02.toml")
+
+cache = "cached_model.jld2"
+if isfile(cache)
+  result = load(cache,"result")
+else
+  result = bistable_model(40,params,settings,interactive=true)
+  save(cache,"result",result)
+end
+
+crmask,norm = mask(result[7],result[3],settings,progressbar=true)
+
+# now with 12 st
+sindex = 4472
+params = Dict(k => all_params[sindex,k] for k in names(all_params))
+params[:θ] = 2.1
+settings = TOML.parsefile("settings_2018-07-02.toml")
+
+cache = "cached_model_12st.jld2"
+if isfile(cache)
+  result = load(cache,"result")
+else
+  result = bistable_model(40,params,settings,interactive=true)
+  save(cache,"result",result)
+end
+
+crmask,norm = mask(result[7],result[3],settings,progressbar=true)
+crmask2,norm = mask(result[7],result[3],settings,progressbar=true,order=2)
+
+
+# now with 0.5 st
+sindex = 4040
+params = Dict(k => all_params[sindex,k] for k in names(all_params))
+params[:θ] = 2.1
+settings = TOML.parsefile("settings_2018-07-02.toml")
+
+cache = "cached_model_0.5st.jld2"
+if isfile(cache)
+  result = load(cache,"result")
+else
+  result = bistable_model(40,params,settings,interactive=true)
+  save(cache,"result",result)
+end
+
+# TODO: create some graphs for mounya???

@@ -232,7 +232,7 @@ function audiospect(cr::Cortical;norm=0.9,progressbar=true)
 
   z_cum = FFTCum(cr)
 
-  progress = progressbar ? cortical_progress(nrates(cr)*nscales(cr)) : missing
+  progress = progressbar ? cortical_progress(nrates(cr)*nscales(cr)) : nothing
   for (ri,HR) in enumerate(rate_filters(z_cum,cr,use_conj=true))
     for (si,HS) in enumerate(scale_filters(z_cum,cr))
       addfft!(z_cum,cr[:,ri,si,:],HR.*[HS; zeros(HS)]')
@@ -254,7 +254,7 @@ function audiospect(cr::CorticalScales;norm=0.9,progressbar=true)
 
   z_cum = FFTCum(cr)
 
-  progress = progressbar ? cortical_progress(nscales(cr)) : missing
+  progress = progressbar ? cortical_progress(nscales(cr)) : nothing
   for (si,HS) in enumerate(scale_filters(z_cum,cr))
     addfft!(z_cum,cr[:,si,:],[HS; zeros(HS)]')
     next!(progress)
@@ -273,7 +273,7 @@ function audiospect(cr::CorticalRates;norm=0.9,progressbar=true)
           " Slice inversion is currently unsupported.")
   z_cum = FFTCum(cr)
 
-  progress = progressbar ? cortical_progress(nrates(cr)) : missing
+  progress = progressbar ? cortical_progress(nrates(cr)) : nothing
   for (ri,HR) in enumerate(rate_filters(z_cum,cr,use_conj=true))
     addfft!(z_cum,cr[:,ri,:],HR)
     next!(progress)
