@@ -1,21 +1,17 @@
 
 # What we've learned
-Looks like we can get reasonable bistability
-it's just that what counts as "two streams" needs to be redefined.
+looks like we should be able to record
+the ratios
 
-verify that the 12st is actually "working"
-
-Figure out a reasonable definition based on bandwidth relative
-to that of the original stimulus
+the next step is to actually run my simulation, I will start with the frequency
+alone because I can do a very short run (200 hours) and validate the approach.
 
 # Plans:
 
-## store continuous ratio result
-so we can vary the threshold after running the simulations
-
 ## run both new freq and new cortical, scale interaction
-
-cut them down so they both fit within ~1600 hours
+- [X] cut them down so they both fit within ~1600 hours
+- [ ] make it possible to have multiple parameter runs at once??
+- [ ] test the freq run
 
 ## more tests:
 * it's probably worth just plotting build-up
@@ -24,7 +20,7 @@ cut them down so they both fit within ~1600 hours
 ## things that might help frequency:
 
 ### change definition of 1 stream
-
+**DONE**
 * start by looking at the ratio of the mask to the original source a 2
 * stream should be one that has a low ratio.
 * pick a good parameter from the freq level model to start with
@@ -36,5 +32,3 @@ for the mexican hat function and plot them (requires cluster)
 (4 or 5 scales?) - just try a few and see
 how it goes, probably
 
-### if we don't get freq to work, we need to know why
-why does adaptation matter with no inhibition for freq?
