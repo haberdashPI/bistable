@@ -14,8 +14,8 @@ all_params = Feather.read(param_file,transforms = Dict{String,Function}(
     "τ_σ" => x -> totime.(x),
     "τ_a" => x -> totime.(x),
     "τ_m" => x -> totime.(x),
-    "delta_t" => x -> totime.(x),
-    "standard_f" => x -> tofreq.(x),
+    "Δt" => x -> totime.(x),
+    "f" => x -> tofreq.(x),
     "condition" => x -> Symbol.(x)
   ))
 

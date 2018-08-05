@@ -6,8 +6,8 @@ isdir(dir) || mkdir(dir)
 # NOTE: for freq W_m_σ is 2.0
 # for scales W_m_σ is 16.0
 params = Dict(
-  :delta_t    => 240ms,                         :delta_f   => 3,
-  :standard_f => 500Hz,                         :condition => :freqs,
+  :Δt    => 240ms,                         :Δf   => 3,
+  :f => 500Hz,                         :condition => :freqs,
   :c_x        => 3.0,                           :τ_x       => 500ms,
   :c_σ        => 0.2,                           :τ_σ       => 500ms,
   :c_a        => 6,                             :τ_a       => 3s,

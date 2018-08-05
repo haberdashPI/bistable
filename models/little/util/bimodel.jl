@@ -7,8 +7,7 @@ function bistable_model(stim_count,params,settings;interactive=false,
   @assert params[:condition] ∈ [:freqs,:scales,:track,:none,:scales_track]
 
   # stimulus generation
-  stim = ab(params[:delta_t]/2,params[:delta_t]/2,1,stim_count,
-            params[:standard_f],params[:delta_f]) |>
+  stim = ab(params[:Δt]/2,params[:Δt]/2,1,stim_count,params[:f],params[:Δf]) |>
          normpower |> amplify(-10dB)
 
   # auditory spectrogram

@@ -26,18 +26,18 @@ end
 
 df = vcat(
 byparams(Dict(
-  :delta_t    => [240ms],                :delta_f   => [0.5,3,12],
-  :standard_f => [500Hz],                :condition => [:freqs,:scales,:track],
+  :Δt => [240ms],                :Δf        => [0.5,3,12],
+  :f  => [500Hz],                :condition => [:scales,:track],
 
   :c_x      => [3.0],                           :τ_x     => [500ms],
-  :c_σ      => [0.2],                           :τ_σ     => [500ms],
+  :c_σ      => [0.4],                           :τ_σ     => [500ms],
   :c_a      => [0.0;10.^linspace(0.75,1.75,5)], :τ_a     => [3s],
   :c_m      => [0.0;10.^linspace(1.25,2,5)],    :τ_m     => [350ms],
   :W_m_σ    => [15.0],                          :W_m_c   => [6.0],
  ))
 # byparams(Dict(
-#   :delta_t    => [240ms],                         :delta_f   => [0.5,3,12],
-#   :standard_f => [500Hz],                         :condition => [:scales_track],
+#   :Δt    => [240ms],                         :Δf   => [0.5,3,12],
+#   :f => [500Hz],                         :condition => [:scales_track],
 
 #   :s_c_x      => [3.0],                           :s_τ_x     => [500ms],
 #   :s_c_σ      => [0.2],                           :s_τ_σ     => [500ms],
@@ -72,8 +72,8 @@ Feather.write(filename,df,transforms = Dict{String,Function}(
   "τ_σ" => x -> in_ms.(x),
   "τ_a" => x -> in_ms.(x),
   "τ_m" => x -> in_ms.(x),
-  "delta_t" => x -> in_ms.(x),
-  "standard_f" => x ->in_Hz.(x),
+  "Δt" => x -> in_ms.(x),
+  "f" => x ->in_Hz.(x),
   "condition" => x -> string.(x)
  ))
 
