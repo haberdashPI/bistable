@@ -10,6 +10,9 @@ push!(LOAD_PATH,joinpath(@__DIR__,"..","packages"))
 using AuditoryModel
 using AuditoryCoherence
 
+in_ms(x) = Float64.(ustrip.(uconvert.(ms,x)))
+in_Hz(x) = Float64.(ustrip.(uconvert.(Hz,x)))
+
 function byparams(params)
   if length(params) == 1
     key,vals = first(params)
@@ -24,16 +27,45 @@ function byparams(params)
   end
 end
 
-df = vcat(
+function write_params(label,df)
+  categorical!(df,:condition)
+  open(joinpath(@__DIR__,"$(label)_count_lengths_N.txt"),"w") do f
+    println(f,"$(nrow(df))")
+  end
+
+  filename = joinpath(@__DIR__,"$(label)_params_$(Date(now())).feather")
+
+  Feather.write(filename,df,transforms = Dict{String,Function}(
+    "τ_x" => x -> in_ms.(x),
+    "τ_σ" => x -> in_ms.(x),
+    "τ_a" => x -> in_ms.(x),
+    "τ_m" => x -> in_ms.(x),
+    "Δt" => x -> in_ms.(x),
+    "f" => x ->in_Hz.(x),
+    "condition" => x -> string.(x)
+   ))
+end
+
+write_params("freq",vcat(
+# byparams(Dict(
+#   :Δt => [240ms],                :Δf        => [0.5,3,12],
+#   :f  => [500Hz],                :condition => [:scales,:track],
+
+#   :c_x      => [3.0],                           :τ_x     => [500ms],
+#   :c_σ      => [0.4],                           :τ_σ     => [500ms],
+#   :c_a      => [0.0;10.^linspace(0.75,1.75,5)], :τ_a     => [3s],
+#   :c_m      => [0.0;10.^linspace(1.25,2,5)],    :τ_m     => [350ms],
+#   :W_m_σ    => [15.0],                          :W_m_c   => [6.0],
+#  )),
 byparams(Dict(
   :Δt => [240ms],                :Δf        => [0.5,3,12],
-  :f  => [500Hz],                :condition => [:scales,:track],
+  :f  => [500Hz],                :condition => [:freqs],
 
   :c_x      => [3.0],                           :τ_x     => [500ms],
   :c_σ      => [0.4],                           :τ_σ     => [500ms],
   :c_a      => [0.0;10.^linspace(0.75,1.75,5)], :τ_a     => [3s],
   :c_m      => [0.0;10.^linspace(1.25,2,5)],    :τ_m     => [350ms],
-  :W_m_σ    => [15.0],                          :W_m_c   => [6.0],
+  :W_m_σ    => [5.6],                           :W_m_c   => [6.0]
  ))
 # byparams(Dict(
 #   :Δt    => [240ms],                         :Δf   => [0.5,3,12],
@@ -51,29 +83,4 @@ byparams(Dict(
 #   :t_c_m      => [0.0;10.^linspace(1.25,2,4)],    :t_τ_m     => [350ms],
 #   :t_W_m_σ    => [15.0],                          :t_W_m_c   => [6.0],
 #  )),
-)
-
-# categorical!(df,:condition)
-
-in_ms(x) = Float64.(ustrip.(uconvert.(ms,x)))
-in_Hz(x) = Float64.(ustrip.(uconvert.(Hz,x)))
-
-open(joinpath(@__DIR__,"count_lengths_N.txt"),"w") do f
-  println(f,"$(nrow(df))")
-end
-
-filename = joinpath(@__DIR__,"params_$(Date(now())).jld2")
-save(filename,"params",df)
-
-filename = joinpath(@__DIR__,"params_$(Date(now())).feather")
-
-Feather.write(filename,df,transforms = Dict{String,Function}(
-  "τ_x" => x -> in_ms.(x),
-  "τ_σ" => x -> in_ms.(x),
-  "τ_a" => x -> in_ms.(x),
-  "τ_m" => x -> in_ms.(x),
-  "Δt" => x -> in_ms.(x),
-  "f" => x ->in_Hz.(x),
-  "condition" => x -> string.(x)
- ))
-
+))

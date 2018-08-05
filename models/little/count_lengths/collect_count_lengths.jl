@@ -5,8 +5,6 @@ using Feather
 
 include("count_lengths.jl")
 
-stream = jldopen(joinpath(dir,"results_params0001_0002.jld2"))
-
 dir = joinpath("..","..","..","data","count_lengths")
 # dir = joinpath("work","dlittle","bistable_threshold_001","data")
 all_rows = []

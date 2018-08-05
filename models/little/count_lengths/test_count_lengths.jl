@@ -24,7 +24,7 @@ Logging.configure(level=INFO)
 count_lengths(
   1,2,
   stim_count=2,
-  params="params_2018-08-04.feather",
+  params="freq_params_2018-08-05.feather",
   git_hash="UNKNOWN",
   settingsfile="fast_settings.toml",
   progressbar=false

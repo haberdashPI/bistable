@@ -1,8 +1,9 @@
 #!/bin/sh
 # S=1
+label=$1
 S=101 # start from where N=100 leaves off
 # N=100
-N=`cat projects/bistable/models/little/count_lengths/count_lengths_N.txt`
+N=`cat projects/bistable/models/little/count_lengths/${label}_count_lengths_N.txt`
 # N=2000 # start with just 10 jobs for now, and see how that goes.
 K=10
 
@@ -10,13 +11,17 @@ cd projects/bistable
 GIT_HASH=`git rev-parse HEAD`
 cd
 
+proj_dir="projects/bistable/models/little/count_lengths"
+result_dir="/scratch/groups/melhila1/dlittle"
+
 # this just echos the commands, once you verify that it's right, pipe it to sh
 for i in `seq $S $K $N`; do
-  echo "sbatch projects/bistable/models/little/count_lengths/run_count_lengths.sh $i \
+  echo "sbatch ${proj_dir}/run_count_lengths.sh $i \
     $((i+K-1)) -r 20 -c 100 --git_hash $GIT_HASH \
-    --params projects/bistable/models/little/count_lengths/params_2018-07-24.feather \
-    --settings projects/bistable/models/little/count_lengths/settings_2018-07-02.toml \
-    -d /scratch/groups/melhila1/dlittle/bistable_threshold_002/data/ \
-    -l /scratch/groups/melhila1/dlittle/bistable_threshold_002/logs/result_${i}.log"
+    --params ${proj_dir}/${label}_params_2018-08-05.feather \
+    --settings ${proj_dir}/settings_2018-08-04.toml \
+    -d ${result_dir}/bistable_threshold_${label}/data/ \
+    -l ${result_dir}/bistable_threshold_${label}/logs/result_${i}.log \
+    &> ${result_dir}/bistable_threshold_${label}/logs/output_${1}.log"
 done
 
