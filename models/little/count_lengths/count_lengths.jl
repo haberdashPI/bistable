@@ -19,8 +19,8 @@ include(joinpath(@__DIR__,"..","util","biapply.jl"))
 include(joinpath(@__DIR__,"..","util","threshold.jl"))
 
 @with_kw struct CountLength
-  length::Float64
-  stimulus::Int
+  ratio::Array{Float64}
+  bratio::Array{Float64}
   pindex::Int
   created::DateTime
 end
@@ -30,7 +30,8 @@ function for_count_lengths(fn,dir)
     if ismatch(r"jld2$",file)
       jldopen(joinpath(dir,file),"r") do stream
         for key in keys(stream)
-          fn(stream[key])
+          fn(CountLength(stream[key]["ratio"],stream[key]["bratio"],
+                         stream[key]["pindex"],stream[key]["created"]))
         end
       end
     end
@@ -87,16 +88,20 @@ function count_lengths(first_index,last_index;
 
   info("Loading parameters from "*params)
   params = Feather.read(params,transforms = Dict{String,Function}(
-    "s_τ_x" => x -> totime.(x),
-    "s_τ_σ" => x -> totime.(x),
-    "s_τ_a" => x -> totime.(x),
-    "s_τ_m" => x -> totime.(x),
-    "t_τ_x" => x -> totime.(x),
-    "t_τ_σ" => x -> totime.(x),
-    "t_τ_a" => x -> totime.(x),
-    "t_τ_m" => x -> totime.(x),
-    "delta_t" => x -> totime.(x),
-    "standard_f" => x -> tofreq.(x),
+    "s_τ_x"     => x -> totime.(x),
+    "s_τ_σ"     => x -> totime.(x),
+    "s_τ_a"     => x -> totime.(x),
+    "s_τ_m"     => x -> totime.(x),
+    "t_τ_x"     => x -> totime.(x),
+    "t_τ_σ"     => x -> totime.(x),
+    "t_τ_a"     => x -> totime.(x),
+    "t_τ_m"     => x -> totime.(x),
+    "τ_x"       => x -> totime.(x),
+    "τ_σ"       => x -> totime.(x),
+    "τ_a"       => x -> totime.(x),
+    "τ_m"       => x -> totime.(x),
+    "Δt"        => x -> totime.(x),
+    "f"         => x -> tofreq.(x),
     "condition" => x -> Symbol.(x)
   ))
   first_index = first_index
@@ -116,22 +121,21 @@ function count_lengths(first_index,last_index;
   for i in repeat(indices,inner=sim_repeat)
     start_time = now()
     params_dict = Dict(k => params[i,k] for k in names(params))
-    len,stim = bistable_model(stim_count,params_dict,settings,
-                              progressbar=progressbar)
-    rows = map(zip(len,stim)) do len_stim
-      len,stim = len_stim
-      CountLength(length=len,stimulus=stim,pindex=i,created=start_time)
-    end
+    (len,_),ratio,bratio = bistable_model(stim_count,params_dict,settings,
+                                             progressbar=progressbar)
 
     name = @sprintf("results_params%04d_%04d.jld2",first_index,last_index)
     filename = joinpath(dir,name)
     jldopen(filename,"a+") do file
       count = length(keys(file))
-      file[@sprintf("rows%02d",count)] = rows
+      file[@sprintf("run%03d/ratio",count)] = Array(ratio)
+      file[@sprintf("run%03d/bratio",count)] = Array(bratio)
+      file[@sprintf("run%03d/pindex",count)] = i
+      file[@sprintf("run%03d/created",count)] = start_time
     end
 
     info("Completed a run for paramter $i.")
-    info("Saved $(length(rows)) row(s) to $name.")
+    info("Run yielded $(length(len)) percepts.")
   end
   info("DONE")
   info("------------------------------------------------------------")

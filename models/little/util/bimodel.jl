@@ -6,29 +6,33 @@ function bistable_model(stim_count,params,settings;interactive=false,
                         intermediate_results=interactive)
   @assert params[:condition] ∈ [:freqs,:scales,:track,:none,:scales_track]
 
-  stim = ab(params[:delta_t]/2,params[:delta_t]/2,1,stim_count,
-            params[:standard_f],params[:delta_f]) |>
+  # stimulus generation
+  stim = ab(params[:Δt]/2,params[:Δt]/2,1,stim_count,params[:f],params[:Δf]) |>
          normpower |> amplify(-10dB)
 
+  # auditory spectrogram
   spect = audiospect(stim,progressbar=progressbar)
   spectat = apply_bistable(spect,:freqs,params,settings,progressbar=progressbar,
                            intermediate_results=intermediate_results)
   specta = spectat[1]
 
+  # cortical scales
   scales = cycoct.*settings["scales"]["values"]
   cs = cortical(spect,
                 progressbar=progressbar,scales=scales,
                 bandonly=settings["config"]["bandonly"])
-
   csat = apply_bistable(cs,:scales,params,settings,progressbar=progressbar,
                         intermediate_results=intermediate_results)
+
+  # cortical rates
   csa = csat[1]
   rates = Float64.(settings["rates"]["values"]).*Hz
-  start,stop = settings["rates"]["freq_limits"]
-  crs = cortical(csa[:,:,start*Hz .. stop*Hz], rates=[-rates;rates],
+  startHz,stopHz = settings["rates"]["freq_limits"].*Hz
+  crs = cortical(csa[:,:,startHz .. stopHz], rates=[-rates;rates],
                  bandonly=settings["config"]["bandonly"],
                  progressbar=progressbar)
 
+  # temporal coherence (simultaneous grouping)
   C = cohere(
     crs,
     ncomponents=settings["nmf"]["K"],
@@ -41,6 +45,7 @@ function bistable_model(stim_count,params,settings;interactive=false,
     progressbar=progressbar
   )
 
+  # source tracking (sequential grouping)
   tracks = track(
     C,
     method=:multi_prior,
@@ -75,19 +80,34 @@ function bistable_model(stim_count,params,settings;interactive=false,
     track_lp_at = (nothing,)
   end
 
-  results = count_streams(
+  # decision making
+  ratio = component_ratio(
     tracksa,
     window=settings["percept_lengths"]["window_ms"].*ms,
     step=settings["percept_lengths"]["delta_ms"].*ms,
-    threshold=params[:θ],
-    min_length=settings["percept_lengths"]["min_length_ms"].*ms,
     intermediate_results=intermediate_results,
   )
 
+  bratio = component_bandwidth_ratio(
+    cs[:,:,startHz .. stopHz],
+    tracksa,
+    window=settings["percept_lengths"]["window_ms"].*ms,
+    step=settings["percept_lengths"]["delta_ms"].*ms,
+    threshold=settings["percept_lengths"]["bandwidth_threshold"]
+  )
+
+  threshold = settings["percept_lengths"]["threshold"]
+  # the counts are not perfect at this point but they are used to diagnose
+  # serious problems in a simulation, subsequent analysis will examine `ratio`
+  # and `bratio` across various thresholds
+  counts = percept_lengths(AxisArray(ratio .< threshold,
+                                     axes(ratio,Axis{:time})),
+                           settings["percept_lengths"]["min_length_ms"].*ms)
+
   if intermediate_results
-    results...,tracksa,track_lp_at[2:end]...,C,csat...,spectat...
+    counts,ratio,bratio,tracksa,track_lp_at[2:end]...,C,csat...,spectat...
   else
-    results[1]
+    counts,ratio,bratio
   end
 end
 

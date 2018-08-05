@@ -6,30 +6,25 @@ isdir(dir) || mkdir(dir)
 # NOTE: for freq W_m_σ is 2.0
 # for scales W_m_σ is 16.0
 params = Dict(
-  :delta_t    => 240ms,                         :delta_f   => 3,
-  :standard_f => 500Hz,                         :condition => :scales_track,
-  :s_c_x      => 3.0,                           :s_τ_x     => 500ms,
-  :s_c_σ      => 0.2,                           :s_τ_σ     => 500ms,
-  :s_c_a      => 10,                            :s_τ_a     => 3s,
-  :s_c_m      => 27,                            :s_τ_m     => 350ms,
-  :s_W_m_σ    => 15.0,                          :s_W_m_c   => 6.0,
-  :t_c_x      => 3.0,                           :t_τ_x     => 500ms,
-  :t_c_σ      => 0.2,                           :t_τ_σ     => 500ms,
-  :t_c_a      => 10,                            :t_τ_a     => 3s,
-  :t_c_m      => 27,                            :t_τ_m     => 350ms,
-  :t_W_m_σ    => 15.0,                          :t_W_m_c   => 6.0,
-  :θ          => 2.0
+  :Δt    => 240ms,                         :Δf   => 3,
+  :f => 500Hz,                         :condition => :freqs,
+  :c_x        => 3.0,                           :τ_x       => 500ms,
+  :c_σ        => 0.2,                           :τ_σ       => 500ms,
+  :c_a        => 6,                             :τ_a       => 3s,
+  :c_m        => 65,                            :τ_m       => 350ms,
+  :W_m_σ      => 5.6,                           :W_m_c     => 6.0,
  )
 
-# settings = TOML.parsefile("settings_2018-07-02.toml")
-settings = TOML.parsefile("fast_settings.toml")
-result = bistable_model(2, params, settings, interactive=true)
-alert()
+settings = TOML.parsefile("settings_2018-07-02.toml")
+# settings = TOML.parsefile("fast_settings.toml")
+# result = bistable_model(20, params, settings, interactive=true)
+# alert()
 
 Logging.configure(level=INFO)
 count_lengths(
   1,2,
   stim_count=2,
+  params="freq_params_2018-08-05.feather",
   git_hash="UNKNOWN",
   settingsfile="fast_settings.toml",
   progressbar=false

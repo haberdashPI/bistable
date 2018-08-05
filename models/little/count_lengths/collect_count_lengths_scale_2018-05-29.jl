@@ -3,17 +3,6 @@ using JLD2
 using DataFrames
 using Feather
 
-include("count_lengths.jl")
-params = Feather.read("params_2018-07-24.feather",transforms = Dict{String,Function}(
-    "τ_x" => x -> totime.(x),
-    "τ_σ" => x -> totime.(x),
-    "τ_a" => x -> totime.(x),
-    "τ_m" => x -> totime.(x),
-    "delta_t" => x -> totime.(x),
-    "standard_f" => x -> tofreq.(x),
-    "condition" => x -> Symbol.(x)
-  ))
-
 # dir = joinpath("..","..","..","data","count_lengths")
 dir = joinpath("work","dlittle","bistable_threshold_001","data")
 all_rows = []

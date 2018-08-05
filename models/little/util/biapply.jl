@@ -9,51 +9,50 @@ function bound(x,min,max)
   min + (max-min)*(clamp(y,miny,maxy) - miny)/(maxy - miny)
 end
 
-function strengths(tracks;window=500ms,step=250ms,threshold=2,min_length=1s,
-                   progressbar=false,intermediate_results=false)
-  Ct1 = tracks[1][1]
-  @assert axisdim(Ct1,Axis{:time}) == 1
-  windows = windowing(Ct1,length=window,step=step)
-  ts = linspace(times(Ct1)[1],times(Ct1)[end]-step,length(windows))
-  strengths = zeros(length(ts),ncomponents(Ct1))
-
-  for (i,ixs) in enumerate(windows)
-    best_track = map(tracks) do results
-      mean(results[2][ixs])
-    end |> indmax
-    track_window = tracks[best_track][1][Axis{:time}(ixs)]
-
-    strengths[i,:] = component_means(track_window)
+function strengths(tracks;kwds...)
+  strengths = map_components(tracks;kwds...) do components
+    component_means(components)
   end
 
-  AxisArray(strengths,Axis{:time}(ts))
+  AxisArray(hcat(strengths...),axes(strengths,Axis{:time}))
 end
 
-function count_streams(tracks;window=500ms,step=250ms,threshold=2,min_length=1s,
-                       progressbar=false,intermediate_results=false)
-  Ct1 = tracks[1][1]
-  @assert axisdim(Ct1,Axis{:time}) == 1
-  windows = windowing(Ct1,length=window,step=step)
-  ts = linspace(times(Ct1)[1],times(Ct1)[end]-step,length(windows))
-  ratios = fill(0.0,length(windows))
+function ratio_to_lengths(ratio,threshold=2,min_length=1s)
+  percept_lengths(AxisArray(ratios .< threshold,
+                            axes(ratios,Axis{:time})),min_length)
+end
 
-  for (i,ixs) in enumerate(windows)
-    best_track = map(tracks) do results
-      mean(results[2][ixs])
-    end |> indmax
-    track_window = tracks[best_track][1][Axis{:time}(ixs)]
-
-    strengths = sort(component_means(track_window),rev=true)
-    ratios[i] = strengths[1] / sum(strengths[2:end])
+function component_ratio(tracks;min_length=1s,
+                         intermediate_results=false,kwds...)
+  map_components(tracks;kwds...) do components
+    strengths = sort(component_means(components),rev=true)
+    strengths[1] / sum(strengths[2:end])
   end
+end
 
-  counts = percept_lengths(AxisArray(ratios .< threshold,Axis{:time}(ts)),
-                           min_length)
-  if intermediate_results
-    counts,AxisArray(ratios,Axis{:time}(ts))
-  else
-    (counts,)
+function estimate_bandwidth(sp;threshold=0.25,window=500ms,step=250ms)
+  map_windowing(sp,length=window,step=step) do window
+    means = mean(window,1)
+    peak = maximum(means)
+    over = find(means .> threshold*peak)
+    maximum(over) - minimum(over) + 1
   end
+end
+
+function component_bandwidth_ratio(cs,tracks;min_length=1s,
+                                   threshold=0.25,
+                                   progressbar=false,window=500ms,
+                                   step=250ms)
+  crmask = mask(cs,tracks,window=window,step=step)
+  spmask = audiospect(crmask,progressbar=progressbar)
+  sp = audiospect(cs,progressbar=progressbar)
+
+  fullband = estimate_bandwidth(sp,window=window,step=step,
+                               threshold=threshold)
+  maskband = estimate_bandwidth(spmask,window=window,step=step,
+                               threshold=threshold)
+
+  AxisArray(maskband ./ fullband,axes(fullband,Axis{:time}))
 end
 
 function meanabs(A,n)

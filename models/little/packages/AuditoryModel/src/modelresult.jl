@@ -28,8 +28,6 @@ modelwrap(x::Result,val::T) where T =
 
 Base.IndexStyle(x::Result) = IndexStyle(AxisArray(x))
 
-# TODO: add similar version consistent with
-# similar from AxisArrays which takes axes objects instead of dims
 function Base.similar(x::Result,::Type{S},
                       dims::NTuple{N,Int}) where {S,N}
   if size(x) == dims
