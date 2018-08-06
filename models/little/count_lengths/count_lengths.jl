@@ -88,14 +88,14 @@ function count_lengths(first_index,last_index;
 
   info("Loading parameters from "*params)
   params = Feather.read(params,transforms = Dict{String,Function}(
-    "s_τ_x"     => x -> totime.(x),
-    "s_τ_σ"     => x -> totime.(x),
-    "s_τ_a"     => x -> totime.(x),
-    "s_τ_m"     => x -> totime.(x),
-    "t_τ_x"     => x -> totime.(x),
-    "t_τ_σ"     => x -> totime.(x),
-    "t_τ_a"     => x -> totime.(x),
-    "t_τ_m"     => x -> totime.(x),
+    # "s_τ_x"     => x -> totime.(x),
+    # "s_τ_σ"     => x -> totime.(x),
+    # "s_τ_a"     => x -> totime.(x),
+    # "s_τ_m"     => x -> totime.(x),
+    # "t_τ_x"     => x -> totime.(x),
+    # "t_τ_σ"     => x -> totime.(x),
+    # "t_τ_a"     => x -> totime.(x),
+    # "t_τ_m"     => x -> totime.(x),
     "τ_x"       => x -> totime.(x),
     "τ_σ"       => x -> totime.(x),
     "τ_a"       => x -> totime.(x),

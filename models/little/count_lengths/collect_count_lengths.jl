@@ -5,8 +5,8 @@ using Feather
 
 include("count_lengths.jl")
 
-dir = joinpath("..","..","..","data","count_lengths")
-# dir = joinpath("work","dlittle","bistable_threshold_001","data")
+# dir = joinpath("..","..","..","data","count_lengths")
+dir = joinpath(homedir(),"work","dlittle","bistable_threshold_freq","data")
 all_rows = []
 for_count_lengths(dir) do count_length
   push!(all_rows,DataFrame(pindex = count_length.pindex,

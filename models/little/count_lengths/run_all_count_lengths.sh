@@ -1,8 +1,8 @@
 #!/bin/sh
-# S=1
+S=1
 label=$1
-S=101 # start from where N=100 leaves off
-# N=100
+# S=101 # start from where N=100 leaves off
+# N=10
 N=`cat projects/bistable/models/little/count_lengths/${label}_count_lengths_N.txt`
 # N=2000 # start with just 10 jobs for now, and see how that goes.
 K=10
@@ -22,6 +22,6 @@ for i in `seq $S $K $N`; do
     --settings ${proj_dir}/settings_2018-08-04.toml \
     -d ${result_dir}/bistable_threshold_${label}/data/ \
     -l ${result_dir}/bistable_threshold_${label}/logs/result_${i}.log \
-    &> ${result_dir}/bistable_threshold_${label}/logs/output_${1}.log"
+    ${result_dir}/bistable_threshold_${label}/logs/output_${i}.log"
 done
 
