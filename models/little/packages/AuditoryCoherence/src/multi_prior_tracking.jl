@@ -30,7 +30,6 @@ function map_components(fn,tracks::Array{<:Tuple{Coherence,AbstractArray}};
                         window=500ms,step=250ms)
   Ct1 = tracks[1][1]
   windows = windowing(Ct1,length=window,step=step)
-  ts = linspace(times(Ct1)[1],times(Ct1)[end]-step,length(windows))
 
   result = map(enumerate(windows)) do (i_ixs)
     i,ixs = i_ixs
@@ -41,7 +40,7 @@ function map_components(fn,tracks::Array{<:Tuple{Coherence,AbstractArray}};
     fn(tracks[best_track][1][Axis{:time}(ixs)])
   end
 
-  AxisArray(result,Axis{:time}(ts))
+  AxisArray(result,axes(windows,Axis{:time}))
 end
 
 function mask(sp::AuditoryModel.AuditorySpectrogram,
@@ -67,13 +66,12 @@ function mask(cr::AuditoryModel.Cortical,
   @assert size(cr)[2:end] == size(Ct1)[2:end-1] "Dimension mismatch"
 
   windows = windowing(Ct1,length=window,step=step)
-  ts = linspace(times(Ct1)[1],times(Ct1)[end]-step,length(windows))
 
-  progress = progressbar ? Progress(length(ts),"Masking: ") : nothing
-  mask_helper(cr,tracks,order,windows,ts,progress)
+  progress = progressbar ? Progress(length(windows),"Masking: ") : nothing
+  mask_helper(cr,tracks,order,windows,progress)
 end
 
-function mask_helper(cr,tracks,order,windows,ts,progress)
+function mask_helper(cr,tracks,order,windows,progress)
   y = zeros(AxisArray(cr))
   norm = similar(y,real(eltype(cr)))
   norm .= zero(real(eltype(cr)))

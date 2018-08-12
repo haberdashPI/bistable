@@ -96,10 +96,11 @@ windowing(x,dim=timedim(x);kwds...) = windowing(hastimes(x),x,dim;kwds...)
 map_windowing(fn,x,dim=timedim(x);kwds...) =
   map_windowing(fn,hastimes(x),x,dim;kwds...)
 function map_windowing(fn,::HasTimes,x,dim;step=nothing,kwds...)
-  xs = map(windowing(x,dim;step=step,kwds...)) do ixs
+  windows = windowing(x,dim;step=step,kwds...)
+  xs = map(windows) do ixs
     fn(x[Axis{:time}(ixs)])
   end
-  AxisArray(xs,Axis{:time}(linspace(times(x)[1],times(x)[end]-step,length(xs))))
+  AxisArray(xs,axes(windows,Axis{:time}))
 end
 map_windowing(fn,::HasNoTimes,x,dim;kwds...) =
   map(ixs -> fn(x[Axis{:time}(ixs)]),windowing(HasNoTimes(),x,dim;kwds...))
@@ -115,8 +116,10 @@ function windowing(::HasTimes,data::AbstractArray,dim;
   helper(x::Quantity) = max(1,floor(Int,x / Δt(data)))
   length_,step_,minlength_ = helper.((length,step,minlength))
 
-  windowing(HasNoTimes(),data,dim,
-            length=length_,step=step_,minlength=minlength_)
+  win = windowing(HasNoTimes(),data,dim,
+                  length=length_,step=step_,minlength=minlength_)
+  AxisArray(collect(win),
+            Axis{:time}((minlength_:step_:size(data,dim))*Δt(data)))
 end
 
 windowlen(params::CParams,x) = round(Int,params.window/Δt(x))
@@ -154,7 +157,7 @@ function cohere(x::AbstractArray,params::CParams,progressbar=true,
   K = ncomponents(params)
   C_data = zeros(eltype(params.method,x),length(windows),size(x)[3:end]...,K)
   C = AxisArray(C_data,
-                Axis{:time}((1:length(windows)) * Δt(params)),
+                axes(windows,Axis{:time}),
                 axes(x)[3:end]...,
                 Axis{:component}(1:K))
 
