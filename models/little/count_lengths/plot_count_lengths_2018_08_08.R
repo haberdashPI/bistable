@@ -1,0 +1,145 @@
+
+library(cowplot)
+library(moments)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(feather)
+source("util.R")
+
+dir = file.path("..","..","..","plots",paste("freq_percept_lengths_",
+                                             Sys.Date(),sep="_"))
+dir.create(dir,showWarnings=F)
+df = read_feather(file.path("..","..","..","data","count_lengths",
+                            "freq_percept_lengths_2018-08-06.feather"))
+params = read_feather(file.path("..","..","..","data","count_lengths",
+                                "freq_params_2018-08-05.feather"))
+params$pindex = 1:nrow(params)
+
+framerate = 0.25 # seconds
+threshold = 2.1
+bthreshold = 0.8
+minlength = 0.500
+
+times = list(component = seq(6*0.075,684*0.075,3*0.075),
+             bandwidth = seq(0.5,48.0,0.25))
+
+df_aligned = df %>% group_by(pindex,created,kind) %>%
+  mutate(time = times[kind][[1]]) %>%
+  do(data.frame(ratio=interpolate_times(.$ratio,.$time,times$component),
+                  time=times["component"][[1]])) %>%
+  ungroup()
+
+df_percepts = df_aligned %>%
+  group_by(pindex,created) %>%
+  spread(kind,ratio) %>%
+  do(percept_lengths(.$component < threshold | .$bandwidth < bthreshold,
+                     minlength,framerate)) %>%
+  mutate(is_bound = set_bound(stimulus)) %>%
+  ungroup()
+
+sim_len = df_percepts %>%
+  filter(pindex == 1,created == first(created)) %>%
+  select(length) %>% sum
+
+# start by just plotting things as per previous approach
+# to validate the results
+
+summary = df_percepts %>% group_by(pindex) %>%
+  summarize(num_sims      = length(unique(created)),
+            N             = sum(!is_bound),
+            W             = W(log10(length[!is_bound])),
+            kurt          = kurtosis(log10(length[!is_bound])),
+            skewness      = skewness(log10(length[!is_bound])),
+            mean_ratio    = clean_ratio(stimulus,length,is_bound)) %>%
+  left_join(params) %>%
+  gather(measure,value,N:mean_ratio)
+
+
+########################################
+# percepts per simulation:
+
+# N looks pretty similar across noise levels and
+# delta_f
+
+p = ggplot(filter(summary,measure == "N",condition == "freqs"),
+       aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),
+           fill=value/num_sims/sim_len)) +
+  geom_raster() +
+  facet_grid(Δf~.,labeller=label_bquote(rows = Delta[f] == .(Δf))) +
+  scale_fill_distiller(name="N",palette="Spectral") +
+  xlab(expression(c[a])) + ylab(expression(c[m])) +
+  ggtitle("Number of Percepts per Second")
+
+save_plot(file.path(dir,"bistable_freq_N.pdf"),p,base_aspect_ratio=1.3,
+          nrow=3,ncol=6,base_width=2,base_height=2)
+
+########################################
+# proporition of 1 vs. 2
+
+p1 = ggplot(filter(summary,measure == "mean_ratio",condition == "freqs"),
+       aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),
+           fill=clamp(value,-1,1))) +
+  geom_raster() +
+  facet_grid(Δf~.,labeller=label_bquote(rows = Delta[f] == .(Δf))) +
+  scale_fill_distiller(name="Fused Percept",palette="RdBu",direction=1,
+                       breaks=c(-1,0,1),
+                       labels=c("-1 (10x shorter)",
+                                " 0 (Equal Lengths)",
+                                " 1 (10x longer)")) +
+  xlab(expression(paste("Adaptation ", (c[a])))) +
+  ylab(expression(paste("Inhibition ", (c[m])))) +
+  ggtitle(paste("Ratio of Percept Lengths"))
+p1
+
+# TODO: look at ratio
+
+fuse_split = summary %>%
+  filter(measure == "mean_ratio", condition == "freqs", c_σ == noise,
+         W_m_σ != 2) %>%
+  select(-pindex) %>%
+  mutate(value = clamp(value,-1,1)) %>%
+  spread(delta_f,value) %>%
+  mutate(quality = -(abs(`3`) + abs(1-`0.5`) + abs(-1 - `12`)))
+
+p2 = ggplot(fuse_split,
+            aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=quality)) +
+  geom_raster() +
+  facet_grid(~W_m_σ,labeller=
+             label_bquote(cols = paste("Breadth ",(W[m[sigma]]) == .(W_m_σ)))) +
+  scale_fill_distiller(name="Selectivity",palette="Greens",direction=1,
+                       limits=c(-3,0)) +
+  xlab(expression(paste("Adaptation ", (c[a])))) +
+  ylab(expression(paste("Inhibition ", (c[m])))) +
+  ggtitle(expression(paste("Selectivity to ",
+                           Delta[f],"= 3: -(",
+                           abs(Delta[3]) - abs(1-Delta[0.5]) -
+                             abs(-1 - Delta[12]),") ")))
+
+
+
+sindex = params %>%
+  filter(abs(c_m-42) < 6e-1,abs(c_a-6) < 6e-1,
+         Δf==0.5,condition == "freqs") %>%
+  select(pindex) %>% head(1) %>% first
+df05 = df_aligned %>% filter(pindex == sindex,kind == "bandwidth")
+ggplot(df05,aes(x=time,y=ratio,group=created)) + geom_line(alpha=0.2) +
+  ylim(0,1)
+
+sindex = params %>%
+  filter(abs(c_m-42) < 6e-1,abs(c_a-6) < 6e-1,
+         Δf==12,condition == "freqs") %>%
+  select(pindex) %>% head(1) %>% first
+df12 = df_aligned %>% filter(pindex == sindex,kind == "bandwidth")
+ggplot(df12,aes(x=time,y=ratio,group=created)) + geom_line(alpha=0.2) +
+  ylim(0,1)
+
+quartz()
+sindex = params %>%
+  filter(abs(c_m-42) < 6e-1,abs(c_a-6) < 6e-1,
+         Δf==3,condition == "freqs") %>%
+  select(pindex) %>% head(1) %>% first
+df3 = df_aligned %>% filter(pindex == sindex,kind == "bandwidth")
+ggplot(df3,aes(x=time,y=ratio,group=created)) + geom_line(alpha=0.2) +
+  ylim(0,1)
+

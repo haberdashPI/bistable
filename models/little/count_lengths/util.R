@@ -1,3 +1,17 @@
+library(JuliaCall)
+julia = julia_setup()
+julia_command("include(\"../util/lengths.jl\")")
+
+percept_lengths = function(x,minlen,framerate){
+  julia_assign("over",x)
+  julia_assign("minlen",floor(minlen / framerate))
+  result=julia_eval("mergelengths(findlengths(over)...,minlen)")
+  data.frame(length=result[[1]]*framerate,stimulus=as.numeric(result[[2]]))
+}
+
+interpolate_times = function(x,times,to){
+  julia_call("interpolate_times",x,times,to)
+}
 
 W = function(x){
   if (sum(!is.na(x)) > 5000){
