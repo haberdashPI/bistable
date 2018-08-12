@@ -18,9 +18,12 @@ function bistable_model(stim_count,params,settings;interactive=false,
 
   # cortical scales
   scales = cycoct.*settings["scales"]["values"]
-  cs = cortical(spect,
+  cs = cortical(specta,
                 progressbar=progressbar,scales=scales,
                 bandonly=settings["config"]["bandonly"])
+  csclean = cortical(spect,
+                     progressbar=progressbar,scales=scales,
+                     bandonly=settings["config"]["bandonly"])
   csat = apply_bistable(cs,:scales,params,settings,progressbar=progressbar,
                         intermediate_results=intermediate_results)
 
@@ -89,7 +92,7 @@ function bistable_model(stim_count,params,settings;interactive=false,
   )
 
   bratio = component_bandwidth_ratio(
-    cs[:,:,startHz .. stopHz],
+    csclean[:,:,startHz .. stopHz],
     tracksa,
     window=settings["percept_lengths"]["window_ms"].*ms,
     step=settings["percept_lengths"]["delta_ms"].*ms,

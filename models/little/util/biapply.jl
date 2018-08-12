@@ -79,10 +79,11 @@ function remove_key_prefix!(prefix,dict)
   end
 end
 
-function apply_bistable(x,condition,params,settings;
-                        interactive=false,
-                        intermediate_results=interactive,
-                        progressbar=interactive)
+apply_bistable(x,args...;kwds...) = apply_bistable!(deepcopy(x),args...;kwds...)
+function apply_bistable!(x,condition,params,settings;
+                         interactive=false,
+                         intermediate_results=interactive,
+                         progressbar=interactive)
   if !(params[:condition] == condition ||
        ((params[:condition] == :scales_track) && (condition ∈ [:scales,:track])))
     return (x,)
