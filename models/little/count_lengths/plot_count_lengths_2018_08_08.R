@@ -11,14 +11,14 @@ dir = file.path("..","..","..","plots",paste("freq_percept_lengths_",
                                              Sys.Date(),sep="_"))
 dir.create(dir,showWarnings=F)
 df = read_feather(file.path("..","..","..","data","count_lengths",
-                            "freq_percept_lengths_2018-08-06.feather"))
+                            "freq_percept_lengths_2018-08-14.feather"))
 params = read_feather(file.path("..","..","..","data","count_lengths",
                                 "freq_params_2018-08-05.feather"))
 params$pindex = 1:nrow(params)
 
 framerate = 0.25 # seconds
 threshold = 2.1
-bthreshold = 0.8
+bthreshold = 0.5
 minlength = 0.500
 
 times = list(component = seq(6*0.075,684*0.075,3*0.075),
@@ -92,21 +92,16 @@ p1 = ggplot(filter(summary,measure == "mean_ratio",condition == "freqs"),
   ggtitle(paste("Ratio of Percept Lengths"))
 p1
 
-# TODO: look at ratio
-
 fuse_split = summary %>%
-  filter(measure == "mean_ratio", condition == "freqs", c_σ == noise,
-         W_m_σ != 2) %>%
+  filter(measure == "mean_ratio", condition == "freqs") %>%
   select(-pindex) %>%
   mutate(value = clamp(value,-1,1)) %>%
-  spread(delta_f,value) %>%
+  spread(Δf,value) %>%
   mutate(quality = -(abs(`3`) + abs(1-`0.5`) + abs(-1 - `12`)))
 
 p2 = ggplot(fuse_split,
             aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=quality)) +
   geom_raster() +
-  facet_grid(~W_m_σ,labeller=
-             label_bquote(cols = paste("Breadth ",(W[m[sigma]]) == .(W_m_σ)))) +
   scale_fill_distiller(name="Selectivity",palette="Greens",direction=1,
                        limits=c(-3,0)) +
   xlab(expression(paste("Adaptation ", (c[a])))) +
@@ -116,8 +111,11 @@ p2 = ggplot(fuse_split,
                            abs(Delta[3]) - abs(1-Delta[0.5]) -
                              abs(-1 - Delta[12]),") ")))
 
+p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align='v')
+save_plot(file.path(dir,"bistable_freq_selectivity.pdf"),p,
+          base_height=2,base_width=6,nrow=4,ncol=1)
 
-
+# inspecting a few parameters...
 sindex = params %>%
   filter(abs(c_m-42) < 6e-1,abs(c_a-6) < 6e-1,
          Δf==0.5,condition == "freqs") %>%
