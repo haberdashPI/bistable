@@ -1,14 +1,17 @@
 include(joinpath(@__DIR__,"biapply.jl"))
 using AuditoryCoherence
 
-function bistable_model(stim_count,params,settings;interactive=false,
-                        progressbar=interactive,
-                        intermediate_results=interactive)
-  @assert params[:condition] ∈ [:freqs,:scales,:track,:none,:scales_track]
-
+function bistable_model(stim_count::Int,params,settings;kwds...)
   # stimulus generation
   stim = ab(params[:Δt]/2,params[:Δt]/2,1,stim_count,params[:f],params[:Δf]) |>
          normpower |> amplify(-10dB)
+  bistable_model(stim,params,settings;kwds...)
+end
+
+function bistable_model(stim::AbstractArray,params,settings;interactive=false,
+                        progressbar=interactive,
+                        intermediate_results=interactive)
+  @assert params[:condition] ∈ [:freqs,:scales,:track,:none,:scales_track]
 
   # auditory spectrogram
   spect = audiospect(stim,progressbar=progressbar)
