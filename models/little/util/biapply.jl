@@ -116,9 +116,8 @@ function apply_bistable!(x,condition,params,settings;
                     shape_y = x -> max(0,x),progressbar=progressbar,
                     adapt_params...)
 
-  freq = settings[string(condition)]["bistable"]["lowpass"]
-  order = settings[string(condition)]["bistable"]["lowpass_order"]
-  low = digitalfilter(Lowpass(freq;fs=ustrip(1/Δt(wna))),Butterworth(order))
+  low = digitalfilter(Lowpass(lowpass;fs=ustrip(uconvert(Hz,1/Δt(wna)))),
+                      Butterworth(lowpass_order))
   wna_low = filt!(similar(wna),low,wna)
 
   if eltype(x) <: Complex

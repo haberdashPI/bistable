@@ -8,7 +8,7 @@ function weighting(x,condition,σ,c)
 end
 
 function scale_weight(cort,σ,c)
-  s = log.(ustrip.(scales(cort)))
+  s = log.(ustrip.(uconvert.(cycoct,scales(cort))))
   W = @. c*(1 - exp(-(s - s')^2 / (σ*log(2))^2))
 
   W
@@ -32,14 +32,14 @@ function scale_weighting(cort,σ,c)
 end
 
 function track_weighting(tracks,σ,c)
-  f = log.(ustrip.(axisvalues(axes(tracks,Axis{:prior}))[1]))
+  f = log.(ustrip.(uconvert.(s,axisvalues(axes(tracks,Axis{:prior})))[1]))
   W = @. c*(1 - exp(-(f - f')^2 / (σ*log(2))^2))
 
   x -> W*x
 end
 
 function freq_weighting(spect,σ,c)
-  f = log.(ustrip.(freqs(spect)))
+  f = log.(ustrip.(uconvert.(Hz,freqs(spect))))
   W = @. c*(1 - exp(-(f - f')^2 / (σ*log(2))^2))
 
   x -> W*x

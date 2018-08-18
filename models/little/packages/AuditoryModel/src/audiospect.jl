@@ -261,7 +261,7 @@ function freq_ticks(as)
     fbreaks = helper(step *= 2)
   end
 
-  fs = ustrip(uconvert.(Hz,freqs(as)))
+  fs = ustrip.(uconvert.(Hz,freqs(as)))
 
   findices = mapslices(abs.(fbreaks .- fs'),2) do row
     _, i = findmin(row)

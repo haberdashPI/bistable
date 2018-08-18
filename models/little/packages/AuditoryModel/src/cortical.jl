@@ -440,7 +440,7 @@ end
 
 # create the temporal-rate filter (filter along temporal axis)
 function rate_filter(rate,len,Δt,kind,use_conj=false,return_partial=false)
-  t = (0:len-1)*ustrip(Δt)*abs(rate)
+  t = (0:len-1)*ustrip(uconvert(s,Δt))*abs(rate)
   h = @. sin(2π*t) * t^2 * exp(-3.5t)
   h .-= mean(h)
 

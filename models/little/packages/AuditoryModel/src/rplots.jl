@@ -83,7 +83,7 @@ function rplot(z::AbstractMatrix)
   at(ixs,i) = map(x -> x[i],ixs)
 
   df = DataFrame(response = vec(z),
-                 time = vec(ustrip(times(z)[at(ixs,1)])),
+                 time = vec(ustrip.(uconvert.(s,times(z)[at(ixs,1)]))),
                  index = vec(at(ixs,2)))
   p = raster_plot(df,value=:response,x=:time,y=:index)
 
@@ -101,7 +101,7 @@ function rplot(as::AuditorySpectrogram)
   at(ixs,i) = map(x -> x[i],ixs)
 
   df = DataFrame(response = vec(as),
-                 time = vec(ustrip(times(as)[at(ixs,1)])),
+                 time = vec(ustrip.(uconvert.(s,times(as)[at(ixs,1)]))),
                  freq_bin = vec(at(ixs,2)))
   fbreaks,findices = freq_ticks(as)
   p = raster_plot(df,value=:response,x=:time,y=:freq_bin)
@@ -138,8 +138,8 @@ function rplot(cort::CorticalRates;rates=AuditoryModel.rates(cort))
   at(ixs,i) = map(x -> x[i],ixs)
 
   df = DataFrame(response = vec(cort),
-                 time = ustrip.(vec(times(cort)[at(ixs,1)])),
-                 rate = ustrip.(vec(rates[at(ixs,2)])),
+                 time = ustrip.(uconvert.(s,vec(times(cort)[at(ixs,1)]))),
+                 rate = ustrip.(uconvert.(Hz,vec(rates[at(ixs,2)]))),
                  freq_bin = vec(at(ixs,3)))
 
   fbreaks,findices = freq_ticks(cort)
@@ -173,8 +173,8 @@ function rplot(cort::CorticalScales;scales=AuditoryModel.scales(cort),
   at(ixs,i) = map(x -> x[i],ixs)
 
   df = DataFrame(response = fn.(vec(cort)),
-                 time = ustrip.(vec(times(cort)[at(ixs,1)])),
-                 scale = ustrip.(vec(scales[at(ixs,2)])),
+                 time = ustrip.(uconvert.(s,vec(times(cort)[at(ixs,1)]))),
+                 scale = ustrip.(uconvert.(cycoct,vec(scales[at(ixs,2)]))),
                  freq_bin = vec(at(ixs,3)))
 
   fbreaks,findices = freq_ticks(cort)
@@ -183,7 +183,7 @@ function rplot(cort::CorticalScales;scales=AuditoryModel.scales(cort),
 R"""
 
   library(ggplot2)
-  scalevals = $(ustrip.(scales))
+  scalevals = $(ustrip.(uconvert.(cycoct,scales)))
   scalestr = function(x){
     ifelse(!is.nan(x),sprintf("Scale: %3.2f cyc/oct",x),"All Scales")
   }
@@ -208,9 +208,9 @@ function rplot(cort::Cortical;rates=AuditoryModel.rates(cort),
   at(ixs,i) = map(x -> x[i],ixs)
 
   df = DataFrame(response = fn.(vec(cort)),
-                 time = ustrip.(vec(times(cort)[at(ixs,1)])),
-                 rate = ustrip.(vec(rates[at(ixs,2)])),
-                 scale = ustrip.(vec(scales[at(ixs,3)])),
+                 time = ustrip.(uconvert.(s,vec(times(cort)[at(ixs,1)]))),
+                 rate = ustrip.(uconvert.(Hz,vec(rates[at(ixs,2)]))),
+                 scale = ustrip.(uconvert.(cycoct,vec(scales[at(ixs,3)]))),
                  freq_bin = vec(at(ixs,4)))
 
   fbreaks,findices = freq_ticks(cort)
@@ -220,8 +220,8 @@ R"""
 
   library(ggplot2)
 
-  scalevals = $(ustrip.(scales))
-  ratevals = $(ustrip.(rates))
+  scalevals = $(ustrip.(uconvert.(cycoct,scales)))
+  ratevals = $(ustrip.(uconvert.(Hz,rates)))
   scalestr = function(x){
     ifelse(!is.nan(x),sprintf("Scale: %3.2f cyc/oct",x),"All Scales")
   }
@@ -254,7 +254,7 @@ function collapsed_scale_plot(cort;range=nothing)
   at(ixs,i) = map(x -> x[i],ixs)
 
   df = DataFrame(response = vec(y),
-                 time = vec(ustrip(times(cort)[at(ixs,1)])),
+                 time = vec(ustrip.(uconvert.(s,times(cort)[at(ixs,1)]))),
                  scale_bin = vec(at(ixs,2)))
 
   sbreaks = 1:2:length(scales(cort))
