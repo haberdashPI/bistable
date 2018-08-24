@@ -78,6 +78,26 @@ R"""
 """
 end
 
+function rplots(z::AxisArray)
+  ixs = CartesianRange(size(z))
+  at(ixs,i) = map(x -> x[i],ixs)
+
+  df = DataFrame(response = vec(z),
+                 time = vec(ustrip.(uconvert.(s,times(z)[at(ixs,1)]))))
+  df[AxisArrays.axisname(axes(z,2))] =
+    vec(ustrip.(axisvalues(axes(z,2)[at(ixs,1)])))
+  p = raster_plot(df,value=:response,x=:time,y=:index)
+
+R"""
+
+  library(ggplot2)
+
+  $p + ylab('Index') + xlab('Time (s)')
+
+"""
+end
+
+
 function rplot(z::AbstractMatrix)
   ixs = CartesianRange(size(z))
   at(ixs,i) = map(x -> x[i],ixs)
