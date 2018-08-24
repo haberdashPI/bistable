@@ -71,8 +71,8 @@ p = ggplot(filter(summary,measure == "N",condition == "freqs"),
   xlab(expression(c[a])) + ylab(expression(c[m])) +
   ggtitle("Number of Percepts per Second")
 
-save_plot(file.path(dir,"bistable_freq_N.pdf"),p,base_aspect_ratio=1.3,
-          nrow=3,ncol=6,base_width=2,base_height=2)
+save_plot(file.path(dir,"bistable_freq_N.png"),p,base_aspect_ratio=1.3,
+          nrow=3,ncol=1,base_width=4,base_height=2)
 
 ########################################
 # proporition of 1 vs. 2
@@ -112,8 +112,8 @@ p2 = ggplot(fuse_split,
                              abs(-1 - Delta[12]),") ")))
 
 p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align='v')
-save_plot(file.path(dir,"bistable_freq_selectivity.pdf"),p,
-          base_height=2,base_width=6,nrow=4,ncol=1)
+save_plot(file.path(dir,"bistable_freq_selectivity.png"),p,
+          base_height=2,base_width=5.5,nrow=4,ncol=1)
 
 # inspecting a few parameters...
 sindex = params %>%
@@ -133,6 +133,7 @@ ggplot(df12,aes(x=time,y=ratio,group=created)) + geom_line(alpha=0.2) +
   ylim(0,1)
 
 quartz()
+
 sindex = params %>%
   filter(abs(c_m-42) < 6e-1,abs(c_a-6) < 6e-1,
          Δf==3,condition == "freqs") %>%
@@ -140,4 +141,38 @@ sindex = params %>%
 df3 = df_aligned %>% filter(pindex == sindex,kind == "bandwidth")
 ggplot(df3,aes(x=time,y=ratio,group=created)) + geom_line(alpha=0.2) +
   ylim(0,1)
+
+# buildup
+select_params = function(params,m,a,freq){
+  params %>%
+    filter(abs(c_m-m) < 1,abs(c_a-a) < 1,Δf==freq,condition == "freqs") %>%
+    select(pindex) %>% head(1) %>% first
+}
+
+sindices = c(select_params(params,42,0,3),select_params(params,65,6,3),
+             select_params(params,100,10,3),select_params(params,65,0,3),
+             select_params(params,100,6,3),select_params(params,42,6,3),
+             select_params(params,65,10,3))
+
+dfbuild = df_aligned %>% filter(pindex %in% sindices) %>%
+  spread(kind,ratio) %>%
+  group_by(time) %>%
+  summarize(stream = mean(component < threshold | bandwidth < bthreshold))
+
+ggplot(dfbuild,aes(x=time,y=stream)) + geom_line() +
+  xlab('Time (s)') + ylab('% Streaming Responses')
+ggsave(file.path(dir,"buildup_freq.png"))
+
+dfbuild = df_aligned %>% filter(pindex %in% sindices) %>%
+  spread(kind,ratio) %>%
+  mutate(timewin = floor(time/0.5)) %>%
+  group_by(timewin) %>%
+  summarize(stream = mean(component < threshold | bandwidth < bthreshold),
+            time = first(time))
+
+ggplot(dfbuild,aes(x=time,y=stream)) + geom_line() +
+  xlab('Time (s)') + ylab('% Streaming Responses') + ylim(0,1)
+ggsave(file.path(dir,"buildup_freq_smooth.png"))
+
+
 
