@@ -95,8 +95,21 @@ const spect_rate = 24
 # TODO: implicity convert sound into cortical representation
 
 # cortical responses of rates and scales simultaneously
-function cortical(y::AbstractArray;progressbar=true,params...)
-  params = CParams(y;params...)
+asHz(x) = x.*Hz
+asHz(::Void) = nothing
+ascycoct(x) = x.*cycoct
+ascycoct(::Void) = nothing
+function cortical(y::AbstractArray;progressbar=true,
+                  rates_Hz=nothing,rates=asHz(rates_Hz),
+                  scales_cycoct=nothing,scales=ascycoct(scales_cycoct),
+                  freq_limits_Hz=(),freq_limits=freq_limits_Hz.*Hz,
+                  params...)
+  if length(freq_limits) > 0
+    startHz,stopHz = freq_limits
+    y = y[Axis{:freq}(startHz .. stopHz)]
+  end
+
+  params = CParams(y;rates=rates,scales=scales,params...)
   cortical(y,params,progressbar)
 end
 

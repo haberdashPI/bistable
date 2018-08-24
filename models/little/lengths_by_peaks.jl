@@ -19,11 +19,11 @@ isdir(dir) || mkdir(dir)
 
 function percept_lengths(csa,minlen=1s)
   counts = source_count_by_peaks(csa)
-  thresh = ustrip(minlen/Δt(counts))
+  thresh = ustrip(uconvert(s,minlen/Δt(counts)))
   lens,vals = findlengths(counts)
-  slens = lens * ustrip(Δt(counts))
+  slens = lens * ustrip(uconvert(s,Δt(counts)))
 
-  mergelengths(slens,vals,ustrip(minlen))
+  mergelengths(slens,vals,ustrip(uconvert(s,minlen)))
 end
 
 

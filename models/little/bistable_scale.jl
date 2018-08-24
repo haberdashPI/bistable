@@ -32,7 +32,7 @@ swna,m,a,x = adaptmi(
   c_m=30, τ_m=350ms, W_m=scale_weighting(cs,15,6),
   c_a=10, τ_a=50s, shape_y=x->clamp(x,0,20)
 )
-low = digitalfilter(Lowpass(1.5;fs=ustrip(1/Δt(swna))),Butterworth(3))
+low = digitalfilter(Lowpass(1.5;fs=ustrip(uconvert(s,1/Δt(swna)))),Butterworth(3))
 swna_low = AxisArray(max.(0,filt(low,swna)),Axis{:time}(times(swna)))
 rplot(swna_low)
 # rplot(swna)
@@ -115,7 +115,7 @@ tracks = track(Ca,method=:multi_prior,tcs=[2s],
 lp_index = 4 # (will be 2)
 df = DataFrame(sd = repeat(sds,inner=ntimes(tracks[1][1])),
                lp = vcat(map(t -> t[4],tracks)...),
-               time = vcat(map(t -> ustrip.(times(t[1])),tracks)...))
+               time = vcat(map(t -> ustrip.(uconvert.(s,times(t[1]))),tracks)...))
 R"""
 library(ggplot2)
 ggplot($df,aes(x=time,y=lp,color=factor(sd))) +

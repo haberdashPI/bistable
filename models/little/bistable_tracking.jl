@@ -41,8 +41,8 @@ Ct,lps,tcs,ps = track(C,method=:multi_prior,tcs = [100ms,250ms],
                max_sources = 3, freq_prior = freq_prior)
 
 df = DataFrame(logpdf = vcat(Array.(lps)...),
-               time = vcat(map(lp -> ustrip.(times(lp)),lps)...),
-               tc = repeat(ustrip.(tcs),inner=length(lps[1])),
+               time = vcat(map(lp -> ustrip.(uconvert.(s,times(lp))),lps)...),
+               tc = repeat(ustrip.(uconert.(s,tcs)),inner=length(lps[1])),
                prior = repeat(ps,inner=length(lps[1])))
 
 R"""

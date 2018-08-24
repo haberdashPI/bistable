@@ -80,9 +80,9 @@ end
 AuditoryModel.frame_length(params::CParams,x) =
   max(1,floor(Int,params.delta / Δt(x)))
 
-function CParams(x;ncomponents=1,window=1s,
-                  method=:nmf,delta=10ms,skipframes=0,
-                  normalize_phase=true,method_kwds...)
+function CParams(x;ncomponents=1,window_ms=1000,window=window_ms*ms,
+                 delta_ms=10,delta=delta_ms*ms,
+                 method=:nmf,skipframes=0,method_kwds...)
   method = CoherenceMethod(Val{method},method_kwds)
 
   CParams(AuditoryModel.Params(x), ncomponents, skipframes,

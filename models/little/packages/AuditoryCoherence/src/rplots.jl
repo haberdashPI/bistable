@@ -51,15 +51,15 @@ function rplot(C::CoherenceComponent{M,T,3} where {M,T};λ_digits=:automatic,
   at(i) = map(ii -> ii[i],ii)
 
   df = DataFrame(value = vec(C),
-                 time = vec(ustrip.(times(C)[at(1)])),
-                 scale = vec(round.(ustrip.(scales(C)[at(2)]),2)),
+                 time = vec(ustrip.(uconvert.(s,times(C)[at(1)]))),
+                 scale = vec(round.(ustrip.(uconvert.(cycoct,scales(C)[at(2)])),2)),
                  freq_bin = vec(at(3)))
 
   fbreaks,findices = freq_ticks(C)
   p = raster_plot(df;value=:value,x=:time,y=:freq_bin,kwds...)
 
 R"""
-  scalevals = $(ustrip.(scales(C)))
+  scalevals = $(ustrip.(uconvert.(cycoct,scales(C))))
   scalestr = function(x){sprintf("'Scale: %3.2f cyc/oct'",x)}
   ordered_scales = function(x){
     factor(scalestr(x),levels=scalestr(scalevals))
@@ -84,8 +84,8 @@ function rplot(C::Coherence{M,T,4} where {M,T};λ_digits=:automatic,
   rowtitle = titlefn(component_means(C),λ_digits,indices(C,4))
 
   df = DataFrame(value = vec(C),
-                 time = vec(ustrip.(times(C)[at(1)])),
-                 scale = vec(round.(ustrip.(scales(C)[at(2)]),2)),
+                 time = vec(ustrip.(uconvert.(s,times(C)[at(1)]))),
+                 scale = vec(round.(ustrip.(uconvert.(cycoct,scales(C)[at(2)])),2)),
                  freq_bin = vec(at(3)),
                  component = vec(at(4)),
                  component_title = rowtitle.(vec(at(4))))
@@ -94,13 +94,48 @@ function rplot(C::Coherence{M,T,4} where {M,T};λ_digits=:automatic,
   p = raster_plot(df;value=:value,x=:time,y=:freq_bin,kwds...)
 
 R"""
-  scalevals = $(ustrip.(scales(C)))
+  scalevals = $(ustrip.(uconvert.(cycoct,scales(C))))
   scalestr = function(x){sprintf("'Scale: %3.2f cyc/oct'",x)}
   ordered_scales = function(x){
     factor(scalestr(x),levels=scalestr(scalevals))
   }
 
   $p + facet_grid(ordered_scales(scale)~component_title,labeller=label_parsed) +
+  scale_y_continuous(breaks=$findices,labels=$fbreaks) +
+  ylab('Frequency (Hz)') + xlab('Time (s)')
+"""
+end
+
+function rplot(tracks::AxisArray{<:Coherence},component=1;kwds...)
+  data = AxisArray(cat(4,(track[:,:,:,component] for track in tracks)...),
+                   axes(tracks[1])[1:3]...,Axis{:track}(1:length(tracks)))
+
+  ii = CartesianRange(size(data))
+  at(i) = vec(map(ii -> ii[i],ii))
+  track_vals = axisvalues(tracks)[1]
+  # @show track_vals
+  # @show unique(at(4))
+
+  df = DataFrame(value = vec(data),
+                 time = vec(ustrip.(uconvert.(s,times(data)[at(1)]))),
+                 scale = vec(round.(ustrip.(uconvert.(cycoct,
+                                                      scales(data)[at(2)])),2)),
+                 freq_bin = vec(at(3)),
+                 tau = vec([ustrip(τ) for (τ,_) in track_vals[at(4)]]),
+                 sigma = vec([ustrip(σ) for (_,σ) in track_vals[at(4)]]))
+  # @show(df[1:5,:])
+
+  fbreaks,findices = freq_ticks(tracks[1])
+  p = raster_plot(df;value=:value,x=:time,y=:freq_bin,kwds...)
+
+R"""
+  scalevals = $(ustrip.(uconvert.(cycoct,scales(data))))
+  scalestr = function(x){sprintf("'Scale: %3.2f cyc/oct'",x)}
+  ordered_scales = function(x){
+    factor(scalestr(x),levels=scalestr(scalevals))
+  }
+
+  $p + facet_grid(ordered_scales(scale)~tau+sigma,labeller=label_parsed) +
   scale_y_continuous(breaks=$findices,labels=$fbreaks) +
   ylab('Frequency (Hz)') + xlab('Time (s)')
 """
@@ -147,7 +182,7 @@ function rplot(tempc::CoherenceModel,C::AbstractArray{<:FactorSeries},
   df = DataFrame(resp = vcat((real.(xi) for xi in x)...),
                  var = vcat((fill(label[2][i],length(x[i]))
                              for i in eachindex(x))...),
-                 time = vcat((ustrip.(eachindex(xi) * Δt(tempc))
+                             time = vcat((ustrip.(uconvert.(s,eachindex(xi) * Δt(tempc)))
                               for xi in x)...))
 
 R"""
@@ -175,7 +210,7 @@ function strength_plot(cohere::CoherenceModel,C::EigenSeries;n=ncomponents(C))
   end
 
   df = DataFrame(value = vec(abs.(λ) ./ sum.(var.(C))),
-                 time = vec(ustrip(at(1) * Δt(cohere))),
+  time = vec(ustrip(uconvert.(s,at(1) * Δt(cohere)))),
                  component = vec(at(2)))
 
   df = df[df[:component] .<= n,:]

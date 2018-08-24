@@ -43,7 +43,7 @@ end
 
 function percept_lengths(counts,minlen=0.5s)
   lens,vals = findlengths(Array(counts))
-  slens = lens * ustrip(uconvert(1,Δt(counts)))
+  slens = lens * ustrip(uconvert(s,Δt(counts)))
 
   mergelengths(slens,vals,ustrip(uconvert(s,minlen)))
 end

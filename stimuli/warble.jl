@@ -16,7 +16,7 @@ function warble(freq,width,depth,scale,rate,len,itr=25,
 
   y[:,ixs] .= (1 .- (r .- 1).^2)'
 
-  t = ustrip.(indices(y,1)*Δt(spect))
+  t = ustrip.(uconert.(s,indices(y,1)*Δt(spect)))
   f = indices(y,2)*Δf(spect)
 
   shift(x) = x*0.5depth + (1-0.5depth)
@@ -39,7 +39,7 @@ function noise_warble(freq,width,depth,scale,rate,len,itr=25,
   x = noise(unit_len) |> bandpass(freq * 2.0^(-width/2),freq * 2.0^(width/2))
   y = spect(x)
 
-  t = ustrip.(indices(y,1)*Δt(spect))
+  t = ustrip.(uconert.(indices(y,1)*Δt(spect)))
   f = indices(y,2)*Δf(spect)
 
   shift(x) = x*0.5depth + (1-0.5depth)

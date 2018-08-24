@@ -15,7 +15,7 @@ function generate_input(dt,stim_len,tone_len)
   while at+tone_len < stim_len
     from = floor(Int,at / dt) + 1
     to = floor(Int,(at + tone_len) / dt) + 1
-    input[from:to,1] = response.(ustrip(uconvert.(s,(1:(to-from+1))*dt)))
+    input[from:to,1] = response.(ustrip.(uconvert.(s,(1:(to-from+1))*dt)))
 
     at += 2tone_len
   end
@@ -25,7 +25,7 @@ function generate_input(dt,stim_len,tone_len)
   while at+tone_len < stim_len
     from = floor(Int,at / dt) + 1
     to = floor(Int,(at + tone_len) / dt) + 1
-    input[from:to,2] = response.(ustrip(uconvert.(s,(1:(to-from+1))*dt)))
+    input[from:to,2] = response.(ustrip.(uconvert.(s,(1:(to-from+1))*dt)))
 
     at += 4tone_len
   end
