@@ -9,7 +9,7 @@ end
 Tracking(::Val{:simple};params...) = SimpleTracking(;params...)
 
 function track(C::Coherence;method=:simple,progressbar=true,params...)
-  method = Tracking(Val{method}();params...)
+  method = Tracking(C,Val{method}();params...)
   track(C,method,progressbar)
 end
 
@@ -57,7 +57,7 @@ function maximumby(by,xs)
       result = x
     end
   end
-  result
+  result, maxval
 end
 
 function bestordering(x,y)

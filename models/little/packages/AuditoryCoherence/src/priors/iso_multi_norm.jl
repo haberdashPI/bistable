@@ -83,7 +83,7 @@ struct ConstIsoPrior{T} <: Stats{T}
 end
 
 function isonorm(prior::Number,N::Number,dims,x2_offset::Number=prod(dims))
-  ConstIsoPrior{typeof(prior)}(prior,N,x2_offset)
+  ConstIsoPrior{typeof(prior)}(prior*N,N,x2_offset)
 end
 
 function Base.zero(prior::ConstIsoPrior,C::Coherence)

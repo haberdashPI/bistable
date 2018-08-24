@@ -1,50 +1,81 @@
 export map_components
 
 @with_kw struct MultiPriorTracking <: Tracking
-  tcs::Array{typeof(1.0s)} = [100ms, 250ms, 500ms, 1s, 2.5s, 5s]
-  source_priors
+  time_constants::Array{typeof(1.0s)}
+  source_priors::AxisArray
   freq_prior
   unmodeled_prior::Float64 = 0.0
   max_sources::Int = 4
 end
-Tracking(::Val{:multi_prior};params...) = MultiPriorTracking(;params...)
+function Tracking(C,::Val{:multi_prior};time_constants_s=[4],
+                  time_constants=time_constants_s*s,
+                  source_prior_sds=nothing,source_prior_N=nothing,
+                  source_priors=nothing,
+                  freq_prior=nothing,
+                  freq_prior_N = 2, freq_prior_bias = 0,
+                  params...)
+  if source_priors == nothing
+    @assert(source_prior_sds != nothing,
+            "Missing keyword argument `source_prior_sds`.")
+    @assert(source_prior_N != nothing,
+            "Missing keyword argument `source_prior_N`.")
+    source_priors = AxisArray([isonorm(sd,source_prior_N,size(C,2,3))
+                               for sd in source_prior_sds],
+                              Axis{:prior}(source_prior_sds))
+  end
+
+  if freq_prior == nothing
+    freq_prior = freqprior(freq_prior_bias,freq_prior_N)
+  end
+  MultiPriorTracking(;source_priors=source_priors,freq_prior=freq_prior,
+                     time_constants=time_constants,params...)
+end
 
 function expand_params(params::MultiPriorTracking)
-  [PriorTracking(tc,prior,params.freq_prior,
-                 params.unmodeled_prior,params.max_sources)
-   for tc in params.tcs for prior in params.source_priors]
+  AxisArray([PriorTracking(tc,prior,params.freq_prior,
+                           params.unmodeled_prior,params.max_sources)
+             for tc in params.time_constants for prior in params.source_priors],
+            Axis{:params}([(tc,prior) for tc in params.time_constants
+                           for prior in axisvalues(params.source_priors)[1]]))
 end
 
 function nitr(C::Coherence,params::MultiPriorTracking)
-  ntimes(C) * length(params.tcs) * length(params.source_priors)
+  ntimes(C) * length(params.time_constants) * length(params.source_priors)
 end
 
 function track(C::Coherence,params::MultiPriorTracking,progressbar=true,
                progress=track_progress(progressbar,nitr(C,params),"multi-prior"))
-  map(expand_params(params)) do p
-    track(C,p,true,progress)
+  all_params = expand_params(params)
+  S = Array{typeof(C)}(size(all_params,1))
+  lp = Array{Array{Float64}}(size(all_params,1))
+  #=@Threads.threads=# for (i,p) in collect(enumerate(all_params))
+    S[i], lp[i] = track(C,p,true,nothing)
   end
+
+  (AxisArray(S, axes(all_params,1)),
+   AxisArray(hcat(lp...), axes(C,1), axes(all_params,1)))
+
 end
 
-function map_components(fn,tracks::Array{<:Tuple{Coherence,AbstractArray}};
+function map_components(fn,tracks::AxisArray{<:Coherence},
+                        tracks_lp::AxisArray{<:Float64};
                         window=500ms,step=250ms)
-  Ct1 = tracks[1][1]
-  windows = windowing(Ct1,length=window,step=step)
+  # @show size(tracks)
+  # @show size(tracks_lp)
+  windows = windowing(tracks[1],length=window,step=step)
 
   result = map(enumerate(windows)) do (i_ixs)
     i,ixs = i_ixs
-    best_track = map(tracks) do results
-      mean(results[2][ixs])
-    end |> indmax
-
-    fn(tracks[best_track][1][Axis{:time}(ixs)])
+    best_track = indmax(mean(Array(tracks_lp[ixs,:]),1))
+    fn(tracks[best_track][Axis{:time}(ixs)])
   end
 
   AxisArray(result,axes(windows,Axis{:time}))
 end
 
 function mask(sp::AuditoryModel.AuditorySpectrogram,
-              tracks::Array{<:Tuple{Coherence,AbstractArray}},
+              tracks::AxisArray{<:Coherence},
+              tracks_lp::AxisArray{<:Float64},
               settings;progressbar=false,kwds...)
   scales = settings["scales"]["values"] .* cycoct
   freql,freqh = settings["rates"]["freq_limits"] .* Hz
@@ -52,37 +83,35 @@ function mask(sp::AuditoryModel.AuditorySpectrogram,
   cr = cortical(sp,scales=scales,progressbar=progressbar)
   cr = cr[:,:,freql .. freqh]
 
-  mask(cr,tracks;progressbar=progressbar,kwds...)
+  mask(cr,tracks,tracks_lp;progressbar=progressbar,kwds...)
 end
 
 function mask(cr::AuditoryModel.Cortical,
-              tracks::Array{<:Tuple{Coherence,AbstractArray}};
-              order=1,window=500ms,step=250ms,progressbar=false)
+              tracks::AxisArray{<:Coherence},
+              tracks_lp::AxisArray{<:Float64},
+              order=1;window=500ms,step=250ms,progressbar=false)
 
-  Ct1 = tracks[1][1]
   @assert axisdim(cr,Axis{:time}) == 1
   @assert axisdim(cr,Axis{:scale}) == 2
   @assert axisdim(cr,Axis{:freq}) == 3
-  @assert size(cr)[2:end] == size(Ct1)[2:end-1] "Dimension mismatch"
+  @assert size(cr)[2:end] == size(tracks[1])[2:end-1] "Dimension mismatch"
 
-  windows = windowing(Ct1,length=window,step=step)
+  windows = windowing(tracks[1],length=window,step=step)
 
   progress = progressbar ? Progress(length(windows),"Masking: ") : nothing
-  mask_helper(cr,tracks,order,windows,progress)
+  mask_helper(cr,tracks,tracks_lp,order,windows,progress)
 end
 
-function mask_helper(cr,tracks,order,windows,progress)
+function mask_helper(cr,tracks,tracks_lp,order,windows,progress)
   y = zeros(AxisArray(cr))
   norm = similar(y,real(eltype(cr)))
   norm .= zero(real(eltype(cr)))
 
-  cohere_windows = collect(windowing(cr,AuditoryModel.Params(tracks[1][1])))
+  cohere_windows = collect(windowing(cr,AuditoryModel.Params(tracks[1])))
 
   for (i,ixs) = enumerate(windows)
-    best_track = map(tracks) do results
-      mean(results[2][ixs])
-    end |> indmax
-    components = tracks[best_track][1][Axis{:time}(ixs)]
+    best_track = indmax(mean(Array(tracks_lp[ixs,:]),1))
+    components = tracks[best_track][Axis{:time}(ixs)]
     sorting = sortperm(component_means(components),rev=true)
     component = components[Axis{:component}(sorting[order])]
 
