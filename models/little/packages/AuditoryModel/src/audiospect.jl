@@ -35,6 +35,7 @@ struct ASParams <: Params
   decay_tc::Float64
   nonlinear::Float64
   octave_shift::Float64
+  freq_step::Int
   fs::typeof(1.0Hz)
 end
 
@@ -48,10 +49,15 @@ resultname(x::AuditorySpectrogram) = "Auditory Spectrogram"
 similar_helper(::AuditorySpectrogram,data,params) =
   AuditorySpectrogram(data,params)
 
-nfreqs(as::ASParams) = length(cochlear.filters)-1
+num_base_freqs(as::Params) = length(cochlear.filters)-1
+nfreqs(as::ASParams) =
+  floor(Int,(num_base_freqs(as))/as.freq_step)
 nfreqs(x) = length(freqs(x))
 
-freqs(as::ASParams) = 440.0Hz * 2.0.^(((1:nfreqs(as)).-31)./24 .+ as.octave_shift)
+function freqs(as::ASParams)
+  result = (440.0Hz * 2.0.^(((1:num_base_freqs(as)).-31)./24 .+ as.octave_shift))
+  result[1:as.freq_step:end]
+end
 freqs(as::Result) = freqs(AxisArray(as))
 freqs(as::AxisArray) = axisvalues(axes(as,Axis{:freq}))[1]
 
@@ -84,11 +90,12 @@ frame_length(as::Result) = frame_length(as.params)
 Δt(x) = (ts = times(x); ts[2] - ts[1])
 Sounds.samplerate(x::Result) = samplerate(Params(x))
 
-function ASParams(x;fs=samplerate(x),delta_t=10ms,
-                  Δt=delta_t,decay_tc=8,nonlinear=-2,octave_shift=-1)
+function ASParams(x;fs=samplerate(x),delta_t_ms=10,delta_t=delta_t_ms*ms,
+                  freq_step=1,Δt=delta_t,decay_tc=8,nonlinear=-2,
+                  octave_shift=-1)
   @assert fs == fixed_fs*Hz "The only sample rate supported is $(fixed_fs)Hz"
 
-  p = ASParams(Δt,decay_tc,nonlinear,octave_shift,fs)
+  p = ASParams(Δt,decay_tc,nonlinear,octave_shift,freq_step,fs)
 
   recommended_length = 2^(4+p.octave_shift)
   if frame_length(p) < recommended_length
@@ -181,7 +188,7 @@ function audiospect_helper(x::Vector{T},params::ASParams,progressbar=true,
     f = Axis{:freq}(freqs(params))
     t = Axis{:time}(times(params,Y))
 
-    AuditorySpectrogram(AxisArray(Y,t,f),params)
+    AuditorySpectrogram(AxisArray(Y[:,1:params.freq_step:end],t,f),params)
   end
 end
 
@@ -198,6 +205,8 @@ function Sounds.Sound(y_in::AuditorySpectrogram;max_iterations=typemax(Int),
   # expand y to include all frequencies
   y = zeros(eltype(y_in),size(y_in,1),M-1)
   f_ixs = minimum(freqs(y_in)) .<= freqs(y_in.params) .<= maximum(freqs(y_in))
+  # NOTE: this does not currently support frequency decimation
+  # because I don't yet need it
   @assert sum(f_ixs) == size(y_in,2) "Unxpected frequency resolution."
   y[:,f_ixs] = y_in
 

@@ -9,8 +9,8 @@ function bound(x,min,max)
   min + (max-min)*(clamp(y,miny,maxy) - miny)/(maxy - miny)
 end
 
-function strengths(tracks;kwds...)
-  strengths = map_components(tracks;kwds...) do components
+function strengths(tracks,tracks_lp;kwds...)
+  strengths = map_components(tracks,tracks_lp;kwds...) do components
     component_means(components)
   end
 
@@ -22,9 +22,9 @@ function ratio_to_lengths(ratio,threshold=2,min_length=1s)
                             axes(ratios,Axis{:time})),min_length)
 end
 
-function component_ratio(tracks;min_length=1s,
+function component_ratio(tracks,tracks_lp;min_length=1s,
                          intermediate_results=false,kwds...)
-  map_components(tracks;kwds...) do components
+  map_components(tracks,tracks_lp;kwds...) do components
     strengths = sort(component_means(components),rev=true)
     strengths[1] / sum(strengths[2:end])
   end
@@ -39,11 +39,11 @@ function estimate_bandwidth(sp;threshold=0.25,window=500ms,step=250ms)
   end
 end
 
-function component_bandwidth_ratio(cs,tracks;min_length=1s,
+function component_bandwidth_ratio(cs,tracks,tracks_lp;min_length=1s,
                                    threshold=0.25,
                                    progressbar=false,window=500ms,
                                    step=250ms)
-  crmask = mask(cs,tracks,window=window,step=step)
+  crmask = mask(cs,tracks,tracks_lp,window=window,step=step)
   spmask = audiospect(crmask,progressbar=progressbar)
   sp = audiospect(cs,progressbar=progressbar)
 
@@ -80,7 +80,9 @@ function remove_key_prefix!(prefix,dict)
 end
 
 apply_bistable(x,args...;kwds...) = apply_bistable!(deepcopy(x),args...;kwds...)
-function apply_bistable!(x,condition,params,settings;
+function apply_bistable!(x,condition,params;
+                         input_bound=(0.005,0.1),
+                         lowpass=1.5,lowpass_order=3,
                          interactive=false,
                          intermediate_results=interactive,
                          progressbar=interactive)
@@ -107,12 +109,11 @@ function apply_bistable!(x,condition,params,settings;
   )
 
   weights = findweights(condition,x)
-  weights .= bound.(weights,
-                    settings[string(condition)]["bistable"]["input_bound"]...)
+  weights .= bound.(weights,input_bound...)
   input_weights = copy(weights)
 
   wn = drift(weights;noise_params...,progressbar=progressbar)
-  wna,a,m = adaptmi(wn;W_m=weighting(x,condition,params[:W_m_σ],params[:W_m_c]),
+  wna,a,m = adaptmi(wn;W_m=weighting(x,condition,params),
                     shape_y = x -> max(0,x),progressbar=progressbar,
                     adapt_params...)
 
@@ -120,6 +121,10 @@ function apply_bistable!(x,condition,params,settings;
                       Butterworth(lowpass_order))
   wna_low = filt!(similar(wna),low,wna)
 
+  # shouldn't the below instead be replaced with:
+  #     x .*= wna_low./weights
+  # NOTE: I think this may only makes sense for the scale level analysis
+  # ????
   if eltype(x) <: Complex
     x .= sqrt.(abs.(x) .* max.(0.0,wna_low)) .* exp.(angle.(x).*im)
   else

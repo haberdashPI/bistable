@@ -1,9 +1,10 @@
 export scale_weighting, freq_weighting, weighting
 
-function weighting(x,condition,σ,c)
-  condition == :scales ? scale_weighting(x,σ,c) :
-  condition == :freqs ? freq_weighting(x,σ,c) :
-  condition == :track ? track_weighting(x,σ,c) :
+function weighting(x,condition,params)
+  condition == :scales ? scale_weighting(x,params[:W_m_σ],params[:W_m_c]) :
+  condition == :freqs ? freq_weighting(x,params[:W_m_σ],params[:W_m_c]) :
+  condition == :track ? track_weighting(x,params[:W_m_σ_t],params[:W_m_σ_ϕ],
+                                        params[:W_m_c]) :
   error("No condition named $condition.")
 end
 
@@ -31,9 +32,15 @@ function scale_weighting(cort,σ,c)
   helper
 end
 
-function track_weighting(tracks,σ,c)
-  f = log.(ustrip.(uconvert.(s,axisvalues(axes(tracks,Axis{:prior})))[1]))
-  W = @. c*(1 - exp(-(f - f')^2 / (σ*log(2))^2))
+function track_weighting(tracks,σ_t,σ_p,c)
+  tcs, priors = zip(axisvalues(axes(tracks,Axis{:params}()))[1]...)
+  p = collect(priors)
+  t = collect(log.(ustrip.(uconvert.(s,tcs))))
+  # @show p
+  # @show t
+  W = @. (c*(1 - exp(-(p - p')^2 / (σ_p*log(2))^2))*
+          (1 - exp(-(t - t')^2 / (σ_t*log(2))^2)))
+  # @show size(W)
 
   x -> W*x
 end
