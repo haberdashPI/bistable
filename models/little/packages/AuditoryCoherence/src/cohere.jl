@@ -143,8 +143,9 @@ function cohere(x::AbstractArray,params::CParams,progressbar=true,
                 progress = cohere_progress(progressbar,x,params))
   @assert axisdim(x,Axis{:time}) == 1
   @assert axisdim(x,Axis{:rate}) == 2
-  @assert ndims(x) == 4 # AxisArray can't handle skipped indices so we assum
-                        # the right dimensionality
+  @assert axisdim(x,Axis{:scale}) == 3
+  @assert axisdim(x,Axis{:freq}) == 4
+  @assert ndims(x) == 4
 
   # if we already have components, just wrap up the values with
   # parameters (since we've already computed components)
