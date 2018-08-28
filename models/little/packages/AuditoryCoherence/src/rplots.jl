@@ -73,6 +73,7 @@ end
 
 function rplot(C::Coherence{M,T,4} where {M,T};λ_digits=:automatic,
                kwds...)
+  C = sort_components(C)
   @assert axisdim(C,Axis{:time}) == 1
   @assert axisdim(C,Axis{:scale}) == 2
   @assert axisdim(C,Axis{:freq}) == 3

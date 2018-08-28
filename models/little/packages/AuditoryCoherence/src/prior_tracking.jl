@@ -84,3 +84,9 @@ function track(C::Coherence,params::PriorTracking,progressbar=true,
 
   (C_out_perm,lp_out)
 end
+
+function sort_components(x::Coherence)
+  order = sortperm(component_means(x),rev=true) # OLD PROFILE COUNT: 2313
+  x .= x[component(order)]
+  x
+end
