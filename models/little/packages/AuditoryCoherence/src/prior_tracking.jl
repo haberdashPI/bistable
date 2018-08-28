@@ -82,9 +82,5 @@ function track(C::Coherence,params::PriorTracking,progressbar=true,
   C_out_perm = similar(C)
   permutedims!(C_out_perm,C_out,[4,1,2,3])
 
-  # rearrange so largest is first
-  order = sortperm(component_means(C_out_perm),rev=true) # PROFILE COUNT: 2313
-  C_out_perm .= C_out_perm[component(order)] # PROFILE COUNT: 4592
-
   (C_out_perm,lp_out)
 end
