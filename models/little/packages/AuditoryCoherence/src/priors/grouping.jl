@@ -16,11 +16,12 @@ function TrackedSources(C::Coherence,params::PriorTracking)
                  [Beta(0.0,0.0) for i in 1:params.max_sources],params)
 end
 
-function logpdf(track::TrackedSources,C::AxisArray,grouping::Grouping)
+function logpdf(track::TrackedSources,C::AbstractArray,sumcomponents,
+                grouping::Grouping)
   # observed, modeled sources
   logsum = sum(grouping) do kk_i
     (kk,i) = kk_i
-    observed = sum(k -> vec(component(C,k)),kk)
+    observed = sumcomponents(C,kk)
     logpdf(track.params.source_prior+track.sources[i], observed) +
       logpdf(track.params.freq_prior + track.freqs[i],true)
   end
@@ -43,9 +44,9 @@ function mult!(track::TrackedSources,x)
   end
 end
 
-function update!(track::TrackedSources,Csource,grouping,w=1.0)
+function update!(track::TrackedSources,Csource,veccomponent,grouping,w=1.0)
   for i in grouping.sources
-    update!(track.sources[i],vec(component(Csource,i)),w)
+    update!(track.sources[i],veccomponent(Csource,i),w)
     track.freqs[i] = update(track.freqs[i],true,w)
   end
   for i in setdiff(1:track.params.max_sources,grouping.sources)
@@ -53,9 +54,9 @@ function update!(track::TrackedSources,Csource,grouping,w=1.0)
   end
 end
 
-function downdate!(track::TrackedSources,Csource,grouping,w=1.0)
+function downdate!(track::TrackedSources,Csource,veccomponent,grouping,w=1.0)
   for i in grouping.sources
-    downdate!(track.sources[i],vec(component(Csource,i)),w)
+    downdate!(track.sources[i],veccomponent(Csource,i),w)
     track.freqs[i] = downdate(track.freqs[i],true,w)
   end
   for i in setdiff(1:track.params.max_sources,grouping.sources)

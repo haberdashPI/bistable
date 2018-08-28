@@ -4,7 +4,6 @@ export map_components
   time_constants::Array{typeof(1.0s)}
   source_priors::AxisArray
   freq_prior
-  unmodeled_prior::Float64 = 0.0
   max_sources::Int = 4
 end
 function Tracking(C,::Val{:multi_prior};time_constants_s=[4],
@@ -32,8 +31,7 @@ function Tracking(C,::Val{:multi_prior};time_constants_s=[4],
 end
 
 function expand_params(params::MultiPriorTracking)
-  AxisArray([PriorTracking(tc,prior,params.freq_prior,
-                           params.unmodeled_prior,params.max_sources)
+  AxisArray([PriorTracking(tc,prior,params.freq_prior,params.max_sources)
              for tc in params.time_constants for prior in params.source_priors],
             Axis{:params}([(tc,prior) for tc in params.time_constants
                            for prior in axisvalues(params.source_priors)[1]]))

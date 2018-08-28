@@ -34,6 +34,8 @@ function track(C::Coherence,params::PriorTracking,progressbar=true,
   @assert axisdim(C,component) == 4
 
   track = TrackedSources(C,params)
+  C_ = C
+  timeax = 4
 
   C_out = similar(C,axes(C)[1:end-1]...,component(1:params.max_sources))
   C_out .= 0
@@ -44,36 +46,36 @@ function track(C::Coherence,params::PriorTracking,progressbar=true,
   # decay = max(0.5,1.0 - Δt(C) / params.tc)
   # @show decay
   lp_out = AxisArray(fill(0.0,ntimes(C)),axes(C,1))
+  buf = Array{eltype(C_)}(1,size(C_,2,3)...)
+  function sumcomponents(C_t,kk)
+    y = sum!(buf,view(C_t,:,:,:,kk))
+    # buf ./= size(C_t,timeax)
+    vec(buf)
+    # sum(k -> vec(view(C_t,:,:,:,k)),kk)
+  end
+
+  veccomponent(C_t,k) = vec(view(C_t,:,:,k))
 
   groupings = CircularDeque{Grouping}(window+1)
   for t in eachindex(times(C))
     # find the MAP grouping of sources
-    MAPgrouping, lp_out[time(t)] = # PROFILE COUNT: 18922
-      maximumby(grouping -> logpdf(track,C[time(t)],grouping),
-                possible_groupings(params.max_sources,
-                                   ncomponents(C)))
+    MAPgrouping, lp_out[t] = # OLD PROFILE COUNT: 18922
+      maximumby(g -> logpdf(track,view(C_,t:t,:,:,:),sumcomponents,g),
+                possible_groupings(params.max_sources,ncomponents(C)))
 
     # arrange the sources
     for (kk,i) in iterable(MAPgrouping)
       for k in kk
-        #  C_out[time(t),component(i)] .+= C[time(t),component(k)]
-        # I hope in the future I can use the above but not now
-        # TODO: submit an issue with AxisArrays
         C_out[t,:,:,i] .+= C[t,:,:,k]  # PROFILE COUNT: 2040
       end
     end
 
     # update the source models
-    update!(track,C_out[time(t)],MAPgrouping)
+    update!(track,view(C_out,t,:,:,:),veccomponent,MAPgrouping)
     # mult!(track,decay)
     push!(groupings,MAPgrouping)
     if t > window
-      downdate!(track,C_out[time(t-window)],shift!(groupings))
-    end
-
-    for i in 1:params.max_sources
-      source_out[t,:,:,i] = (track.params.source_prior + track.sources[i]).μ
-      sourceS_out[t,:,:,i] = std(track.params.source_prior + track.sources[i])
+      downdate!(track,view(C_out,t-window,:,:,:),veccomponent,shift!(groupings))
     end
 
     next!(progress)
