@@ -5,11 +5,12 @@ struct PriorTracking{Sp,Fp} <: Tracking
   tc::typeof(1.0s)
   source_prior::Sp
   freq_prior::Fp
+  unmodeled_prior::Float64
   max_sources::Int
 end
 function Tracking(C,::Val{:prior};tc=1s,source_prior=nothing,
                   freq_prior=nothing, max_sources=4)
-  PriorTracking(tc,source_prior,freq_prior,max_sources)
+  PriorTracking(tc,source_prior,freq_prior,0.0,max_sources)
 end
 
 include("tracking_priors.jl")
