@@ -33,25 +33,22 @@ function track(C::Coherence,params::PriorTracking,progressbar=true,
   @assert axisdim(C,time) == 1
   @assert axisdim(C,component) == 4
 
-  track = TrackedSources(C,params)
-  C_ = C
+  track = TrackedSources(prod(size(C,2,3)),params)
+  C_ = permutedims(C,[2,3,4,1])
   timeax = 4
 
-  C_out = similar(C,axes(C)[1:end-1]...,component(1:params.max_sources))
+  C_out = similar(C_)
   C_out .= 0
   source_out = copy(C_out)
   sourceS_out = copy(C_out)
 
   window = ceil(Int,params.tc / Δt(C))
-  # decay = max(0.5,1.0 - Δt(C) / params.tc)
-  # @show decay
   lp_out = AxisArray(fill(0.0,ntimes(C)),axes(C,1))
-  buf = Array{eltype(C_)}(1,size(C_,2,3)...)
+  buf = Array{eltype(C_)}(size(C_,1,2)...)
   function sumcomponents(C_t,kk)
-    y = sum!(buf,view(C_t,:,:,:,kk))
+    y = sum!(buf,view(C_t,:,:,kk,:))
     # buf ./= size(C_t,timeax)
     vec(buf)
-    # sum(k -> vec(view(C_t,:,:,:,k)),kk)
   end
 
   veccomponent(C_t,k) = vec(view(C_t,:,:,k))
@@ -60,30 +57,34 @@ function track(C::Coherence,params::PriorTracking,progressbar=true,
   for t in eachindex(times(C))
     # find the MAP grouping of sources
     MAPgrouping, lp_out[t] = # OLD PROFILE COUNT: 18922
-      maximumby(g -> logpdf(track,view(C_,t:t,:,:,:),sumcomponents,g),
+      maximumby(g -> logpdf(track,view(C_,:,:,:,t:t),sumcomponents,g),
                 possible_groupings(params.max_sources,ncomponents(C)))
 
     # arrange the sources
     for (kk,i) in iterable(MAPgrouping)
       for k in kk
-        C_out[t,:,:,i] .+= C[t,:,:,k]  # PROFILE COUNT: 2040
+        C_out[:,:,i,t] .+= C_[:,:,k,t]  # PROFILE COUNT: 2040
       end
     end
 
     # update the source models
-    update!(track,view(C_out,t,:,:,:),veccomponent,MAPgrouping)
+    update!(track,view(C_out,:,:,:,t),veccomponent,MAPgrouping)
     # mult!(track,decay)
     push!(groupings,MAPgrouping)
     if t > window
-      downdate!(track,view(C_out,t-window,:,:,:),veccomponent,shift!(groupings))
+      downdate!(track,view(C_out,:,:,:,t-window),veccomponent,shift!(groupings))
     end
 
     next!(progress)
   end
 
-  # rearrange so largest is first
-  order = sortperm(component_means(C_out),rev=true) # PROFILE COUNT: 2313
-  C_out .= C_out[component(order)] # PROFILE COUNT: 4592
 
-  (C_out,lp_out)
+  C_out_perm = similar(C)
+  permutedims!(C_out_perm,C_out,[4,1,2,3])
+
+  # rearrange so largest is first
+  order = sortperm(component_means(C_out_perm),rev=true) # PROFILE COUNT: 2313
+  C_out_perm .= C_out_perm[component(order)] # PROFILE COUNT: 4592
+
+  (C_out_perm,lp_out)
 end

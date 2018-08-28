@@ -11,8 +11,8 @@ struct TrackedSources{S,F}
   freqs::Vector{F}
   params::PriorTracking
 end
-function TrackedSources(C::Coherence,params::PriorTracking)
-  TrackedSources([zero(params.source_prior,C) for i in 1:params.max_sources],
+function TrackedSources(d,params::PriorTracking)
+  TrackedSources([zero(params.source_prior,d) for i in 1:params.max_sources],
                  [Beta(0.0,0.0) for i in 1:params.max_sources],params)
 end
 

@@ -7,16 +7,16 @@ mutable struct IsoMultiNormStats{T} <: Stats{T}
   x2_offset::Float64
 end
 Base.std(x::IsoMultiNormStats) = x.n > 0 ? x.S ./ x.n : Inf
-Base.zero(x::IsoMultiNormStats{T},C::Coherence) where T =
+Base.zero(x::IsoMultiNormStats{T},d) where T =
   IsoMultiNormStats(zero(x.μ),zero(x.S),0.0,0.0)
-coherence_dim(C::Coherence) = prod(size(C,2,3))
 
 function isonorm(prior::Coherence,n::Number,
                  x2_offset::Number=coherence_dim(C);thresh=1e-3)
-  data = reshape(mean(prior,4),size(prior,1),:)
-  μ = squeeze(mean(data,1),1)
-  S = squeeze(sum(data.^2,1),1) .* n./size(data,1) .+ n.*thresh.^2
-  IsoMultiNormStats{eltype(data)}(μ,S,n,x2_offset)
+  error("Outdated prior")
+  # data = reshape(mean(prior,4),size(prior,1),:)
+  # μ = squeeze(mean(data,1),1)
+  # S = squeeze(sum(data.^2,1),1) .* n./size(data,1) .+ n.*thresh.^2
+  # IsoMultiNormStats{eltype(data)}(μ,S,n,x2_offset)
 end
 
 # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Online_algorithm
@@ -95,8 +95,7 @@ function isonorm(prior::Number,N::Number,dims,x2_offset::Number=prod(dims))
   ConstIsoPrior{typeof(prior)}(prior*N,N,x2_offset)
 end
 
-function Base.zero(prior::ConstIsoPrior,C::Coherence)
-  d = coherence_dim(C)
+function Base.zero(prior::ConstIsoPrior,d)
   IsoMultiNormStats(fill(zero(prior.S),d),fill(zero(prior.S),d),0.0,0.0)
 end
 
