@@ -5,12 +5,11 @@ struct PriorTracking{Sp,Fp} <: Tracking
   tc::typeof(1.0s)
   source_prior::Sp
   freq_prior::Fp
-  unmodeled_prior::Float64
   max_sources::Int
 end
 function Tracking(C,::Val{:prior};tc=1s,source_prior=nothing,
                   freq_prior=nothing, max_sources=4)
-  PriorTracking(tc,source_prior,freq_prior,0.0,max_sources)
+  PriorTracking(tc,source_prior,freq_prior,max_sources)
 end
 
 include("tracking_priors.jl")
@@ -21,8 +20,7 @@ include("tracking_priors.jl")
 # source b ∈ B is modeled as sum of elements in A
 possible_groupings(n_sources,n_obs) =
   (Grouping(grouping,mapping)
-   for observations in combinations(1:n_obs)
-   for grouping in partitions(observations)
+   for grouping in partitions(1:n_obs)
    for sources in combinations(1:n_sources,length(grouping))
    for mapping in permutations(sources))
 

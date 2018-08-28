@@ -33,15 +33,6 @@ function logpdf(track::TrackedSources,C::AxisArray,grouping::Grouping)
     end
   end
 
-  # unmodeled (but observed) components
-  unmodeled = setdiff(1:ncomponents(C),components(grouping))
-  if !isempty(unmodeled)
-    logsum += sum(unmodeled) do k
-      logpdf(track.params.source_prior,vec(component(C,k)))
-    end
-    logsum += log(track.params.unmodeled_prior)
-  end
-
   logsum
 end
 
