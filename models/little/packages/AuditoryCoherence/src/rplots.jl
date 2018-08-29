@@ -107,6 +107,78 @@ R"""
 """
 end
 
+function rplot(S::SourceTracking;λ_digits=:automatic,
+               kwds...)
+  S = sort_components(S)
+  @assert axisdim(S,Axis{:scale}) == 1
+  @assert axisdim(S,Axis{:freq}) == 2
+  @assert axisdim(S,Axis{:component}) == 3
+  @assert axisdim(S,Axis{:time}) == 4
+
+  ii = CartesianRange(size(S))
+  at(i) = map(ii -> ii[i],ii)
+
+  rowtitle = titlefn(component_means(S),λ_digits,indices(S,3))
+
+  df = DataFrame(value = vec(S),
+                 time = vec(ustrip.(uconvert.(s,times(S)[at(4)]))),
+                 scale = vec(round.(ustrip.(uconvert.(cycoct,scales(S)[at(1)])),2)),
+                 freq_bin = vec(at(2)),
+                 component = vec(at(3)),
+                 component_title = rowtitle.(vec(at(3))))
+
+  fbreaks,findices = freq_ticks(S)
+  p = raster_plot(df;value=:value,x=:time,y=:freq_bin,kwds...)
+
+R"""
+  scalevals = $(ustrip.(uconvert.(cycoct,scales(S))))
+  scalestr = function(x){sprintf("'Scale: %3.2f cyc/oct'",x)}
+  ordered_scales = function(x){
+    factor(scalestr(x),levels=scalestr(scalevals))
+  }
+
+  $p + facet_grid(ordered_scales(scale)~component_title,labeller=label_parsed) +
+  scale_y_continuous(breaks=$findices,labels=$fbreaks) +
+  ylab('Frequency (Hz)') + xlab('Time (s)')
+"""
+end
+
+
+function rplot(tracks::AxisArray{<:SourceTracking},component=1;kwds...)
+  data = AxisArray(cat(4,(sort_components(track)[:,:,component,:] for track in tracks)...),
+                   axes(tracks[1])[[1,2,4]]...,Axis{:track}(1:length(tracks)))
+
+  ii = CartesianRange(size(data))
+  at(i) = vec(map(ii -> ii[i],ii))
+  track_vals = axisvalues(tracks)[1]
+  # @show track_vals
+  # @show unique(at(4))
+
+  df = DataFrame(value = vec(data),
+                 time = vec(ustrip.(uconvert.(s,times(data)[at(3)]))),
+                 scale = vec(round.(ustrip.(uconvert.(cycoct,
+                                                      scales(data)[at(1)])),2)),
+                 freq_bin = vec(at(2)),
+                 tau = vec([ustrip(τ) for (τ,_) in track_vals[at(4)]]),
+                 sigma = vec([ustrip(σ) for (_,σ) in track_vals[at(4)]]))
+  # @show(df[1:5,:])
+
+  fbreaks,findices = freq_ticks(tracks[1])
+  p = raster_plot(df;value=:value,x=:time,y=:freq_bin,kwds...)
+
+R"""
+  scalevals = $(ustrip.(uconvert.(cycoct,scales(data))))
+  scalestr = function(x){sprintf("'Scale: %3.2f cyc/oct'",x)}
+  ordered_scales = function(x){
+    factor(scalestr(x),levels=scalestr(scalevals))
+  }
+
+  $p + facet_grid(ordered_scales(scale)~tau+sigma,labeller=label_both) +
+  scale_y_continuous(breaks=$findices,labels=$fbreaks) +
+  ylab('Frequency (Hz)') + xlab('Time (s)')
+"""
+end
+
 function rplot(tracks::AxisArray{<:Coherence},component=1;kwds...)
   data = AxisArray(cat(4,(track[:,:,:,component] for track in tracks)...),
                    axes(tracks[1])[1:3]...,Axis{:track}(1:length(tracks)))

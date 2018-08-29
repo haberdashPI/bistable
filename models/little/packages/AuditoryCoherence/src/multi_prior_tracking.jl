@@ -1,6 +1,7 @@
 export map_components
 
-@with_kw struct MultiPriorTracking <: Tracking
+@with_kw struct MultiPriorTracking{C} <: Tracking
+  cohere::C
   time_constants::Array{typeof(1.0s)}
   source_priors::AxisArray
   freq_prior
@@ -26,12 +27,14 @@ function Tracking(C,::Val{:multi_prior};time_constants_s=[4],
   if freq_prior == nothing
     freq_prior = freqprior(freq_prior_bias,freq_prior_N)
   end
-  MultiPriorTracking(;source_priors=source_priors,freq_prior=freq_prior,
+  MultiPriorTracking(;cohere=AuditoryModel.Params(C),
+                     source_priors=source_priors,freq_prior=freq_prior,
                      time_constants=time_constants,params...)
 end
 
 function expand_params(params::MultiPriorTracking)
-  AxisArray([PriorTracking(tc,prior,params.freq_prior,params.max_sources)
+  AxisArray([PriorTracking(params.cohere,tc,prior,params.freq_prior,
+                           params.max_sources)
              for tc in params.time_constants for prior in params.source_priors],
             Axis{:params}([(tc,prior) for tc in params.time_constants
                            for prior in axisvalues(params.source_priors)[1]]))
@@ -44,7 +47,7 @@ end
 function track(C::Coherence,params::MultiPriorTracking,progressbar=true,
                progress=track_progress(progressbar,nitr(C,params),"multi-prior"))
   all_params = expand_params(params)
-  S = Array{typeof(C)}(size(all_params,1))
+  S = Array{SourceTracking}(size(all_params,1))
   lp = Array{Array{Float64}}(size(all_params,1))
   #=@Threads.threads=# for (i,p) in collect(enumerate(all_params))
     S[i], lp[i] = track(C,p,true,nothing)
@@ -52,10 +55,9 @@ function track(C::Coherence,params::MultiPriorTracking,progressbar=true,
 
   (AxisArray(S, axes(all_params,1)),
    AxisArray(hcat(lp...), axes(C,1), axes(all_params,1)))
-
 end
 
-function map_components(fn,tracks::AxisArray{<:Coherence},
+function map_components(fn,tracks::AxisArray{<:SourceTracking},
                         tracks_lp::AxisArray{<:Float64};
                         window=500ms,step=250ms)
   # @show size(tracks)
@@ -72,7 +74,7 @@ function map_components(fn,tracks::AxisArray{<:Coherence},
 end
 
 function mask(sp::AuditoryModel.AuditorySpectrogram,
-              tracks::AxisArray{<:Coherence},
+              tracks::AxisArray{<:SourceTracking},
               tracks_lp::AxisArray{<:Float64},
               settings;progressbar=false,kwds...)
   scales = settings["scales"]["values"] .* cycoct
@@ -85,14 +87,14 @@ function mask(sp::AuditoryModel.AuditorySpectrogram,
 end
 
 function mask(cr::AuditoryModel.Cortical,
-              tracks::AxisArray{<:Coherence},
+              tracks::AxisArray{<:SourceTracking},
               tracks_lp::AxisArray{<:Float64},
               order=1;window=500ms,step=250ms,progressbar=false)
 
   @assert axisdim(cr,Axis{:time}) == 1
   @assert axisdim(cr,Axis{:scale}) == 2
   @assert axisdim(cr,Axis{:freq}) == 3
-  @assert size(cr)[2:end] == size(tracks[1])[2:end-1] "Dimension mismatch"
+  @assert size(cr,2,3) == size(tracks[1],1,2) "Dimension mismatch"
 
   windows = windowing(tracks[1],length=window,step=step)
 
@@ -105,17 +107,17 @@ function mask_helper(cr,tracks,tracks_lp,order,windows,progress)
   norm = similar(y,real(eltype(cr)))
   norm .= zero(real(eltype(cr)))
 
-  cohere_windows = collect(windowing(cr,AuditoryModel.Params(tracks[1])))
+  cohere_windows =
+    collect(windowing(cr,AuditoryModel.Params(tracks[1].params.cohere)))
 
   for (i,ixs) = enumerate(windows)
     best_track = indmax(mean(Array(tracks_lp[ixs,:]),1))
-    components = tracks[best_track][Axis{:time}(ixs)]
+    components = view(tracks[best_track],:,:,:,ixs)
     sorting = sortperm(component_means(components),rev=true)
-    component = components[Axis{:component}(sorting[order])]
+    c = sorting[order]
 
     for (ti,t) in enumerate(ixs)
-      resh = reshape(component[ti,:,:,:],1,
-                     size(component,2:ndims(components)-1...)...)
+      resh = reshape(view(components,:,:,c,ti),1,size(y,2,3)...)
       y[Axis{:time}(cohere_windows[t])] .+= resh
       norm[Axis{:time}(cohere_windows[t])] += 1
     end
@@ -124,7 +126,7 @@ function mask_helper(cr,tracks,tracks_lp,order,windows,progress)
   end
   y ./= max.(1,norm)
   y ./= maximum(abs,y)
-  y .= (abs.(cr) .* y) .* exp.(angle.(cr).*im)
+  y .*= cr
 
   cortical(y,AuditoryModel.Params(cr))
 end

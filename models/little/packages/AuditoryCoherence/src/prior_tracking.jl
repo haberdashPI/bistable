@@ -1,15 +1,17 @@
 using Combinatorics
 using DataStructures
 
-struct PriorTracking{Sp,Fp} <: Tracking
+struct PriorTracking{C,Sp,Fp} <: Tracking
+  cohere::C
   tc::typeof(1.0s)
   source_prior::Sp
   freq_prior::Fp
   max_sources::Int
 end
+Δt(x::PriorTracking) = Δt(x.cohere)
 function Tracking(C,::Val{:prior};tc=1s,source_prior=nothing,
                   freq_prior=nothing, max_sources=4)
-  PriorTracking(tc,source_prior,freq_prior,max_sources)
+  PriorTracking(AuditoryModel.Params(C),tc,source_prior,freq_prior,max_sources)
 end
 
 include("tracking_priors.jl")
@@ -79,14 +81,15 @@ function track(C::Coherence,params::PriorTracking,progressbar=true,
   end
 
 
-  C_out_perm = similar(C)
-  permutedims!(C_out_perm,C_out,[4,1,2,3])
-
-  (C_out_perm,lp_out)
+  tracking =
+    SourceTracking(params,AxisArray(C_out,axes(C,2),axes(C,3),
+                                    Axis{:component}(1:params.max_sources),
+                                    axes(C,1)))
+  (tracking,lp_out)
 end
 
-function sort_components(x::Coherence)
+function sort_components(x)
   order = sortperm(component_means(x),rev=true) # OLD PROFILE COUNT: 2313
-  x .= x[component(order)]
+  x .= x[Axis{:component}(order)]
   x
 end

@@ -8,6 +8,37 @@ abstract type Tracking end
 end
 Tracking(::Val{:simple};params...) = SimpleTracking(;params...)
 
+# TODO: this makes me realize I can make a more general metadata array that
+# isn't an axis array at all
+struct SourceTracking{P,T,N} <: AuditoryModel.Result{T,N}
+  params::P
+  val::AxisArray{T,N}
+  function SourceTracking(params::P,val::AbstractArray{T,N}) where {T,N,P}
+
+    @assert axisdim(val,Axis{:scale}) == 1
+    @assert axisdim(val,Axis{:freq}) == 2
+    @assert axisdim(val,Axis{:component}) == 3
+    @assert axisdim(val,Axis{:time}) == 4
+    new{P,T,N}(params,val)
+  end
+end
+AuditoryModel.hastimes(x::SourceTracking) = HasTimes()
+AuditoryModel.Params(x::SourceTracking) = x.params
+AxisArrays.AxisArray(x::SourceTracking) = x.val
+Δt(x::SourceTracking) = Δt(x.params)
+AuditoryModel.resultname(x::SourceTracking) = "Source Interpretation"
+AuditoryModel.similar_helper(::SourceTracking,val,params) = SourceTracking(val,params)
+component_means(S::SourceTracking) = vec(mean(S,[1,2,4]))
+component_means(S::SubArray{<:Any,<:Any,<:SourceTracking}) = vec(mean(S,[1,2,4]))
+AuditoryModel.hastimes(::SourceTracking) = HasTimes()
+function AuditoryModel.modelwrap(x::SourceTracking,newval::AxisArray)
+  if axisnames(x) == axisnames(newval)
+    SourceTracking(AuditoryModel.Params(x),newval)
+  else
+    newval
+  end
+end
+
 function track(C::Coherence;method=:simple,progressbar=true,params...)
   method = Tracking(C,Val{method}();params...)
   track(C,method,progressbar)
