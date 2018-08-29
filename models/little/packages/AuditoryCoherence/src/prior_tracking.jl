@@ -26,18 +26,26 @@ possible_groupings(n_sources,n_obs) =
    for sources in combinations(1:n_sources,length(grouping))
    for mapping in permutations(sources))
 
-function track(C::Coherence,params::PriorTracking,progressbar=true,
-               progress = track_progress(progressbar,ntimes(C),"prior"))
-  time = Axis{:time}
-  component = Axis{:component}
-  # hopefully one day I can remove these assertions
-  # but not right now
-  @assert axisdim(C,time) == 1
-  @assert axisdim(C,component) == 4
+struct PermutedCoherence{C,P}
+  cohere::C
+  permuted::P
+end
 
-  track = TrackedSources(prod(size(C,2,3)),params)
+function prepare_coherence(C::Coherence)
+  @assert axisdim(C,Axis{:time}) == 1
+  @assert axisdim(C,Axis{:component}) == 4
   C_ = permutedims(C,[2,3,4,1])
+  PermutedCoherence(C,C_)
+end
+
+track(C::Coherence,args...) = track(prepare_coherence(C),args...)
+function track(perm::PermutedCoherence,params::PriorTracking,progressbar=true,
+               progress = track_progress(progressbar,ntimes(C),"prior"))
+  C = perm.cohere
+  C_ = perm.permuted
   timeax = 4
+
+  track = TrackedSources(prod(size(C_,1,2)),params)
 
   C_out = similar(C_)
   C_out .= 0

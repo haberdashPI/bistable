@@ -46,11 +46,14 @@ end
 
 function track(C::Coherence,params::MultiPriorTracking,progressbar=true,
                progress=track_progress(progressbar,nitr(C,params),"multi-prior"))
+
+  C_ = prepare_coherence(C)
   all_params = expand_params(params)
   S = Array{SourceTracking}(size(all_params,1))
   lp = Array{Array{Float64}}(size(all_params,1))
+
   #=@Threads.threads=# for (i,p) in collect(enumerate(all_params))
-    S[i], lp[i] = track(C,p,true,nothing)
+    S[i], lp[i] = track(C_,p,true,nothing)
   end
 
   (AxisArray(S, axes(all_params,1)),
