@@ -79,7 +79,7 @@ R"""
 end
 
 
-function rplot(x::AxisArray)
+function rplot(x::AxisArray{T,2}) where T
   ixs = CartesianRange(size(x))
   at(ixs,i) = map(x -> x[i],ixs)
   timeax = axisdim(x,Axis{:time})
