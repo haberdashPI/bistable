@@ -33,7 +33,7 @@ params = Dict(
 settings = TOML.parsefile("settings_2018-08-18.toml")
 # settings["percept_lengths"]["threshold"] = 1.6
 # settings = TOML.parsefile("fast_settings.toml")
-@time result = bistable_model(40, params, settings, interactive=true,
+@time result = bistable_model(100, params, settings, interactive=true,
                               progressbar=false)
 alert()
 
