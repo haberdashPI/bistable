@@ -16,10 +16,8 @@ end
 
 include("tracking_priors.jl")
 
-# the number of ways an improper subset
-# of observations A can be mapped to a set of
-# source in B when it is possible that
-# source b ∈ B is modeled as sum of elements in A
+# the number of ways observations A can be mapped to a set of source in B when
+# it is possible that source b ∈ B is modeled as sum of elements in A
 possible_groupings(n_sources,n_obs) =
   (Grouping(grouping,mapping)
    for grouping in partitions(1:n_obs)
@@ -47,7 +45,7 @@ function track(perm::PermutedCoherence,params::PriorTracking,progressbar=true,
 
   track = TrackedSources(prod(size(C_,1,2)),params)
 
-  C_out = similar(C_)
+  C_out = similar(C_,size(C_,1,2)...,params.max_sources,size(C_,4))
   C_out .= 0
   source_out = copy(C_out)
   sourceS_out = copy(C_out)

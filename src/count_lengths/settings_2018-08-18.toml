@@ -24,7 +24,7 @@ freq_limits_Hz = [400.0, 1200.0]
 bandonly = true
 
 [nmf]
-ncomponents = 3
+ncomponents = 2
 window_ms = 100
 delta_ms = 100
 skipframes = 0

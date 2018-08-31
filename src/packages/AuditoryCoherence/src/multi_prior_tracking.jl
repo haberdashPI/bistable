@@ -63,8 +63,6 @@ end
 function map_components(fn,tracks::AxisArray{<:SourceTracking},
                         tracks_lp::AxisArray{<:Float64};
                         window=500ms,step=250ms)
-  # @show size(tracks)
-  # @show size(tracks_lp)
   windows = windowing(tracks[1],length=window,step=step)
 
   result = map(enumerate(windows)) do (i_ixs)
