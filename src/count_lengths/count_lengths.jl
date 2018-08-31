@@ -7,16 +7,8 @@ using JLD2
 using Parameters
 using TOML
 
-push!(LOAD_PATH,joinpath(@__DIR__,"..","packages"))
 using AuditoryModel
 using AuditoryCoherence
-
-include(joinpath(@__DIR__,"..","util","stim.jl"))
-include(joinpath(@__DIR__,"..","util","peaks.jl"))
-include(joinpath(@__DIR__,"..","util","lengths.jl"))
-include(joinpath(@__DIR__,"..","util","bimodel.jl"))
-include(joinpath(@__DIR__,"..","util","biapply.jl"))
-include(joinpath(@__DIR__,"..","util","threshold.jl"))
 
 @with_kw struct CountLength
   ratio::Array{Float64}

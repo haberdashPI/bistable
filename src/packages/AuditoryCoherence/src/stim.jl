@@ -1,5 +1,6 @@
 using Unitful
 using Sounds
+export alter_ab, sync_ab, buildup_aba, aba, ab, ideal_ab
 
 set_default_samplerate!(8kHz)
 

@@ -1,5 +1,4 @@
-include(joinpath(@__DIR__,"biapply.jl"))
-using AuditoryCoherence
+export bistable_model
 
 function bistable_model(stim_count::Int,params,settings;kwds...)
   # stimulus generation
