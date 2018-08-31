@@ -1,6 +1,6 @@
 include("count_lengths.jl")
 
-dir = joinpath("..","..","..","data","count_lengths")
+dir = joinpath("..","..","data","count_lengths")
 isdir(dir) || mkdir(dir)
 
 # NOTE: for freq W_m_σ is 2.0

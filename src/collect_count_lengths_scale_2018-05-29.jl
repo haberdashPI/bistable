@@ -3,7 +3,7 @@ using JLD2
 using DataFrames
 using Feather
 
-# dir = joinpath("..","..","..","data","count_lengths")
+# dir = joinpath("..","data","count_lengths")
 dir = joinpath("work","dlittle","bistable_threshold_001","data")
 all_rows = []
 for_count_lengths(dir) do rows
@@ -14,6 +14,6 @@ for_count_lengths(dir) do rows
 end
 df = vcat(all_rows...)
 
-Feather.write(joinpath("..","..","..","data","count_lengths",
+Feather.write(joinpath("..","..","data","count_lengths",
                        "scale_percept_lengths_$(Date(now())).feather"),df)
 

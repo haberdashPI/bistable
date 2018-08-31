@@ -37,12 +37,12 @@ parse_settings = ArgParseSettings()
     help = "The directory to save results to"
     required = false
     arg_type = String
-    default = joinpath(@__DIR__,"..","..","..","data","count_lengths")
+    default = joinpath(@__DIR__,"..","..","data","count_lengths")
   "--logfile", "-l"
     help = "The file to log information to"
     required = false
     arg_type = String
-    default = joinpath(@__DIR__,"..","..","..","data","count_lengths","run.log")
+    default = joinpath(@__DIR__,"..","..","data","count_lengths","run.log")
   "--settings"
     help = "The file specifying all alogirhtm settings for the simulation."
     required = false

@@ -10,7 +10,7 @@ stimuli/*.wav
 *.swp
 tags
 .undo
-src/count_lengths/*count_lengths_N.txt
+src/*count_lengths_N.txt
 presentation/pitch
 presentation/paper/*.png
 presentation/paper/*.pdf

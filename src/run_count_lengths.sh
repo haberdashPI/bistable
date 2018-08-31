@@ -12,7 +12,7 @@
 module load julia
 arguments=${@:1:$(($#-1))}
 output=${@: -1}
-julia projects/bistable/models/little/count_lengths/run_count_lengths.jl \
+julia projects/bistable/models/little/run_count_lengths.jl \
 	$arguments &> $output
 
 # 40 seconds to run one parameter for a stimulus of with 10 repeats

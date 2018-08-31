@@ -3,7 +3,7 @@ S=1
 label=$1
 # S=101 # start from where N=100 leaves off
 # N=10
-N=`cat projects/bistable/models/little/count_lengths/${label}_count_lengths_N.txt`
+N=`cat projects/bistable/models/little/${label}_count_lengths_N.txt`
 # N=2000 # start with just 10 jobs for now, and see how that goes.
 K=10
 
@@ -11,7 +11,7 @@ cd projects/bistable
 GIT_HASH=`git rev-parse HEAD`
 cd
 
-proj_dir="projects/bistable/models/little/count_lengths"
+proj_dir="projects/bistable/models/little"
 result_dir="/scratch/groups/melhila1/dlittle"
 
 # this just echos the commands, once you verify that it's right, pipe it to sh
