@@ -1,14 +1,12 @@
 using FileIO
 using DataFrames
-using JLD2
 using Feather
 using CategoricalArrays
 using Unitful
-drop = Base.Iterators.drop
+using Unitful: ms, s, Hz, kHz
+using Dates
 
-push!(LOAD_PATH,joinpath(@__DIR__,"..","packages"))
-using AuditoryModel
-using AuditoryCoherence
+drop = Base.Iterators.drop
 
 in_ms(x) = Float64.(ustrip.(uconvert.(ms,x)))
 in_Hz(x) = Float64.(ustrip.(uconvert.(Hz,x)))
@@ -27,60 +25,58 @@ function byparams(params)
   end
 end
 
+unit_table = Dict(r"τ" => in_ms,r"Δt" => in_ms, r"^f$" => in_Hz)
+
 function write_params(label,df)
-  categorical!(df,:condition)
   open(joinpath(@__DIR__,"$(label)_count_lengths_N.txt"),"w") do f
     println(f,"$(nrow(df))")
   end
 
   filename = joinpath(@__DIR__,"$(label)_params_$(Date(now())).feather")
 
-  Feather.write(filename,df,transforms = Dict{String,Function}(
-    "τ_x" => x -> in_ms.(x),
-    "τ_σ" => x -> in_ms.(x),
-    "τ_a" => x -> in_ms.(x),
-    "τ_m" => x -> in_ms.(x),
-    "Δt" => x -> in_ms.(x),
-    "f" => x ->in_Hz.(x),
-    "condition" => x -> string.(x)
-   ))
+  for col in names(df)
+    for (pattern,fn) in pairs(unit_table)
+      if occursin(pattern,string(col))
+        df[col] = fn.(df[col])
+      end
+    end
+  end
+
+  Feather.write(filename,df)
 end
 
-write_params("freq",vcat(
-# byparams(Dict(
-#   :Δt => [240ms],                :Δf        => [0.5,3,12],
-#   :f  => [500Hz],                :condition => [:scales,:track],
+a_vals = [0.0; 10 .^ range(0.7,stop=1.75,length=4)]
+m_vals = [0.0; 10 .^ range(1.25,stop=2,length=4)]
 
-#   :c_x      => [3.0],                           :τ_x     => [500ms],
-#   :c_σ      => [0.4],                           :τ_σ     => [500ms],
-#   :c_a      => [0.0;10.^linspace(0.75,1.75,5)], :τ_a     => [3s],
-#   :c_m      => [0.0;10.^linspace(1.25,2,5)],    :τ_m     => [350ms],
-#   :W_m_σ    => [15.0],                          :W_m_c   => [6.0],
-#  )),
+# this parameter set surveys all values for the 3st case. A second search will
+# cover all three stimuli across any parameter sets that generate bistability
+# for 3st
+
+write_params("survey",vcat(
 byparams(Dict(
-  :Δt => [240ms],                :Δf        => [0.5,3,12],
-  :f  => [500Hz],                :condition => [:freqs],
+  :Δt         => [240ms],
+  :Δf         => [3],
+  :f          => [500Hz],
 
-  :c_x      => [3.0],                           :τ_x     => [500ms],
-  :c_σ      => [0.4],                           :τ_σ     => [500ms],
-  :c_a      => [0.0;10.^linspace(0.75,1.75,5)], :τ_a     => [3s],
-  :c_m      => [0.0;10.^linspace(1.25,2,5)],    :τ_m     => [350ms],
-  :W_m_σ    => [5.6],                           :W_m_c   => [6.0]
+  :f_c_x      => [3.0],    :f_τ_x     => [500ms],
+  :f_c_σ      => [0.2],    :f_τ_σ     => [500ms],
+  :f_c_a      => a_vals,   :f_τ_a     => [3s],
+  :f_c_m      => m_vals,   :f_τ_m     => [350ms],
+  :f_W_m_σ    => [5.6],    :f_W_m_c   => [6.0],
+
+  :s_c_x      => [3.0],    :s_τ_x     => [500ms],
+  :s_c_σ      => [0.2],    :s_τ_σ     => [500ms],
+  :s_c_a      => a_vals,   :s_τ_a     => [3s],
+  :s_c_m      => m_vals,   :s_τ_m     => [350ms],
+  :s_W_m_σ    => [15.0],   :s_W_m_c   => [6.0],
+
+
+  :t_c_x      => [3.0],    :t_τ_x     => [500ms],
+  :t_c_σ      => [0.2],    :t_τ_σ     => [500ms],
+  :t_c_a      => a_vals,   :t_τ_a     => [3s],
+  :t_c_m      => m_vals,   :t_τ_m     => [350ms],
+  :t_W_m_σ_t  => [8.0],    :t_W_m_σ_ϕ => [6.0],
+  :t_W_m_c    => [6.0]
  ))
-# byparams(Dict(
-#   :Δt    => [240ms],                         :Δf   => [0.5,3,12],
-#   :f => [500Hz],                         :condition => [:scales_track],
-
-#   :s_c_x      => [3.0],                           :s_τ_x     => [500ms],
-#   :s_c_σ      => [0.2],                           :s_τ_σ     => [500ms],
-#   :s_c_a      => [0.0;10.^linspace(0.75,1.75,4)], :s_τ_a     => [3s],
-#   :s_c_m      => [0.0;10.^linspace(1.25,2,4)],    :s_τ_m     => [350ms],
-#   :s_W_m_σ    => [15.0],                          :s_W_m_c   => [6.0],
-
-#   :t_c_x      => [3.0],                           :t_τ_x     => [500ms],
-#   :t_c_σ      => [0.2],                           :t_τ_σ     => [500ms],
-#   :t_c_a      => [0.0;10.^linspace(0.75,1.75,4)], :t_τ_a     => [3s],
-#   :t_c_m      => [0.0;10.^linspace(1.25,2,4)],    :t_τ_m     => [350ms],
-#   :t_W_m_σ    => [15.0],                          :t_W_m_c   => [6.0],
-#  )),
 ))
+

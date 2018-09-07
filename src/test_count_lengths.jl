@@ -1,60 +1,50 @@
+
 include("count_lengths.jl")
 
-dir = joinpath("..","..","data","count_lengths")
+# TODO: test how well analysis works when there is noise in each level
+
+open("test.txt","w+") do stream
+  with_logger(DatedLogger(stream)) do
+    @info "Hello!"
+  end
+end
+
+
+dir = joinpath("..","data","count_lengths")
 isdir(dir) || mkdir(dir)
 
 # NOTE: for freq W_m_σ is 2.0
 # for scales W_m_σ is 16.0
+
 params = Dict(
-    :Δt         => 240ms, :Δf        => 12,
-    :f          => 500Hz, :condition => :track,
-    :τ_x        => 500ms, :c_x       => 3.0,
-    :W_m_σ      => 15.0, #5.0
-    :W_m_σ_t    => 10.0,   :W_m_σ_ϕ   => 10.0,
-    :W_m_c      => 6.0,
-    :τ_m        => 350ms, :c_m       => 100,
-    :τ_a        => 3s,    :c_a       => 6,
-    :τ_σ        => 500ms, :c_σ       => 0.2
+  :Δt         => 240ms, :Δf        => 3,
+  :f          => 500Hz, :condition => :track,
+  :τ_x        => 500ms, :c_x       => 3.0,
+  :f_c_a => 0, :f_c_m => 0, :f_c_σ => 0,
+  :s_c_a => 0, :s_c_m => 0, :s_c_σ => 0,
+  :t_W_m_σ      => 15.0, #5.0
+  :t_W_m_σ_t    => 8.0,   :t_W_m_σ_ϕ   => 6.0,
+  :t_W_m_c      => 6.0,
+  :t_τ_m        => 350ms, :t_c_m       => 100,
+  :t_τ_a        => 3s,    :t_c_a       => 6,
+  :t_τ_σ        => 500ms, :t_c_σ       => 0.2
+ )
+
+count_lengths(
+  1,2,
+  stim_count=2,
+  params="survey_params_2018-09-07.feather",
+  git_hash="UNKNOWN",
+  settingsfile="fast_settings.toml",
+  progressbar=false
 )
-# in progress, getting the new revisions to work
-# CURRENT ISSUE: bistable track no longer bistable
 
-# check the output to make sure it's reasonable
-# see how much faster this version is
-
-# CURRENT: bistability or tracks seems to be at least partially working, time to
-# speed things up.
-
-# problem - in this configuration the fused
-# percept just isn't all that plausible
-# (try looking at time constants again????)
-
-# validate on all three stimuli and all three
-# bistable conditions
-settings = TOML.parsefile("settings_2018-08-18.toml")
-# settings["percept_lengths"]["threshold"] = 1.6
-# settings = TOML.parsefile("fast_settings.toml")
-@time result = bistable_model(100, params, settings, interactive=true,
-                              progressbar=false)
-alert()
-
-settings["percept_lengths"]["min_length_ms"] = 100
-context = ab(120ms,120ms,1,40,500Hz,12)
-x = ab(120ms,120ms,1,40,500Hz,3)
-stim = [context; x] |> normpower |> amplify(-10dB)
-context_result = bistable_model(stim,params,settings,interactive=true)
-
-x = ab(120ms,120ms,1,40,500Hz,3) |> normpower |> amplify(-10dB)
-test_alone_result = bistable_model(x,params,settings,interactive=true)
-alert()
-
-# Logging.configure(level=INFO)
-# count_lengths(
-#   1,2,
-#   stim_count=2,
-#   params="freq_params_2018-08-05.feather",
-#   git_hash="UNKNOWN",
-#   settingsfile="fast_settings.toml",
-#   progressbar=false
-# )
+count_lengths(
+  1,2,
+  stim_count=10,
+  params="survey_params_2018-09-07.feather",
+  git_hash="UNKNOWN",
+  settingsfile="settings_2018-09-07.toml",
+  progressbar=false
+)
 

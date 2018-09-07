@@ -1,16 +1,14 @@
 using Logging
-using FileIO
-using DataFrames
-using DataStructures
-using Feather
+using AuditoryBistabilityLE
+using ShammaModel
+using Dates
+using Printf
 using JLD2
-using Parameters
-using TOML
+using Feather
+using InteractiveUtils
+include("logger.jl")
 
-using AuditoryModel
-using AuditoryCoherence
-
-@with_kw struct CountLength
+struct CountLength
   ratio::Array{Float64}
   bratio::Array{Float64}
   pindex::Int
@@ -31,28 +29,36 @@ function for_count_lengths(fn,dir)
 end
 
 function count_lengths(args::Dict)
-  info("Results will be saved to $(args["datadir"]).")
-  info("All logging data will be saved to $(args["logfile"]).")
-  Logging.configure(output=open(args["logfile"], "a"),level=INFO)
-  try
-    count_lengths(args["first_index"],args["last_index"],
-                  params=args["params"],
-                  git_hash=args["git_hash"],
-                  sim_repeat=args["sim_repeat"],
-                  stim_count=args["stim_count"],
-                  datadir=args["datadir"],
-                  logfile=args["logfile"],
-                  settingsfile=args["settings"])
-  catch ex
-    str = sprint(io->Base.show_backtrace(io, catch_backtrace()))
-    err("$ex: $str")
+  @info "All output will be saved to '$(args["logfile"])'."
+  open(args["logfile"],"a") do stream
+    with_logger(DatedLogger(stream)) do
+      redirect_stdout(stream) do
+        redirect_stderr(stream) do
+          try
+            @info("Results will be saved to $(args["datadir"]).")
+            count_lengths(args["first_index"],args["last_index"],
+                          params=args["params"],
+                          git_hash=args["git_hash"],
+                          sim_repeat=args["sim_repeat"],
+                          stim_count=args["stim_count"],
+                          datadir=args["datadir"],
+                          logfile=args["logfile"],
+                          settingsfile=args["settings"])
+          catch ex
+            str = sprint(io->Base.show_backtrace(io, catch_backtrace()))
+            @error("$ex: $str")
+          end
+          @info("------------------------------------------------------------")
+        end
+      end
+    end
   end
 end
 
 function read_git_hash()
   olddir = pwd()
   cd(@__DIR__)
-  hash = readstring(`git rev-parse HEAD`)
+  hash = read(`git rev-parse HEAD`,String)
   cd(olddir)
 
   hash
@@ -60,7 +66,20 @@ end
 
 totime(x) = x.*ms
 tofreq(x) = x.*Hz
-const data_dir = joinpath(@__DIR__,"..","..","..","data")
+const data_dir = joinpath(@__DIR__,"..","data")
+
+from_unit_table = Dict(r"τ" => totime, r"Δt" => totime, r"^f$" => tofreq)
+function handle_units!(df)
+  for col in names(df)
+    for (pattern,fn) in pairs(from_unit_table)
+      if occursin(pattern,string(col))
+        df[col] = fn.(df[col])
+      end
+    end
+  end
+  df
+end
+
 function count_lengths(first_index,last_index;
                        params=joinpath(@__DIR__,"params.feather"),
                        git_hash="DETECT",
@@ -75,61 +94,66 @@ function count_lengths(first_index,last_index;
 
   verbuf = IOBuffer()
   versioninfo(verbuf)
-  info("Julia version: "*String(take!(verbuf)))
-  info("Source code hash: "*(git_hash == "DETECT" ? read_git_hash() : git_hash))
+  @info String(take!(verbuf))
+  @info "Source code hash: "*(git_hash == "DETECT" ? read_git_hash() : git_hash)
 
-  info("Loading parameters from "*params)
-  params = Feather.read(params,transforms = Dict{String,Function}(
-    # "s_τ_x"     => x -> totime.(x),
-    # "s_τ_σ"     => x -> totime.(x),
-    # "s_τ_a"     => x -> totime.(x),
-    # "s_τ_m"     => x -> totime.(x),
-    # "t_τ_x"     => x -> totime.(x),
-    # "t_τ_σ"     => x -> totime.(x),
-    # "t_τ_a"     => x -> totime.(x),
-    # "t_τ_m"     => x -> totime.(x),
-    "τ_x"       => x -> totime.(x),
-    "τ_σ"       => x -> totime.(x),
-    "τ_a"       => x -> totime.(x),
-    "τ_m"       => x -> totime.(x),
-    "Δt"        => x -> totime.(x),
-    "f"         => x -> tofreq.(x),
-    "condition" => x -> Symbol.(x)
-  ))
+  @info "Loading parameters from "*params
+  params = handle_units!(Feather.read(params))
   first_index = first_index
-  if first_index > nrow(params)
+  if first_index > size(params,2)
     err("First parameter index ($first_index) is outside the range of",
         " parameters.")
   end
-  last_index = clamp(last_index,first_index,nrow(params))
+  last_index = clamp(last_index,first_index,size(params,1))
   indices = first_index:last_index
-  info("Reading parameters for indices $indices")
+  @info "Reading parameters for indices $indices"
+  @info "Reading settings from file $settingsfile"
 
-  settings = TOML.parsefile(settingsfile)
-  info("Reading settings from file $settingsfile")
+  @assert log10(size(params,2)) < 5
+  name = @sprintf("results_params%05d_%05d.jld2",first_index,last_index)
+  filename = joinpath(dir,name)
 
-  @assert log10(nrow(params)) < 4
-
-  for i in repeat(indices,inner=sim_repeat)
-    start_time = now()
-    params_dict = Dict(k => params[i,k] for k in names(params))
-    (len,_),ratio,bratio = bistable_model(stim_count,params_dict,settings,
-                                             progressbar=progressbar)
-
-    name = @sprintf("results_params%04d_%04d.jld2",first_index,last_index)
-    filename = joinpath(dir,name)
-    jldopen(filename,"a+") do file
-      count = length(keys(file))
-      file[@sprintf("run%03d/ratio",count)] = Array(ratio)
-      file[@sprintf("run%03d/bratio",count)] = Array(bratio)
-      file[@sprintf("run%03d/pindex",count)] = i
-      file[@sprintf("run%03d/created",count)] = start_time
+  for i in indices
+    @info "Running simulations for parameter $i"
+    # determine the number of simulations to run, accounting for any previously
+    # run simulations
+    # NOTE: assumes only a single process ever accesses this file
+    num_repeats = if isfile(filename)
+      jldopen(filename,"r") do file
+        p = @sprintf("param%05d",i)
+        if haskey(file,p)
+          max(0,sim_repeat - length(keys(file[p])))
+        else
+          sim_repeat
+        end
+      end
+    else
+      sim_repeat
     end
 
-    info("Completed a run for paramter $i.")
-    info("Run yielded $(length(len)) percepts.")
+    @info "$(sim_repeat - num_repeats) simulations run previosuly."
+    @info "Running $(num_repeats) more simulations."
+
+    for repeat in 1:num_repeats
+      start_time = now()
+      params_dict = Dict(k => params[i,k] for k in names(params))
+      result = bistable_model(stim_count,params_dict,settingsfile,
+                              progressbar=progressbar)
+
+      jldopen(filename,"a+") do file
+        count = length(keys(file))
+        file[@sprintf("param%05d/run%03d/ratio",i,count)] =
+          Array(result.percepts.sratio)
+        file[@sprintf("param%05d/run%03d/bratio",i,count)] =
+          Array(result.percepts.bratio)
+        file[@sprintf("param%05d/run%03d/pindex",i,count)] = i
+        file[@sprintf("param%05d/run%03d/created",i,count)] = start_time
+      end
+
+      @info "Completed a simulation for paramter $i."
+      @info "Run yielded ~$(length(result.percepts.counts)) percepts."
+    end
   end
-  info("DONE")
-  info("------------------------------------------------------------")
+  @info "DONE"
 end
 

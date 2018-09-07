@@ -9,11 +9,10 @@
 #SBATCH --requeue
 #SBATCH --cpus-per-task=8
 
-module load julia
-arguments=${@:1:$(($#-1))}
-output=${@: -1}
-julia projects/bistable/models/little/run_count_lengths.jl \
-	$arguments &> $output
+# module load julia
+julia  -e 'using Pkg; Pkg.activate("projects/bistable")' \
+	-e 'include("projects/bistable/run_count_lengths.jl")' \
+	-O3 --banner=no' $@
 
 # 40 seconds to run one parameter for a stimulus of with 10 repeats
 # that's 40*(50/10) = 200 seconds to run the full length 50 repeat stimulus
