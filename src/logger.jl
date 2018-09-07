@@ -21,7 +21,11 @@ function Logging.handle_message(logger::DatedLogger, level, message,
   msglines = split(chomp(string(message)), '\n')
   time = Dates.format(now(), "yyyy-mm-dd HH:MM:SS")
 
-  filepath = if startswith(something(filepath,""),@__DIR__)
+  # use short names for the source files in this project, and for two packages
+  # I've authored myself specifically for this project.
+  filepath = if filepath == nothing
+    filepath
+  elseif startswith(filepath,@__DIR__)
     filepath[length(@__DIR__)+2:end]
   elseif occursin(r"AuditoryBistabilityLE/src/",filepath)
     part = match(r"AuditoryBistabilityLE/src/(.+)$",filepath)
