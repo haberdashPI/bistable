@@ -3,14 +3,12 @@
 *~
 \#*#
 .#*
-*.jld
-*.jld2
 .juliahistory
 stimuli/*.wav
 *.swp
+data/count_lengths/
 tags
 .undo
-src/*count_lengths_N.txt
 presentation/pitch
 presentation/paper/*.png
 presentation/paper/*.pdf

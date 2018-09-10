@@ -28,11 +28,15 @@ end
 unit_table = Dict(r"τ" => in_ms,r"Δt" => in_ms, r"^f$" => in_Hz)
 
 function write_params(label,df)
-  open(joinpath(@__DIR__,"$(label)_N.txt"),"w") do f
+  open(joinpath(@__DIR__,"data","count_lengths",
+                "run__$(Date(now()))",
+                "$(label)_N.txt"),"w") do f
     println(f,"$(size(df,1))")
   end
 
-  filename = joinpath(@__DIR__,"$(label)_params_$(Date(now())).feather")
+  filename = joinpath(@__DIR__,"..","data","count_lengths",
+                      "run__$(Date(now()))",
+                      "$(label)_params.feather")
 
   for col in names(df)
     for (pattern,fn) in pairs(unit_table)
