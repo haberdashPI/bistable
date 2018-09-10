@@ -24,9 +24,7 @@ version = "0.2.1"
 
 [[AuditoryBistabilityLE]]
 deps = ["AxisArrays", "Combinatorics", "DSP", "DataFrames", "DataStructures", "Distributions", "LinearAlgebra", "MacroTools", "Match", "NMF", "Parameters", "ProgressMeter", "Requires", "Rmath", "SampledSignals", "ShammaModel", "SparseArrays", "SpecialFunctions", "Statistics", "StatsFuns", "TOML", "Unitful"]
-git-tree-sha1 = "ed40fd0ba170a82d93f7f3193327911a16119cb3"
-repo-rev = "master"
-repo-url = "https://github.com/haberdashPI/AuditoryBistabilityLE"
+path = "/Users/davidlittle/googledrive/juliadev/AuditoryBistabilityLE"
 uuid = "7e25a372-ade5-11e8-17af-a30e5a9e2c28"
 version = "0.1.0"
 
@@ -131,9 +129,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
 deps = ["Distributed", "LinearAlgebra", "PDMats", "Pkg", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns", "Test"]
-git-tree-sha1 = "07f0e38d8a9c8151af4d843500de1bf0baa59dca"
+git-tree-sha1 = "c24e9b6500c037673f0241a2783472b8c3d080c7"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.16.3"
+version = "0.16.4"
 
 [[FFTW]]
 deps = ["AbstractFFTs", "BinaryProvider", "Compat", "Conda", "Libdl", "LinearAlgebra", "Pkg", "Reexport", "Test"]
@@ -335,9 +333,7 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[ShammaModel]]
 deps = ["AxisArrays", "Colors", "DSP", "DataFrames", "FFTW", "FileIO", "JLD2", "ProgressMeter", "Requires", "SampledSignals", "Statistics", "Test", "Unitful"]
-git-tree-sha1 = "d559b54fd4a70e3ff4a0efeb02042a87db077770"
-repo-rev = "master"
-repo-url = "https://github.com/haberdashPI/ShammaModel.jl"
+path = "/Users/davidlittle/googledrive/juliadev/ShammaModel"
 uuid = "80f90042-ac61-11e8-0ace-f1a8d5e03555"
 version = "0.1.0"
 
