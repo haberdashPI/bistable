@@ -1,11 +1,36 @@
 using Logging
 using Dates
 
+function setup_logging(body,logfile)
+  @info "All output will be saved to $(logfile)."
+  open(logfile,"a") do stream
+    with_logger(DatedLogger(stream)) do
+      redirect_stdout(stream) do
+        redirect_stderr(stream) do
+          try
+            body()
+          catch ex
+            exstring = sprint() do exstream
+              showerror(exstream,ex)
+              println(exstream,"")
+              Base.show_backtrace(exstream,catch_backtrace())
+            end
+            @error exstring
+          finally
+            @info("----------------------------------------")
+          end
+        end
+      end
+    end
+  end
+end
+
 struct DatedLogger <: AbstractLogger
   stream::IOStream
   level::LogLevel
 end
 DatedLogger(stream::IOStream) = DatedLogger(stream,Logging.Info)
+Logging.catch_exceptions(logger::DatedLogger) = false
 Logging.shouldlog(logger::DatedLogger, level, _module, group, id) = true
 Logging.min_enabled_level(logger::DatedLogger) = logger.level
 
@@ -66,5 +91,6 @@ function Logging.handle_message(logger::DatedLogger, level, message,
             something(filepath, "nothing"), ":", something(line, "nothing"))
   end
   write(logger.stream, take!(buf))
+  flush(logger.stream)
   nothing
 end

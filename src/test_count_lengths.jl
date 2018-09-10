@@ -3,13 +3,6 @@ include("count_lengths.jl")
 
 # TODO: test how well analysis works when there is noise in each level
 
-open("test.txt","w+") do stream
-  with_logger(DatedLogger(stream)) do
-    @info "Hello!"
-  end
-end
-
-
 dir = joinpath("..","data","count_lengths")
 isdir(dir) || mkdir(dir)
 
@@ -30,21 +23,15 @@ params = Dict(
   :t_τ_σ        => 500ms, :t_c_σ       => 0.2
  )
 
-count_lengths(
-  1,2,
-  stim_count=2,
-  params="survey_params_2018-09-07.feather",
-  git_hash="UNKNOWN",
-  settingsfile="fast_settings.toml",
-  progressbar=false
-)
+# call bistable model here
 
 count_lengths(
-  1,2,
-  stim_count=10,
-  params="survey_params_2018-09-07.feather",
-  git_hash="UNKNOWN",
-  settingsfile="settings_2018-09-07.toml",
+  first_index=1,last_index=75,
+  logfile="individual_simulation.log",
+  sim_repeat=10,
+  stim_count=100,
+  params="individual_params_2018-09-09.feather",
+  settings="settings_2018-09-07.toml",
   progressbar=false
 )
 

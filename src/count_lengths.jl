@@ -19,39 +19,34 @@ function for_count_lengths(fn,dir)
   for file in readdir(dir)
     if ismatch(r"jld2$",file)
       jldopen(joinpath(dir,file),"r") do stream
-        for key in keys(stream)
-          fn(CountLength(stream[key]["ratio"],stream[key]["bratio"],
-                         stream[key]["pindex"],stream[key]["created"]))
+        for param in keys(stream)
+          for run in keys(stream[param])
+            entry = stream[param][run]
+            fn(CountLength(entry["ratio"], entry["bratio"],
+                           entry["pindex"], entry["created"]))
+          end
         end
       end
     end
   end
 end
 
-function count_lengths(args::Dict)
-  @info "All output will be saved to '$(args["logfile"])'."
-  open(args["logfile"],"a") do stream
-    with_logger(DatedLogger(stream)) do
-      redirect_stdout(stream) do
-        redirect_stderr(stream) do
-          try
-            @info("Results will be saved to $(args["datadir"]).")
-            count_lengths(args["first_index"],args["last_index"],
-                          params=args["params"],
-                          git_hash=args["git_hash"],
-                          sim_repeat=args["sim_repeat"],
-                          stim_count=args["stim_count"],
-                          datadir=args["datadir"],
-                          logfile=args["logfile"],
-                          settingsfile=args["settings"])
-          catch ex
-            str = sprint(io->Base.show_backtrace(io, catch_backtrace()))
-            @error("$ex: $str")
-          end
-          @info("------------------------------------------------------------")
-        end
-      end
-    end
+count_lengths(args::Dict) = count_lenths(;(Symbol(k) => v for (k,v) in args)...)
+
+function count_lengths(;first_index,last_index,logfile,
+                       datadir=joinpath(data_dir,"count_lengths"),
+                       params=joinpath(@__DIR__,"params.feather"),
+                       dataprefix="results",
+                       git_hash="DETECT",
+                       sim_repeat=2,
+                       stim_count=25,
+                       settings=joinpath(@__DIR__,"settings.toml"),
+                       progressbar=false)
+  setup_logging(logfile) do
+    @info("Results will be saved to $datadir")
+    count_lengths(first_index,last_index,logfile,datadir,dataprefix,
+                  params,git_hash,sim_repeat,stim_count,
+                  settings,progressbar)
   end
 end
 
@@ -80,15 +75,9 @@ function handle_units!(df)
   df
 end
 
-function count_lengths(first_index,last_index;
-                       params=joinpath(@__DIR__,"params.feather"),
-                       git_hash="DETECT",
-                       sim_repeat=2,
-                       stim_count=25,
-                       datadir=joinpath(data_dir,"count_lengths"),
-                       logfile=joinpath(data_dir,"count_lengths","run.log"),
-                       settingsfile=joinpath(@__DIR__,"settings.toml"),
-                       progressbar=false)
+function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
+                       params,git_hash,sim_repeat,stim_count,
+                       settings,progressbar)
   dir = abspath(datadir)
   isdir(dir) || mkdir(dir)
 
@@ -107,10 +96,11 @@ function count_lengths(first_index,last_index;
   last_index = clamp(last_index,first_index,size(params,1))
   indices = first_index:last_index
   @info "Reading parameters for indices $indices"
-  @info "Reading settings from file $settingsfile"
+  @info "Reading settings from file $settings"
 
   @assert log10(size(params,2)) < 5
-  name = @sprintf("results_params%05d_%05d.jld2",first_index,last_index)
+  name = @sprintf("%s_params%05d_%05d.jld2",dataprefix,first_index,
+                  last_index)
   filename = joinpath(dir,name)
 
   for i in indices
@@ -137,11 +127,12 @@ function count_lengths(first_index,last_index;
     for repeat in 1:num_repeats
       start_time = now()
       params_dict = Dict(k => params[i,k] for k in names(params))
-      result = bistable_model(stim_count,params_dict,settingsfile,
+      result = bistable_model(stim_count,params_dict,settings,
                               progressbar=progressbar)
 
       jldopen(filename,"a+") do file
-        count = length(keys(file))
+        entry = @sprintf("param%05d",i)
+        count = haskey(file,entry) ? length(keys(file[entry])) : 0
         file[@sprintf("param%05d/run%03d/ratio",i,count)] =
           Array(result.percepts.sratio)
         file[@sprintf("param%05d/run%03d/bratio",i,count)] =
@@ -150,7 +141,7 @@ function count_lengths(first_index,last_index;
         file[@sprintf("param%05d/run%03d/created",i,count)] = start_time
       end
 
-      @info "Completed a simulation for paramter $i."
+      @info "Completed simulation run $(count+1) for parameter $i."
       @info "Run yielded ~$(length(result.percepts.counts)) percepts."
     end
   end

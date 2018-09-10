@@ -38,6 +38,11 @@ parse_settings = ArgParseSettings()
     required = false
     arg_type = String
     default = joinpath(@__DIR__,"..","..","data","count_lengths")
+  "--dataprefix"
+    help = "The prefix appended to all result files"
+    required = false
+    arg_type = String
+    defualt = "results"
   "--logfile", "-l"
     help = "The file to log information to"
     required = false

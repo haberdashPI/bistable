@@ -5,8 +5,8 @@ using Feather
 
 include("count_lengths.jl")
 
-# dir = joinpath("..","..","data","count_lengths")
-dir = joinpath(homedir(),"work","dlittle","bistable_threshold_freq","data")
+dir = joinpath("..","data","count_lengths")
+# dir = joinpath(homedir(),"work","dlittle","bistable_threshold_freq","data")
 all_rows = []
 for_count_lengths(dir) do count_length
   push!(all_rows,DataFrame(pindex = count_length.pindex,
@@ -21,5 +21,5 @@ end
 df = vcat(all_rows...)
 
 Feather.write(joinpath("..","..","data","count_lengths",
-                       "freq_percept_lengths_$(Date(now())).feather"),df)
+                       "individual_sim_$(Date(now())).feather"),df)
 

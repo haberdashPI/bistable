@@ -28,8 +28,8 @@ end
 unit_table = Dict(r"τ" => in_ms,r"Δt" => in_ms, r"^f$" => in_Hz)
 
 function write_params(label,df)
-  open(joinpath(@__DIR__,"$(label)_count_lengths_N.txt"),"w") do f
-    println(f,"$(nrow(df))")
+  open(joinpath(@__DIR__,"$(label)_N.txt"),"w") do f
+    println(f,"$(size(df,1))")
   end
 
   filename = joinpath(@__DIR__,"$(label)_params_$(Date(now())).feather")
@@ -52,7 +52,82 @@ m_vals = [0.0; 10 .^ range(1.25,stop=2,length=4)]
 # cover all three stimuli across any parameter sets that generate bistability
 # for 3st
 
-write_params("survey",vcat(
+write_params("individual",combine_rows(
+  byparams(Dict(
+    :Δt         => [240ms],
+    :Δf         => [3],
+    :f          => [500Hz],
+
+    :f_c_x      => [3.0],    :f_τ_x     => [500ms],
+    :f_c_σ      => [0.2],    :f_τ_σ     => [500ms],
+    :f_c_a      => a_vals,   :f_τ_a     => [3s],
+    :f_c_m      => m_vals,   :f_τ_m     => [350ms],
+    :f_W_m_σ    => [5.6],    :f_W_m_c   => [6.0],
+
+    :s_c_x      => [3.0],    :s_τ_x     => [500ms],
+    :s_c_σ      => [0.0],    :s_τ_σ     => [500ms],
+    :s_c_a      => [0.0],   :s_τ_a     => [3s],
+    :s_c_m      => [0.0],   :s_τ_m     => [350ms],
+    :s_W_m_σ    => [15.0],   :s_W_m_c   => [6.0],
+
+    :t_c_x      => [3.0],    :t_τ_x     => [500ms],
+    :t_c_σ      => [0.0],    :t_τ_σ     => [500ms],
+    :t_c_a      => [0.0],   :t_τ_a     => [3s],
+    :t_c_m      => [0.0],   :t_τ_m     => [350ms],
+    :t_W_m_σ_t  => [8.0],    :t_W_m_σ_ϕ => [6.0],
+    :t_W_m_c    => [6.0]
+  )),
+  byparams(Dict(
+    :Δt         => [240ms],
+    :Δf         => [3],
+    :f          => [500Hz],
+
+    :f_c_x      => [3.0],    :f_τ_x     => [500ms],
+    :f_c_σ      => [0.0],    :f_τ_σ     => [500ms],
+    :f_c_a      => [0.0],   :f_τ_a     => [3s],
+    :f_c_m      => [0.0],   :f_τ_m     => [350ms],
+    :f_W_m_σ    => [5.6],    :f_W_m_c   => [6.0],
+
+    :s_c_x      => [3.0],    :s_τ_x     => [500ms],
+    :s_c_σ      => [0.2],    :s_τ_σ     => [500ms],
+    :s_c_a      => a_vals,   :s_τ_a     => [3s],
+    :s_c_m      => m_vals,   :s_τ_m     => [350ms],
+    :s_W_m_σ    => [15.0],   :s_W_m_c   => [6.0],
+
+    :t_c_x      => [3.0],    :t_τ_x     => [500ms],
+    :t_c_σ      => [0.0],    :t_τ_σ     => [500ms],
+    :t_c_a      => [0.0],   :t_τ_a     => [3s],
+    :t_c_m      => [0.0],   :t_τ_m     => [350ms],
+    :t_W_m_σ_t  => [8.0],    :t_W_m_σ_ϕ => [6.0],
+    :t_W_m_c    => [6.0]
+  )),
+  byparams(Dict(
+    :Δt         => [240ms],
+    :Δf         => [3],
+    :f          => [500Hz],
+
+    :f_c_x      => [3.0],    :f_τ_x     => [500ms],
+    :f_c_σ      => [0.0],    :f_τ_σ     => [500ms],
+    :f_c_a      => [0.0],   :f_τ_a     => [3s],
+    :f_c_m      => [0.0],   :f_τ_m     => [350ms],
+    :f_W_m_σ    => [5.6],    :f_W_m_c   => [6.0],
+
+    :s_c_x      => [3.0],    :s_τ_x     => [500ms],
+    :s_c_σ      => [0.0],    :s_τ_σ     => [500ms],
+    :s_c_a      => [0.0],   :s_τ_a     => [3s],
+    :s_c_m      => [0.0],   :s_τ_m     => [350ms],
+    :s_W_m_σ    => [15.0],   :s_W_m_c   => [6.0],
+
+    :t_c_x      => [3.0],    :t_τ_x     => [500ms],
+    :t_c_σ      => [0.2],    :t_τ_σ     => [500ms],
+    :t_c_a      => a_vals,   :t_τ_a     => [3s],
+    :t_c_m      => m_vals,   :t_τ_m     => [350ms],
+    :t_W_m_σ_t  => [8.0],    :t_W_m_σ_ϕ => [6.0],
+    :t_W_m_c    => [6.0]
+  )),
+ ))
+
+write_params("survey_interact",
 byparams(Dict(
   :Δt         => [240ms],
   :Δf         => [3],
@@ -70,7 +145,6 @@ byparams(Dict(
   :s_c_m      => m_vals,   :s_τ_m     => [350ms],
   :s_W_m_σ    => [15.0],   :s_W_m_c   => [6.0],
 
-
   :t_c_x      => [3.0],    :t_τ_x     => [500ms],
   :t_c_σ      => [0.2],    :t_τ_σ     => [500ms],
   :t_c_a      => a_vals,   :t_τ_a     => [3s],
@@ -78,5 +152,5 @@ byparams(Dict(
   :t_W_m_σ_t  => [8.0],    :t_W_m_σ_ϕ => [6.0],
   :t_W_m_c    => [6.0]
  ))
-))
+)
 
