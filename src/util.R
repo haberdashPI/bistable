@@ -1,11 +1,12 @@
 library(JuliaCall)
 julia = julia_setup()
-julia_command("include(\"../util/lengths.jl\")")
+julia_command("using Pkg; Pkg.activate(\"..\")")
+julia_command("using AuditoryBistabilityLE")
 
 percept_lengths = function(x,minlen,framerate){
   julia_assign("over",x)
   julia_assign("minlen",floor(minlen / framerate))
-  result=julia_eval("mergelengths(findlengths(over)...,minlen)")
+  result=julia_eval("AuditoryBistabilityLE.mergelengths(AuditoryBistabilityLE.findlengths(over)...,minlen)")
   data.frame(length=result[[1]]*framerate,stimulus=as.numeric(result[[2]]))
 }
 
