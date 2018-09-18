@@ -3,7 +3,7 @@ using Dates
 
 function setup_logging(body,logfile)
   @info "All output will be saved to $(logfile)."
-  open(logfile,"a") do stream
+  open(logfile,append=true) do stream
     with_logger(DatedLogger(stream)) do
       redirect_stdout(stream) do
         redirect_stderr(stream) do
