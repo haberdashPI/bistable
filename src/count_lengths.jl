@@ -139,9 +139,10 @@ function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
           Array(result.percepts.bratio)
         file[@sprintf("param%05d/run%03d/pindex",i,count)] = i
         file[@sprintf("param%05d/run%03d/created",i,count)] = start_time
+
+        @info "Completed simulation run $(count+1) for parameter $i."
       end
 
-      @info "Completed simulation run $(count+1) for parameter $i."
       @info "Run yielded ~$(length(result.percepts.counts)) percepts."
     end
   end
