@@ -1,5 +1,3 @@
-# NOTE this probably doesn't work on deus1 becuase I isntalled
-# JuliaCall before installing julia 0.7.0
 library(cowplot)
 library(moments)
 library(tidyr)
@@ -10,11 +8,20 @@ source("util.R")
 
 dir = file.path("..","plots",paste("individual_sim",Sys.Date(),sep="_"))
 dir.create(dir,showWarnings=F)
-df = read_feather(file.path("..","data","count_lengths","run_2018-09-10",
+df1 = read_feather(file.path("..","data","count_lengths","run_2018-09-10",
                             "individual_results.feather"))
-params = read_feather(file.path("..","data","count_lengths","run_2018-09-10",
+df2 = read_feather(file.path("..","data","count_lengths","run_2018-09-12",
+                            "individual_results.feather"))
+df2$pindex = df2$pindex + max(df1$pindex)
+df = rbind(df1,df2)
+
+params1 = read_feather(file.path("..","data","count_lengths","run_2018-09-10",
                                 "individual_params.feather"))
-params$pindex = 1:nrow(params)
+params2 = read_feather(file.path("..","data","count_lengths","run_2018-09-12",
+                                "individual_extremes_params.feather"))
+params1$pindex = 1:nrow(params1)
+params2$pindex = 1:nrow(params2) + nrow(params1)
+params = rbind(params1,params2)
 
 framerate = 0.25 # seconds
 threshold = 2.1
@@ -72,8 +79,9 @@ p = ggplot(filter(summary,measure == "N",f_c_σ > 0),
   scale_fill_distiller(name="N",palette="Spectral") +
   xlab(expression(c[a])) + ylab(expression(c[m])) +
   ggtitle("Number of Percepts per Second")
+p
 
-save_plot(file.path(dir,"bistable_freq_N.png"),p,base_aspect_ratio=1.3,
+save_plot(file.path(dir,"bistable_freq_N.pdf"),p,base_aspect_ratio=1.3,
           nrow=3,ncol=1,base_width=4,base_height=2)
 
 ########################################
@@ -95,6 +103,32 @@ p1 = ggplot(filter(summary,measure == "mean_ratio",f_c_σ > 0),
   ggtitle(paste("Ratio of Percept Lengths"))
 p1
 
+fuse_split = summary %>%
+  filter(measure == "mean_ratio", f_c_σ > 0) %>%
+  select(-pindex) %>%
+  mutate(value = clamp(value,-1,1)) %>%
+  spread(Δf,value) %>%
+  mutate(quality = -(abs(`3`) + abs(1-`0.5`) + abs(-1 - `12`)))
+
+p2 = ggplot(fuse_split,
+            aes(x=factor(round(f_c_a,0)),
+                y=factor(round(f_c_m,0)),fill=quality)) +
+  geom_raster() +
+  scale_fill_distiller(name="Selectivity",palette="Greens",direction=1,
+                       limits=c(-3,0)) +
+  xlab(expression(paste("Adaptation ", (c[a])))) +
+  ylab(expression(paste("Inhibition ", (c[m])))) +
+  ggtitle(expression(paste("Selectivity to ",
+                           Delta[f],"= 3: -(",
+                           abs(Delta[3]) - abs(1-Delta[0.5]) -
+                             abs(-1 - Delta[12]),") ")))
+
+p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align="v")
+save_plot(file.path(dir,"bistable_freq_selectivity.pdf"),p,
+          base_height=2,base_width=5.5,nrow=4,ncol=1)
+
+# TODO: why the sudden change for all of the larger amounts of adaptation?
+
 ################################################################################
 # scale-level
 
@@ -111,7 +145,7 @@ p = ggplot(filter(summary,measure == "N",s_c_σ > 0),
   ggtitle("Number of Percepts per Second")
 p
 
-save_plot(file.path(dir,"bistable_freq_N.png"),p,base_aspect_ratio=1.3,
+save_plot(file.path(dir,"bistable_scale_N.pdf"),p,base_aspect_ratio=1.3,
           nrow=3,ncol=1,base_width=4,base_height=2)
 
 ########################################
@@ -133,6 +167,28 @@ p1 = ggplot(filter(summary,measure == "mean_ratio",s_c_σ > 0),
   ggtitle(paste("Ratio of Percept Lengths"))
 p1
 
+
+fuse_split = summary %>%
+  filter(measure == "mean_ratio", s_c_σ > 0) %>%
+  select(-pindex) %>%
+  mutate(value = clamp(value,-1,1)) %>%
+  spread(Δf,value) %>%
+  mutate(quality = -sqrt((`3`)^2 + (1-`0.5`)^2 + (-1 - `12`)^2))
+
+p2 = ggplot(fuse_split,
+            aes(x=factor(round(s_c_a)),
+                y=factor(round(s_c_m)),fill=quality)) +
+  geom_raster() +
+  scale_fill_distiller(name="Selectivity",palette="Greens",direction=1,
+                       limits=c(-sqrt(3),0)) +
+  xlab(expression(paste("Adaptation ", (c[a])))) +
+  ylab(expression(paste("Inhibition ", (c[m])))) +
+  ggtitle(expression(paste("Selectivity to ",Delta[f] == 3)))
+
+p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align="v")
+save_plot(file.path(dir,"bistable_scale_selectivity.pdf"),p,
+          base_height=2,base_width=5.5,nrow=4,ncol=1)
+
 ################################################################################
 # object-level
 
@@ -149,7 +205,7 @@ p = ggplot(filter(summary,measure == "N",t_c_σ > 0),
   ggtitle("Number of Percepts per Second")
 p
 
-save_plot(file.path(dir,"bistable_freq_N.png"),p,base_aspect_ratio=1.3,
+save_plot(file.path(dir,"bistable_track_N.pdf"),p,base_aspect_ratio=1.3,
           nrow=3,ncol=1,base_width=4,base_height=2)
 
 ########################################
@@ -171,31 +227,34 @@ p1 = ggplot(filter(summary,measure == "mean_ratio",t_c_σ > 0),
   ggtitle(paste("Ratio of Percept Lengths"))
 p1
 
-################################################################################
-# old, unrevised code
-
 fuse_split = summary %>%
-  filter(measure == "mean_ratio", condition == "freqs") %>%
+  filter(measure == "mean_ratio", t_c_σ > 0) %>%
   select(-pindex) %>%
   mutate(value = clamp(value,-1,1)) %>%
   spread(Δf,value) %>%
-  mutate(quality = -(abs(`3`) + abs(1-`0.5`) + abs(-1 - `12`)))
+  mutate(quality = -sqrt((`3`)^2 + (1-`0.5`)^2 + (-1 - `12`)^2))
 
 p2 = ggplot(fuse_split,
-            aes(x=factor(round(c_a,0)),y=factor(round(c_m,0)),fill=quality)) +
+            aes(x=factor(round(t_c_a)),
+                y=factor(round(t_c_m)),fill=quality)) +
   geom_raster() +
   scale_fill_distiller(name="Selectivity",palette="Greens",direction=1,
-                       limits=c(-3,0)) +
+                       limits=c(-sqrt(3),0)) +
   xlab(expression(paste("Adaptation ", (c[a])))) +
   ylab(expression(paste("Inhibition ", (c[m])))) +
-  ggtitle(expression(paste("Selectivity to ",
-                           Delta[f],"= 3: -(",
-                           abs(Delta[3]) - abs(1-Delta[0.5]) -
-                             abs(-1 - Delta[12]),") ")))
+  ggtitle(expression(paste("Selectivity to ",Delta[f] == 3)))
 
-p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align='v')
-save_plot(file.path(dir,"bistable_freq_selectivity.png"),p,
+p = plot_grid(p1,p2,nrow=2,rel_heights=c(0.65,0.35),align="v")
+save_plot(file.path(dir,"bistable_track_selectivity.pdf"),p,
           base_height=2,base_width=5.5,nrow=4,ncol=1)
+
+# why are all of the higher adaptation levels now all unselective for 12 st?
+# NOTE: it might be that I just need to use a different range of parameters now,
+# e.g. small steps of adaptaiton between 0 and 5 but I still need to understand
+# what is happening in the model for these cases
+
+################################################################################
+# old, unrevised code
 
 # inspecting a few parameters...
 sindex = params %>%

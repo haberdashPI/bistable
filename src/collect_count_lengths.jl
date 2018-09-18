@@ -5,7 +5,7 @@ using Feather
 
 include("count_lengths.jl")
 
-dir = joinpath("..","data","count_lengths","run_2018_09_10")
+dir = joinpath("..","data","count_lengths","run_2018-09-12")
 # dir = joinpath(homedir(),"work","dlittle","bistable_threshold_freq","data")
 all_rows = []
 for_count_lengths(dir) do count_length
@@ -20,6 +20,6 @@ for_count_lengths(dir) do count_length
 end
 df = vcat(all_rows...)
 
-Feather.write(joinpath("..","data","count_lengths", "run_2018_09_10",
+Feather.write(joinpath("..","data","count_lengths", "run_2018-09-12",
                        "individual_results.feather"),df)
 

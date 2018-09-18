@@ -18,12 +18,15 @@ end
 function for_count_lengths(fn,dir)
   for file in readdir(dir)
     if ismatch(r"jld2$",file)
+      @info "Loading $file"
       jldopen(joinpath(dir,file),"r") do stream
         for param in keys(stream)
-          for run in keys(stream[param])
-            entry = stream[param][run]
-            fn(CountLength(entry["ratio"], entry["bratio"],
-                           entry["pindex"], entry["created"]))
+          if occursin(r"param[0-9]{2}",param)
+            for run in keys(stream[param])
+              entry = stream[param][run]
+              fn(CountLength(entry["ratio"], entry["bratio"],
+                             entry["pindex"], entry["created"]))
+            end
           end
         end
       end
@@ -33,9 +36,10 @@ end
 
 count_lengths(args::Dict) = count_lenths(;(Symbol(k) => v for (k,v) in args)...)
 
-function count_lengths(;first_index,last_index,logfile,
+function count_lengths(;first_index,last_index,
                        datadir=joinpath(data_dir,"count_lengths"),
-                       params=joinpath(@__DIR__,"params.feather"),
+                       logfile=joinpath(datadir,"sim.log"),
+                       params=joinpath(datadir,"params.feather"),
                        dataprefix="results",
                        git_hash="DETECT",
                        sim_repeat=2,
@@ -73,6 +77,20 @@ function handle_units!(df)
     end
   end
   df
+end
+
+function getparams(filterfn,file)
+  asdict(params) = Dict(k => params[1,k] for k in names(params))
+
+  params = handle_units!(Feather.read(file))
+  rows = filter(ri -> filterfn(ri,asdict(params[ri,:])),axes(params,1))
+  if length(rows) > 1
+    @warn("Specification ambiguous, multiple rows match.")
+  elseif length(rows) < 1
+    error("No rows matching specification")
+  else
+    asdict(params[rows[1],:])
+  end
 end
 
 function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
@@ -131,6 +149,16 @@ function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
                               progressbar=progressbar)
 
       jldopen(filename,"a+") do file
+        # if it hasn't yet been done, record the times at which the ratios are
+        # computed (their sample rate differs, so we need to interpolate them
+        # later on).
+        if !haskey(file,"btimes")
+          stimes = times(result.percepts.sratio)
+          file["stimes"] = ustrip.(uconvert.(s,stimes))
+          btimes = times(result.percepts.bratio)
+          file["btimes"] = ustrip.(uconvert.(s,btimes))
+        end
+
         entry = @sprintf("param%05d",i)
         count = haskey(file,entry) ? length(keys(file[entry])) : 0
         file[@sprintf("param%05d/run%03d/ratio",i,count)] =
@@ -143,7 +171,7 @@ function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
         @info "Completed simulation run $(count+1) for parameter $i."
       end
 
-      @info "Run yielded ~$(length(result.percepts.counts)) percepts."
+      @info "Run yielded ~$(length(result.percepts.counts[1])) percepts."
     end
   end
   @info "DONE"
