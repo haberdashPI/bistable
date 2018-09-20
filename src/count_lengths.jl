@@ -83,7 +83,7 @@ function getparams(filterfn,file)
   asdict(params) = Dict(k => params[1,k] for k in names(params))
 
   params = handle_units!(Feather.read(file))
-  rows = filter(ri -> filterfn(ri,asdict(params[ri,:])),axes(params,1))
+  rows = filter(ri -> filterfn(ri,asdict(params[ri,:])),Base.axes(params,1))
   if length(rows) > 1
     @warn("Specification ambiguous, multiple rows match.")
   elseif length(rows) < 1
