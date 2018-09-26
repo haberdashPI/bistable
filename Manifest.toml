@@ -26,7 +26,7 @@ version = "0.2.2"
 deps = ["AxisArrays", "Combinatorics", "DSP", "DataFrames", "DataStructures", "Distributions", "LinearAlgebra", "MacroTools", "Match", "NMF", "Parameters", "ProgressMeter", "Requires", "Rmath", "SampledSignals", "ShammaModel", "SparseArrays", "SpecialFunctions", "Statistics", "StatsFuns", "TOML", "Unitful"]
 path = "/Users/davidlittle/googledrive/juliadev/AuditoryBistabilityLE"
 uuid = "7e25a372-ade5-11e8-17af-a30e5a9e2c28"
-version = "0.1.0"
+version = "0.2.0"
 
 [[AxisArrays]]
 deps = ["Compat", "Dates", "IntervalSets", "IterTools", "Pkg", "Random", "RangeArrays", "Test"]
@@ -345,9 +345,11 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[ShammaModel]]
 deps = ["AxisArrays", "Colors", "DSP", "DataFrames", "FFTW", "FileIO", "JLD2", "ProgressMeter", "Requires", "SampledSignals", "Statistics", "Test", "Unitful"]
-path = "/Users/davidlittle/googledrive/juliadev/ShammaModel"
+git-tree-sha1 = "b0f33d5a789e911f0ba5c955f6995116ecc8e976"
+repo-rev = "63c16805e37e63d5c51d110ed85274cd04d584b9"
+repo-url = "https://github.com/haberdashPI/ShammaModel.jl"
 uuid = "80f90042-ac61-11e8-0ace-f1a8d5e03555"
-version = "0.1.0"
+version = "0.1.2"
 
 [[SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
