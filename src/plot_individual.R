@@ -254,6 +254,18 @@ save_plot(file.path(dir,"bistable_track_selectivity.pdf"),p,
 # what is happening in the model for these cases
 
 ################################################################################
+# histogram
+
+sindex = params %>%
+  filter(abs(t_c_m-100) < 1, abs(t_c_a-5) < 1,Δf==3) %>%
+  select(pindex) %>% head(1) %>% first
+
+percepts = df_percepts %>% filter(pindex == sindex,!is_bound)
+
+ggplot(percepts,aes(x=length)) + geom_histogram(bins=12)
+ggsave(file.path(dir,"track_hist_m100_a5.pdf"))
+
+################################################################################
 # old, unrevised code
 
 # inspecting a few parameters...
