@@ -23,7 +23,7 @@ uuid = "69666777-d1a9-59fb-9406-91d4454c9d45"
 version = "0.2.2"
 
 [[AuditoryBistabilityLE]]
-deps = ["AxisArrays", "Combinatorics", "DSP", "DataFrames", "DataStructures", "Distributions", "LinearAlgebra", "MacroTools", "Match", "NMF", "Parameters", "ProgressMeter", "Requires", "Rmath", "SampledSignals", "ShammaModel", "SparseArrays", "SpecialFunctions", "Statistics", "StatsFuns", "TOML", "Unitful"]
+deps = ["AxisArrays", "CodecZlib", "Combinatorics", "DSP", "DataFrames", "DataStructures", "Distributions", "LinearAlgebra", "MacroTools", "Match", "NMF", "Parameters", "ProgressMeter", "Requires", "Rmath", "SampledSignals", "ShammaModel", "SparseArrays", "SpecialFunctions", "Statistics", "StatsFuns", "TOML", "Unitful"]
 path = "/Users/davidlittle/googledrive/juliadev/AuditoryBistabilityLE"
 uuid = "7e25a372-ade5-11e8-17af-a30e5a9e2c28"
 version = "0.2.0"
