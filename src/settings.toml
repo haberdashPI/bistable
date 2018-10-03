@@ -49,10 +49,15 @@ input_bound = [0.0, 1.0]
 lowpass = 1.5
 lowpass_order = 3
 
-[percept_lengths]
+[mask]
 window_ms = 500
 delta_ms = 250
-min_length_ms = 750
-threshold = 2.1
-bandwidth_threshold = 1.5
 
+[bandwidth_ratio]
+window_ms = 500
+delta_ms = 250
+threshold = 1.5
+
+[percept_lengths]
+min_length_ms = 750
+threshold = 0.45

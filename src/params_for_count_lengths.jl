@@ -54,10 +54,10 @@ m_vals = [0.0; 10 .^ range(1.25,stop=2,length=4)]
 # cover all three stimuli across any parameter sets that generate bistability
 # for 3st
 
-write_params("individual_extremes",vcat(
+write_params("individual_levels",vcat(
   byparams(Dict(
     :Δt         => [240ms],
-    :Δf         => [0.5,12],
+    :Δf         => [3,6,12],
     :f          => [500Hz],
 
     :f_c_x      => [3.0],    :f_τ_x     => [500ms],
@@ -74,14 +74,14 @@ write_params("individual_extremes",vcat(
 
     :t_c_x      => [3.0],    :t_τ_x     => [500ms],
     :t_c_σ      => [0.0],    :t_τ_σ     => [500ms],
-    :t_c_a      => [0.0],   :t_τ_a     => [3s],
-    :t_c_m      => [0.0],   :t_τ_m     => [350ms],
-    :t_W_m_σ_t  => [8.0],    :t_W_m_σ_ϕ => [6.0],
-    :t_W_m_c    => [6.0]
+    :t_c_a      => [0.0],  :t_τ_a     => [3s],
+    :t_c_m      => [0.0],  :t_τ_m     => [350ms],
+    :t_W_m_σ_t  => [7.0],  :t_W_m_σ_ϕ => [7.0],
+    :t_W_m_σ_N  => [3.0],  :t_W_m_c    => [6.0]
   )),
   byparams(Dict(
     :Δt         => [240ms],
-    :Δf         => [0.5,12],
+    :Δf         => [3,6,12],
     :f          => [500Hz],
 
     :f_c_x      => [3.0],    :f_τ_x     => [500ms],
@@ -100,12 +100,12 @@ write_params("individual_extremes",vcat(
     :t_c_σ      => [0.0],    :t_τ_σ     => [500ms],
     :t_c_a      => [0.0],   :t_τ_a     => [3s],
     :t_c_m      => [0.0],   :t_τ_m     => [350ms],
-    :t_W_m_σ_t  => [8.0],    :t_W_m_σ_ϕ => [6.0],
-    :t_W_m_c    => [6.0]
+    :t_W_m_σ_t  => [7.0],  :t_W_m_σ_ϕ => [7.0],
+    :t_W_m_σ_N  => [3.0],  :t_W_m_c    => [6.0]
   )),
   byparams(Dict(
     :Δt         => [240ms],
-    :Δf         => [0.5,12],
+    :Δf         => [3,6,12],
     :f          => [500Hz],
 
     :f_c_x      => [3.0],    :f_τ_x     => [500ms],
@@ -124,8 +124,8 @@ write_params("individual_extremes",vcat(
     :t_c_σ      => [0.2],    :t_τ_σ     => [500ms],
     :t_c_a      => a_vals,   :t_τ_a     => [3s],
     :t_c_m      => m_vals,   :t_τ_m     => [350ms],
-    :t_W_m_σ_t  => [8.0],    :t_W_m_σ_ϕ => [6.0],
-    :t_W_m_c    => [6.0]
+    :t_W_m_σ_t  => [7.0],  :t_W_m_σ_ϕ => [7.0],
+    :t_W_m_σ_N  => [3.0],  :t_W_m_c    => [6.0]
   )),
  ))
 

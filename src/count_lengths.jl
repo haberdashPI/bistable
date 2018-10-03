@@ -152,19 +152,18 @@ function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
         # if it hasn't yet been done, record the times at which the ratios are
         # computed (their sample rate differs, so we need to interpolate them
         # later on).
-        if !haskey(file,"btimes")
-          stimes = times(result.percepts.sratio)
-          file["stimes"] = ustrip.(uconvert.(s,stimes))
-          btimes = times(result.percepts.bratio)
-          file["btimes"] = ustrip.(uconvert.(s,btimes))
+        if !haskey(file,"btimes_s")
+          file["btimes_s"] = ustrip.(uconvert.(s,times(result.percepts.ratio)))
         end
 
         entry = @sprintf("param%05d",i)
         count = haskey(file,entry) ? length(keys(file[entry])) : 0
-        file[@sprintf("param%05d/run%03d/ratio",i,count)] =
-          Array(result.percepts.sratio)
-        file[@sprintf("param%05d/run%03d/bratio",i,count)] =
-          Array(result.percepts.bratio)
+        file[@sprintf("param%05d/run%03d/lengths",i,count)] =
+          Array(result.percepts.counts[1])
+        file[@sprintf("param%05d/run%03d/percepts",i,count)] =
+          Array(result.percepts.counts[2])
+        file[@sprintf("param%05d/run%03d/mask",i,count)] =
+          compress!(result.primary_source)
         file[@sprintf("param%05d/run%03d/pindex",i,count)] = i
         file[@sprintf("param%05d/run%03d/created",i,count)] = start_time
 
