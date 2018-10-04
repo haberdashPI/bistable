@@ -6,6 +6,8 @@ using Printf
 using JLD2
 using Feather
 using InteractiveUtils
+using Unitful
+
 include("logger.jl")
 
 struct CountLength
