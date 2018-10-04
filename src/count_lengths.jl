@@ -36,7 +36,7 @@ function for_count_lengths(fn,dir)
   end
 end
 
-count_lengths(args::Dict) = count_lenths(;(Symbol(k) => v for (k,v) in args)...)
+count_lengths(args::Dict) = count_lengths(;(Symbol(k) => v for (k,v) in args)...)
 
 function count_lengths(;first_index,last_index,
                        datadir=joinpath(data_dir,"count_lengths"),
@@ -67,7 +67,11 @@ end
 
 totime(x) = x.*ms
 tofreq(x) = x.*Hz
-const data_dir = joinpath(@__DIR__,"..","data")
+const data_dir = if occursin("Mycroft",gethostname())
+  joinpath(@__DIR__,"..","data")
+else
+  joinpath(homedir(),"work","dlittle","bistable_individual")
+end
 
 from_unit_table = Dict(r"τ" => totime, r"Δt" => totime, r"^f$" => tofreq)
 function handle_units!(df)
@@ -109,9 +113,9 @@ function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
   @info "Loading parameters from "*params
   params = handle_units!(Feather.read(params))
   first_index = first_index
-  if first_index > size(params,2)
-    err("First parameter index ($first_index) is outside the range of",
-        " parameters.")
+  if first_index > size(params,1)
+    error("First parameter index ($first_index) is outside the range of",
+          " parameters.")
   end
   last_index = clamp(last_index,first_index,size(params,1))
   indices = first_index:last_index

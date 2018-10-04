@@ -42,7 +42,7 @@ parse_settings = ArgParseSettings()
     help = "The prefix appended to all result files"
     required = false
     arg_type = String
-    defualt = "results"
+    default = "results"
   "--logfile", "-l"
     help = "The file to log information to"
     required = false
