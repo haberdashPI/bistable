@@ -28,7 +28,12 @@ end
 unit_table = Dict(r"τ" => in_ms,r"Δt" => in_ms, r"^f$" => in_Hz)
 
 function write_params(label,df)
-  dir = joinpath(@__DIR__,"..","data","count_lengths","run_$(Date(now()))")
+  if occursin("Mycroft",gethostname())
+    dir = joinpath(@__DIR__,"..","data","count_lengths","run_$(Date(now()))")
+  else
+    dir = joinpath(homedir(),"work","dlittle","bistable_individual",
+                   "run_$(Date(now()))")
+  end
   isdir(dir) || mkdir(dir)
   open(joinpath(dir,"$(label)_N.txt"),"w") do f
     println(f,"$(size(df,1))")
