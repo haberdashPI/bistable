@@ -17,7 +17,7 @@ struct CountLength
   created::DateTime
 end
 
-function for_count_lengths(fn,dir)
+function for_results_in(fn,dir)
   for file in readdir(dir)
     if ismatch(r"jld2$",file)
       @info "Loading $file"
@@ -26,8 +26,7 @@ function for_count_lengths(fn,dir)
           if occursin(r"param[0-9]{2}",param)
             for run in keys(stream[param])
               entry = stream[param][run]
-              fn(CountLength(entry["ratio"], entry["bratio"],
-                             entry["pindex"], entry["created"]))
+              fn(entry)
             end
           end
         end
