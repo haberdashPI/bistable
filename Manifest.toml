@@ -242,12 +242,10 @@ version = "0.3.1"
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[NMF]]
-deps = ["LinearAlgebra", "Printf", "Random", "Statistics", "StatsBase", "Test"]
+deps = ["LinearAlgebra", "Pkg", "Printf", "Random", "Statistics", "StatsBase", "Test"]
 git-tree-sha1 = "7292dbfbc5501f9a2ae3cd748551c5e500de5f0f"
-repo-rev = "aa/1.0"
-repo-url = "https://github.com/JuliaStats/NMF.jl.git"
 uuid = "6ef6ca0d-6ad7-5ff6-b225-e928bfa0a386"
-version = "0.3.0+"
+version = "0.4.0"
 
 [[OrderedCollections]]
 deps = ["Pkg", "Random", "Serialization", "Test"]

@@ -19,8 +19,7 @@ end
 
 function for_results_in(fn,dir)
   for file in readdir(dir)
-    if ismatch(r"jld2$",file)
-      @info "Loading $file"
+    if occursin(r"jld2$",file)
       jldopen(joinpath(dir,file),"r") do stream
         for param in keys(stream)
           if occursin(r"param[0-9]{2}",param)
