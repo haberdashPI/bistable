@@ -1,8 +1,9 @@
 #!/bin/sh
-dir=$1
+result_dir=$1
 label=$2
+repeat=${3:-20}
+stim_count=${4:-100}
 proj_dir="projects/bistable/src"
-result_dir="/scratch/groups/melhila1/dlittle/${dir}"
 
 S=1
 # S=101 # start from where N=100 leaves off
@@ -18,8 +19,8 @@ cd
 # this just echos the commands, once you verify that it's right, pipe it to sh
 for i in `seq $S $K $N`; do
   echo "sbatch ${proj_dir}/run_count_lengths.sh $i \
-    $((i+K-1)) -r 20 -c 100 --git_hash $GIT_HASH \
-    --params ${result_dir}/${label}_params.feather \
+    $((i+K-1)) -r ${repeat} -c ${stim_count} --git_hash $GIT_HASH \
+    --params ${result_dir}/params.jld2 \
     --settings ${proj_dir}/settings.toml \
     -d ${result_dir}/data/ \
     -l ${result_dir}/logs/result_${i}.log"
