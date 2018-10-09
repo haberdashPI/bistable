@@ -1,4 +1,6 @@
 using Logging
+using FileIO
+using DataFrames
 using AuditoryBistabilityLE
 using ShammaModel
 using Dates
@@ -96,6 +98,13 @@ function getparams(filterfn,file)
     asdict(params[rows[1],:])
   end
 end
+function load_params(params)
+  if occursin(r"\.feather$",params)
+    handle_units!(Feather.read(params))
+  elseif occursin(r".jld2$",params)
+    load(params,"params")
+  end
+end
 
 function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
                        params,git_hash,sim_repeat,stim_count,
@@ -109,7 +118,7 @@ function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
   @info "Source code hash: "*(git_hash == "DETECT" ? read_git_hash() : git_hash)
 
   @info "Loading parameters from "*params
-  params = handle_units!(Feather.read(params))
+  params = load_params(params)
   first_index = first_index
   if first_index > size(params,1)
     error("First parameter index ($first_index) is outside the range of",
