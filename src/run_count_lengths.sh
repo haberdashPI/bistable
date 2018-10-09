@@ -1,7 +1,7 @@
 #!/bin/sh
 #SBATCH
 #SBATCH --job-name=bistable
-#SBATCH --time=2:0:0
+#SBATCH --time=6:0:0
 #SBATCH --partition=shared
 #SBATCH --ntasks=1
 #SBATCH --mem=30G

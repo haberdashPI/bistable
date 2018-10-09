@@ -10,7 +10,7 @@ S=1
 # N=10
 N=`cat ${result_dir}/${label}_N.txt`
 # N=2000 # start with just 10 jobs for now, and see how that goes.
-K=15
+K=200
 
 cd ${proj_dir}
 GIT_HASH=`git rev-parse HEAD`
