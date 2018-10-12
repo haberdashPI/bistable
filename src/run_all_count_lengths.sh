@@ -1,16 +1,17 @@
 #!/bin/sh
 result_dir=$1
 label=$2
-repeat=${3:-20}
-stim_count=${4:-100}
-proj_dir="projects/bistable/src"
+K=${3:-10}
+repeat=${4:-20}
+stim_count=${5:-100}
 
+proj_dir="projects/bistable/src"
 S=1
+
 # S=101 # start from where N=100 leaves off
 # N=10
 N=`cat ${result_dir}/${label}_N.txt`
 # N=2000 # start with just 10 jobs for now, and see how that goes.
-K=200
 
 cd ${proj_dir}
 GIT_HASH=`git rev-parse HEAD`
