@@ -4,6 +4,14 @@ using AxisArrays
 Pkg.activate("..")
 using TOML
 using RCall
+using VegaLite
+using DataFramesMeta
+using LinearAlgebra
+using Statistics
+using StatsBase
+using Dates
+using ProgressMeter
+
 const srcdir = @__DIR__
 include(joinpath(srcdir,"count_lengths.jl"))
 

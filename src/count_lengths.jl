@@ -9,6 +9,7 @@ using JLD2
 using Feather
 using InteractiveUtils
 using Unitful
+using ProgressMeter
 
 include("logger.jl")
 
@@ -20,7 +21,7 @@ struct CountLength
 end
 
 function for_results_in(fn,dir)
-  for file in readdir(dir)
+  @showprogress for file in readdir(dir)
     if occursin(r"jld2$",file)
       jldopen(joinpath(dir,file),"r") do stream
         for param in keys(stream)
