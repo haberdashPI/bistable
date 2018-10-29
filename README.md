@@ -17,10 +17,12 @@ reference and other members of the lab.
 
 ```julia
 (v1.0) pkg> activate .
-(bistability) pkg> add https://github.com/haberdashPI/ShammaModel.jl
-(bistability) pkg> add https://github.com/JuliaAudio/SampledSignals.jl#master
-(bistability) pkg> add https://github.com/haberdashPI/AuditoryBistabilityLE
-(bistability) pkg> instantiate
+(bistable) pkg> add https://github.com/wildart/TOML.jl#v0.4.0
+(bistable) pkg> add https://github.com/haberdashPI/MetaArrays.jl
+(bistable) pkg> add https://github.com/JuliaAudio/SampledSignals.jl#master
+(bistable) pkg> add https://github.com/haberdashPI/ShammaModel.jl
+(bistable) pkg> add https://github.com/haberdashPI/AuditoryBistabilityLE
+(bistable) pkg> instantiate
 ```
 
 This is all that's necessary to re-run the computational simulations on,
