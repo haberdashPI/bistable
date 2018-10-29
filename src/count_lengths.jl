@@ -89,7 +89,7 @@ end
 function getparams(filterfn,file)
   asdict(params) = Dict(k => params[1,k] for k in names(params))
 
-  params = handle_units!(Feather.read(file))
+  params = load_params(file)
   rows = filter(ri -> filterfn(ri,asdict(params[ri,:])),Base.axes(params,1))
   if length(rows) > 1
     @warn("Specification ambiguous, multiple rows match.")
@@ -99,10 +99,11 @@ function getparams(filterfn,file)
     asdict(params[rows[1],:])
   end
 end
+
 function load_params(params)
   if occursin(r"\.feather$",params)
     handle_units!(Feather.read(params))
-  elseif occursin(r".jld2$",params)
+  elseif occursin(r"\.jld2$",params)
     load(params,"params")
   end
 end
