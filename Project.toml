@@ -24,3 +24,6 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 TOML = "191fdcea-f9f2-43e0-b922-d33f71e2abc3"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+
+[compat]
+AuditoryBistabilityLE = "0.4.3"
