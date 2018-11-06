@@ -1,7 +1,8 @@
 using Pkg
+Pkg.activate(joinpath(@__DIR__,".."))
+
 using Unitful
 using AxisArrays
-Pkg.activate("..")
 using TOML
 using RCall
 using VegaLite
