@@ -53,10 +53,10 @@ function Logging.handle_message(logger::DatedLogger, level, message,
   elseif startswith(filepath,@__DIR__)
     filepath[length(@__DIR__)+2:end]
   elseif occursin(r"AuditoryBistabilityLE/[^/]*/?src/",filepath)
-    part = match(r"AuditoryBistabilityLE/[^/]*/src/(.+)$",filepath)
+    part = match(r"AuditoryBistabilityLE/[^/]*/?src/(.+)$",filepath)
     "[bi-model]/"*part[1]
-  elseif occursin(r"ShammaModel/[^/]*/src/",filepath)
-    part = match(r"ShammaModel/[^/]*/src/(.+)$",filepath)
+  elseif occursin(r"ShammaModel/[^/]*/?src/",filepath)
+    part = match(r"ShammaModel/[^/]*/?src/(.+)$",filepath)
     "[sh-model]/"*part[1]
   else
     filepath
