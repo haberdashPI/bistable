@@ -1,14 +1,15 @@
 using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 include("count_lengths.jl")
 
-datadir = joinpath(data_dir,"run_2018-10-04")
+datadir = normpath(joinpath(@__DIR__,"..","data","count_lengths","run_2018-11-06"))
 count_lengths(
-  datadir=datadir,
+  datadir=joinpath(datadir,"data"),
+  logfile=joinpath(datadir,"logs","test.log"),
   first_index=1,last_index=1,
   sim_repeat=2,
-  stim_count=5,
+  stim_count=25,
   git_hash="UNKNOWN",
-  params=joinpath(datadir,"individual_levels_params.feather"),
+  params=joinpath(datadir,"params.jld2"),
   progressbar=false
 )
 

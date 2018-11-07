@@ -26,4 +26,4 @@ TOML = "191fdcea-f9f2-43e0-b922-d33f71e2abc3"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
-AuditoryBistabilityLE = "0.4.3"
+AuditoryBistabilityLE = "0.4.5"

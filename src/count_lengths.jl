@@ -10,6 +10,7 @@ using Feather
 using InteractiveUtils
 using Unitful
 using ProgressMeter
+using AxisArrays
 
 include("logger.jl")
 
@@ -178,7 +179,7 @@ function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
         file[@sprintf("param%05d/run%03d/percepts",i,count)] =
           Array(result.percepts.counts[2])
         file[@sprintf("param%05d/run%03d/mask",i,count)] =
-          compress!(result.primary_source)
+          AuditoryBistabilityLE.compress(result.primary_source)
         file[@sprintf("param%05d/run%03d/pindex",i,count)] = i
         file[@sprintf("param%05d/run%03d/created",i,count)] = start_time
 
