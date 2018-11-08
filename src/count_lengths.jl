@@ -38,7 +38,22 @@ function for_results_in(fn,dir)
   end
 end
 
-count_lengths(args::Dict) = count_lengths(;(Symbol(k) => v for (k,v) in args)...)
+function count_lengths(args::Dict)
+  setup_logging(logfile) do
+    @info("Results will be saved to $(args["datadir"])")
+    count_lengths(get(args,"first_index"),get(args,"last_index"),
+                  get(args,"logfile",joinpath(datadir,"sim.log")),
+                  get(args,"datadir",joinpath(data_dir,"count_lengths")),
+                  get(args,"dataprefix","results"),
+                  get(args,"params",joinpath(datadir,"params.feather")),
+                  get(args,"git_hash","DETECT"),
+                  get(args,"sim_repeat",2),
+                  get(args,"stim_count",25),
+                  get(args,"settings",
+                      joinpath(@__DIR__,"settings.toml")),
+                  get(args,"progressbar",false))
+  end
+end
 
 function count_lengths(;first_index,last_index,
                        datadir=joinpath(data_dir,"count_lengths"),
