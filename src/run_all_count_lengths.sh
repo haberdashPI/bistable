@@ -4,13 +4,14 @@ label=$2
 K=${3:-10}
 repeat=${4:-20}
 stim_count=${5:-100}
+default_N=`cat ${result_dir}/${label}_N.txt`
+N=${6:-$default_N}
 
 proj_dir="projects/bistable/src"
 S=1
 
 # S=101 # start from where N=100 leaves off
 # N=10
-N=`cat ${result_dir}/${label}_N.txt`
 # N=2000 # start with just 10 jobs for now, and see how that goes.
 
 cd ${proj_dir}
