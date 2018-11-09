@@ -1,7 +1,7 @@
 [stimulus]
-# ramp_len_ms = 10
-# pattern = "aba_"
-# tone_len_fraction = 0.41666666666
+ramp_len_ms = 10
+pattern = "aba_"
+tone_len_fraction = 0.41666666666
 
 [freqs.analyze]
 delta_t_ms = 20
