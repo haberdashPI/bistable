@@ -38,19 +38,25 @@ function for_results_in(fn,dir)
   end
 end
 
+# note: I would like this below function to be implemented as
+# count_lengths(args) = count_lengths(;(Symbol(k) => v for (k,v) in args)...)
+# but some sort of inference bug in julia v1.0.1 is keeping this from working
+# (I'll try again in v1.0.2, and if not submit a pull request)
 function count_lengths(args::Dict)
+  datadir = get(args,"datadir",joinpath(data_dir,"count_lengths"))
+  logfile = get(args,"logfile",joinpath(datadir,"sim.log"))
   setup_logging(logfile) do
-    @info("Results will be saved to $(args["datadir"])")
-    count_lengths(get(args,"first_index"),get(args,"last_index"),
-                  get(args,"logfile",joinpath(datadir,"sim.log")),
-                  get(args,"datadir",joinpath(data_dir,"count_lengths")),
+    @info("Results will be saved to $datadir")
+    count_lengths(get(args,"first_index",1),
+                  get(args,"last_index",1),
+                  logfile,datadir,
                   get(args,"dataprefix","results"),
-                  get(args,"params",joinpath(datadir,"params.feather")),
+                  get(args,"params",joinpath(datadir,"params.jld2")),
                   get(args,"git_hash","DETECT"),
                   get(args,"sim_repeat",2),
                   get(args,"stim_count",25),
                   get(args,"settings",
-                      joinpath(@__DIR__,"settings.toml")),
+                            joinpath(@__DIR__,"settings.toml")),
                   get(args,"progressbar",false))
   end
 end
@@ -58,7 +64,7 @@ end
 function count_lengths(;first_index,last_index,
                        datadir=joinpath(data_dir,"count_lengths"),
                        logfile=joinpath(datadir,"sim.log"),
-                       params=joinpath(datadir,"params.feather"),
+                       params=joinpath(datadir,"params.jld"),
                        dataprefix="results",
                        git_hash="DETECT",
                        sim_repeat=2,
@@ -137,7 +143,6 @@ function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
 
   @info "Loading parameters from "*params
   params = load_params(params)
-  first_index = first_index
   if first_index > size(params,1)
     error("First parameter index ($first_index) is outside the range of",
           " parameters.")
