@@ -59,10 +59,10 @@ delta_ms = 250
 [bandwidth_ratio]
 window_ms = 800
 delta_ms = 100
-threshold = 1.5
+threshold = 0.25
 full_band_ratio = 3
 thresh_ratio = 0.75
-level_threshold = 1.0
+level_threshold = 0.95
 
 [percept_lengths]
 min_length_ms = 500
