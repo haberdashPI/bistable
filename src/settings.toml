@@ -66,4 +66,4 @@ level_threshold = 0.95
 
 [percept_lengths]
 min_length_ms = 500
-threshold = 0.55
+threshold = 0.2
