@@ -45,3 +45,12 @@ of the `IJulia` package.
 ```julia
 julia> using IJulia; notebook()
 ```
+
+## Experimental Noter
+
+These are odds and ends I need to remember when writing up the paper:
+
+To get the data from Húpe and Pressnitzer 2006 I extracted the data of
+the histogram using https://automeris.io/WebPlotDigitizer/ for the auditory
+data. I think computed the skew and the kurtosis assuming
+that all binned data were at the mean of their bins.

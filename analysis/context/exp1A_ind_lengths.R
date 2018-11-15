@@ -64,3 +64,4 @@ ggplot(nb_lens,aes(y=len,x=stimulus)) +
 
 # wait... what? there are a lot of 1-stream responses...
 # for ALL conditions... that must be about the bias....???
+
