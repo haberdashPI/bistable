@@ -1,10 +1,10 @@
 #!/bin/sh
-default_N=`cat ${result_dir}/${label}_N.txt`
 
 result_dir=$1
 label=$2
 K=${3:-10}
 repeat=${4:-20}
+default_N=`cat ${result_dir}/${label}_N.txt`
 N=${5:-$default_N}
 
 proj_dir="projects/bistable/src"
@@ -21,7 +21,7 @@ cd
 # this just echos the commands, once you verify that it's right, pipe it to sh
 for i in `seq $S $K $N`; do
   echo "sbatch ${proj_dir}/run_count_lengths.sh $i \
-    $((i+K-1)) -r ${repeat} -c ${stim_count} --git_hash $GIT_HASH \
+    $((i+K-1)) -r ${repeat} --git_hash $GIT_HASH \
     --params ${result_dir}/params.jld2 \
     --settings ${proj_dir}/settings.toml \
     -d ${result_dir}/data/ \
