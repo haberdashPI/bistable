@@ -30,7 +30,10 @@ unit_table = Dict(r"τ" => in_ms,r"Δt" => in_ms, r"^f$" => in_Hz)
 function write_params(label,df)
   if occursin("Mycroft",gethostname())
     dir = joinpath(@__DIR__,"..","data",
-                   "count_lengths","run_$(Date(now()))")
+                   "count_lengths",label,"run_$(Date(now()))")
+  elseif occursin("deus1",gethostname())
+    dir = joinpath(@__DIR__,"..","data",
+                   "count_lengths",label,"run_$(Date(now()))")
   else
     dir = joinpath(homedir(),"work","dlittle","bistable_$label",
                    "run_$(Date(now()))")
