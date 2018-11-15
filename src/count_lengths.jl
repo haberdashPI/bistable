@@ -54,7 +54,6 @@ function count_lengths(args::Dict)
                   get(args,"params",joinpath(datadir,"params.jld2")),
                   get(args,"git_hash","DETECT"),
                   get(args,"sim_repeat",2),
-                  get(args,"stim_count",25),
                   get(args,"settings",
                             joinpath(@__DIR__,"settings.toml")),
                   get(args,"progressbar",false))
@@ -68,13 +67,12 @@ function count_lengths(;first_index,last_index,
                        dataprefix="results",
                        git_hash="DETECT",
                        sim_repeat=2,
-                       stim_count=25,
                        settings=joinpath(@__DIR__,"settings.toml"),
                        progressbar=false)
   setup_logging(logfile) do
     @info("Results will be saved to $datadir")
     count_lengths(first_index,last_index,logfile,datadir,dataprefix,
-                  params,git_hash,sim_repeat,stim_count,
+                  params,git_hash,sim_repeat,
                   settings,progressbar)
   end
 end
@@ -131,7 +129,7 @@ function load_params(params)
 end
 
 function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
-                       params,git_hash,sim_repeat,stim_count,
+                       params,git_hash,sim_repeat,
                        settings,progressbar)
   dir = abspath(datadir)
   isdir(dir) || mkdir(dir)
@@ -181,8 +179,7 @@ function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
     for repeat in 1:num_repeats
       start_time = now()
       params_dict = Dict(k => params[i,k] for k in names(params))
-      result = bistable_model(stim_count,params_dict,settings,
-                              progressbar=progressbar)
+      result = bistable_model(params_dict,settings,progressbar=progressbar)
 
       jldopen(filename,"a+") do file
         # if it hasn't yet been done, record the times at which the ratios are

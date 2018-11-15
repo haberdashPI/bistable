@@ -2,6 +2,7 @@
 ramp_len_ms = 10
 pattern = "aba_"
 tone_len_fraction = 0.41666666666
+repeats = 100
 
 [freqs.analyze]
 delta_t_ms = 20

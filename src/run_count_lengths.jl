@@ -28,11 +28,6 @@ parse_settings = ArgParseSettings()
     required = false
     arg_type = Int
     default = 1
-  "--stim_count", "-c"
-    help = "How many counts of the ab stimulus to present in each simulation."
-    required = false
-    arg_type = Int
-    default = 50
   "--datadir", "-d"
     help = "The directory to save results to"
     required = false

@@ -1,11 +1,11 @@
 #!/bin/sh
+default_N=`cat ${result_dir}/${label}_N.txt`
+
 result_dir=$1
 label=$2
 K=${3:-10}
 repeat=${4:-20}
-stim_count=${5:-100}
-default_N=`cat ${result_dir}/${label}_N.txt`
-N=${6:-$default_N}
+N=${5:-$default_N}
 
 proj_dir="projects/bistable/src"
 S=1
