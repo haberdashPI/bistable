@@ -50,8 +50,8 @@ function write_params(label,df)
   save(joinpath(dir,"params.jld2"),"params",df)
 end
 
-a_vals = [0.0; 10 .^ range(0.7,stop=1.75,length=4)]
-m_vals = [0.0; 10 .^ range(1.25,stop=2,length=4)]
+a_vals = [0; round.(Int,10 .^ range(0.7,stop=4,length=8))]
+m_vals = [0; round.(Int,10 .^ range(0.7,stop=4,length=8))]
 
 # this parameter set surveys all values for the 3st case. A second search will
 # cover all three stimuli across any parameter sets that generate bistability
