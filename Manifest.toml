@@ -291,11 +291,11 @@ uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlotAxes]]
 deps = ["AxisArrays", "DataFrames", "Requires", "Unitful"]
-git-tree-sha1 = "a913535975d88920742452ca631f831d4504a133"
+git-tree-sha1 = "7ead16a425d4034bc214263b95cd2b0c1426cdbd"
 repo-rev = "master"
 repo-url = "https://github.com/haberdashPI/PlotAxes.jl"
 uuid = "8b6f5f00-d239-11e8-3a24-33314b00f6b0"
-version = "0.1.0"
+version = "0.1.2"
 
 [[Polynomials]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
@@ -367,11 +367,11 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[ShammaModel]]
 deps = ["AxisArrays", "Colors", "DSP", "DataFrames", "FFTW", "FileIO", "JLD2", "MetaArrays", "PlotAxes", "ProgressMeter", "Requires", "SampledSignals", "Statistics", "Test", "Unitful"]
-git-tree-sha1 = "4a8358379df4b37f6be7b67c0c957c745baa6bdd"
+git-tree-sha1 = "14dcc5cfc4a06746f7871233343a6d44e1a9221b"
 repo-rev = "master"
 repo-url = "https://github.com/haberdashPI/ShammaModel.jl"
 uuid = "80f90042-ac61-11e8-0ace-f1a8d5e03555"
-version = "0.2.9"
+version = "0.2.10"
 
 [[SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
