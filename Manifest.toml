@@ -24,11 +24,11 @@ version = "0.2.3"
 
 [[AuditoryBistabilityLE]]
 deps = ["AxisArrays", "CodecZlib", "Combinatorics", "DSP", "DataFrames", "DataStructures", "Distributions", "LinearAlgebra", "MacroTools", "Match", "MetaArrays", "NMF", "Parameters", "PlotAxes", "ProgressMeter", "Requires", "Rmath", "SampledSignals", "ShammaModel", "SparseArrays", "SpecialFunctions", "Statistics", "StatsFuns", "TOML", "Unitful"]
-git-tree-sha1 = "54f1cb5ad837cd4e649b7911805fe7c754fc5fc7"
+git-tree-sha1 = "7fd00fc6d7971c4c1ca7ae27bdad3492fcc441e8"
 repo-rev = "master"
 repo-url = "https://github.com/haberdashPI/AuditoryBistabilityLE"
 uuid = "7e25a372-ade5-11e8-17af-a30e5a9e2c28"
-version = "0.5.1"
+version = "0.5.2"
 
 [[AxisArrays]]
 deps = ["Compat", "Dates", "IntervalSets", "IterTools", "Random", "RangeArrays", "Test"]
