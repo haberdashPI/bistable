@@ -179,7 +179,7 @@ function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
     for repeat in 1:num_repeats
       start_time = now()
       params_dict = Dict(k => params[i,k] for k in names(params))
-      result = bistable_model(params_dict,settings,progressbar=progressbar)
+      result = bistable_model(params_dict,settings, progressbar=progressbar)
 
       jldopen(filename,"a+") do file
         # if it hasn't yet been done, record the times at which the ratios are

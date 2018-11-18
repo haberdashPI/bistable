@@ -34,8 +34,10 @@ stream_prop = df %>%
   group_by(sid,st) %>%
   summarize(response = mean(response))
 
+write.csv('stream_prop.csv')
+
 ggplot(stream_prop,aes(x=factor(st),y=response)) +
-  stat_summary(geom='pointrange',width=0.1,fun.data=mean_cl_boot,
+  stat_summary(geom='pointrange',fun.data=mean_cl_boot,
                fun.args=list(conf.int=0.95)) +
   stat_summary(geom='line',fun.data=mean_cl_boot,group=1) +
   coord_cartesian(ylim=c(0,1)) +
