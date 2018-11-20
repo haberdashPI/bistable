@@ -30,6 +30,12 @@ repo-url = "https://github.com/haberdashPI/AuditoryBistabilityLE"
 uuid = "7e25a372-ade5-11e8-17af-a30e5a9e2c28"
 version = "0.5.2"
 
+[[AxisAlgorithms]]
+deps = ["Compat", "WoodburyMatrices"]
+git-tree-sha1 = "99dabbe853e4f641ab21a676131f2cf9fb29937e"
+uuid = "13072b0f-2c55-5437-9ae7-d433b7a33950"
+version = "0.3.0"
+
 [[AxisArrays]]
 deps = ["Compat", "Dates", "IntervalSets", "IterTools", "Random", "RangeArrays", "Test"]
 git-tree-sha1 = "2e2536e9e6f27c4f8d09d8442b61a7ae0b910c28"
@@ -52,10 +58,10 @@ uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
 version = "0.5.2"
 
 [[CategoricalArrays]]
-deps = ["Compat", "Future", "JSON", "Missings", "Printf", "Reexport"]
-git-tree-sha1 = "6362c49130b5888f5628bc197ee5f17aec7d2a88"
+deps = ["Compat", "Future", "Missings", "Printf", "Reexport", "Requires"]
+git-tree-sha1 = "64651a0315fc342e7e35d03d67b2da920937c9be"
 uuid = "324d7699-5711-5eae-9e2f-1d82baa6b597"
-version = "0.4.0"
+version = "0.5.0"
 
 [[CodecZlib]]
 deps = ["BinaryProvider", "Libdl", "Test", "TranscodingStreams"]
@@ -155,9 +161,9 @@ version = "0.5.0"
 
 [[FileIO]]
 deps = ["Pkg", "Random", "Test"]
-git-tree-sha1 = "481e4db939f005db39f7296599d0543c0744fe30"
+git-tree-sha1 = "884066c07188cc0f57d0ebdcab6c9a09cc734dbc"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.0.2"
+version = "1.0.3"
 
 [[FixedPointNumbers]]
 deps = ["Test"]
@@ -178,6 +184,12 @@ uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 [[InteractiveUtils]]
 deps = ["LinearAlgebra", "Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+
+[[Interpolations]]
+deps = ["AxisAlgorithms", "LinearAlgebra", "OffsetArrays", "Random", "Ratios", "SharedArrays", "SparseArrays", "StaticArrays", "Test", "WoodburyMatrices"]
+git-tree-sha1 = "2a3b97b4f4cd6f6be5c73f07b15a30e9eaba465d"
+uuid = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
+version = "0.10.6"
 
 [[IntervalSets]]
 deps = ["Compat"]
@@ -267,6 +279,12 @@ git-tree-sha1 = "7292dbfbc5501f9a2ae3cd748551c5e500de5f0f"
 uuid = "6ef6ca0d-6ad7-5ff6-b225-e928bfa0a386"
 version = "0.4.0"
 
+[[OffsetArrays]]
+deps = ["DelimitedFiles", "Test"]
+git-tree-sha1 = "f8cd140824f74f2948ff8660bc2292e16d29c1b7"
+uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+version = "0.8.1"
+
 [[OrderedCollections]]
 deps = ["Random", "Serialization", "Test"]
 git-tree-sha1 = "85619a3f3e17bb4761fe1b1fd47f0e979f964d5b"
@@ -291,11 +309,11 @@ uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlotAxes]]
 deps = ["AxisArrays", "DataFrames", "Requires", "Unitful"]
-git-tree-sha1 = "7ead16a425d4034bc214263b95cd2b0c1426cdbd"
+git-tree-sha1 = "a8dc1d459c41784f7454f276805ce4eb4e27dbfd"
 repo-rev = "master"
 repo-url = "https://github.com/haberdashPI/PlotAxes.jl"
 uuid = "8b6f5f00-d239-11e8-3a24-33314b00f6b0"
-version = "0.1.2"
+version = "0.1.4"
 
 [[Polynomials]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
@@ -332,6 +350,12 @@ deps = ["Compat"]
 git-tree-sha1 = "d925adfd5b01cb46fde89dc9548d167b3b136f4a"
 uuid = "b3c3ace0-ae52-54e7-9d0b-2c1406fd6b9d"
 version = "0.3.1"
+
+[[Ratios]]
+deps = ["Compat"]
+git-tree-sha1 = "fd159bead0a24e6270fd0573a340312bd4645cc2"
+uuid = "c84ed2f1-dad5-54f0-aa8e-dbefe2724439"
+version = "0.3.0"
 
 [[Reexport]]
 deps = ["Pkg"]
@@ -395,6 +419,12 @@ deps = ["BinDeps", "BinaryProvider", "Libdl", "Test"]
 git-tree-sha1 = "0b45dc2e45ed77f445617b99ff2adf0f5b0f23ea"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
 version = "0.7.2"
+
+[[StaticArrays]]
+deps = ["InteractiveUtils", "LinearAlgebra", "Random", "Statistics", "Test"]
+git-tree-sha1 = "ebc5c2a27d91d5ec611a9861168182e2168effd3"
+uuid = "90137ffa-7385-5640-81b9-e52037218182"
+version = "0.9.2"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -473,9 +503,9 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [[Unitful]]
 deps = ["LinearAlgebra", "Random", "Test"]
-git-tree-sha1 = "cef7da6d4e9735fae7c11cd28e77b76fd87db468"
+git-tree-sha1 = "15c921708e19258fc9e7723aafc5f15c973ee77f"
 uuid = "1986cc42-f94f-5a68-af5c-568840ba703d"
-version = "0.12.0"
+version = "0.13.0"
 
 [[VersionParsing]]
 deps = ["Compat"]
@@ -488,3 +518,9 @@ deps = ["Missings", "Random", "Test"]
 git-tree-sha1 = "1087e8be380f2c8b96434b02bb1150fc1c511135"
 uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
 version = "0.5.3"
+
+[[WoodburyMatrices]]
+deps = ["LinearAlgebra", "Random", "SparseArrays", "Test"]
+git-tree-sha1 = "21772c33b447757ec7d3e61fcdfb9ea5c47eedcf"
+uuid = "efce3f68-66dc-5838-9240-27a6d6f5f9b6"
+version = "0.4.1"

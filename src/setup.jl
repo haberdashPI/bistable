@@ -15,5 +15,7 @@ using ProgressMeter
 
 const srcdir = @__DIR__
 include(joinpath(srcdir,"count_lengths.jl"))
+include(joinpath(srcdir,"kldiverge.jl"))
+include(joinpath(srcdir,"plotting.jl"))
 
 R"options(rcalljl_options=list(width=800,height=400))"
