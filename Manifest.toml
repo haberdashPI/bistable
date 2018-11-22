@@ -24,9 +24,7 @@ version = "0.2.3"
 
 [[AuditoryBistabilityLE]]
 deps = ["AxisArrays", "CodecZlib", "Combinatorics", "DSP", "DataFrames", "DataStructures", "Distributions", "LinearAlgebra", "MacroTools", "Match", "MetaArrays", "NMF", "Parameters", "PlotAxes", "ProgressMeter", "Requires", "Rmath", "SampledSignals", "ShammaModel", "SparseArrays", "SpecialFunctions", "Statistics", "StatsFuns", "TOML", "Unitful"]
-git-tree-sha1 = "7fd00fc6d7971c4c1ca7ae27bdad3492fcc441e8"
-repo-rev = "master"
-repo-url = "https://github.com/haberdashPI/AuditoryBistabilityLE"
+path = "/Users/davidlittle/googledrive/juliadev/AuditoryBistabilityLE"
 uuid = "7e25a372-ade5-11e8-17af-a30e5a9e2c28"
 version = "0.5.2"
 
@@ -53,9 +51,9 @@ version = "0.8.10"
 
 [[BinaryProvider]]
 deps = ["Libdl", "Pkg", "SHA", "Test"]
-git-tree-sha1 = "9930c1a6cd49d9fcd7218df6be417e6ae4f1468a"
+git-tree-sha1 = "055eb2690182ebc31087859c3dd8598371d3ef9e"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
-version = "0.5.2"
+version = "0.5.3"
 
 [[CategoricalArrays]]
 deps = ["Compat", "Future", "Missings", "Printf", "Reexport", "Requires"]
@@ -217,9 +215,9 @@ version = "0.1.2"
 
 [[JSON]]
 deps = ["Dates", "Distributed", "Mmap", "Sockets", "Test", "Unicode"]
-git-tree-sha1 = "fec8e4d433072731466d37ed0061b3ba7f70eeb9"
+git-tree-sha1 = "1f7a25b53ec67f5e9422f1f551ee216503f4a0fa"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-version = "0.19.0"
+version = "0.20.0"
 
 [[LibGit2]]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
@@ -281,9 +279,9 @@ version = "0.4.0"
 
 [[OffsetArrays]]
 deps = ["DelimitedFiles", "Test"]
-git-tree-sha1 = "f8cd140824f74f2948ff8660bc2292e16d29c1b7"
+git-tree-sha1 = "f446248f2dfbc13039a0b90994dd25b059b01eab"
 uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
-version = "0.8.1"
+version = "0.9.0"
 
 [[OrderedCollections]]
 deps = ["Random", "Serialization", "Test"]
@@ -299,9 +297,9 @@ version = "0.9.5"
 
 [[Parameters]]
 deps = ["Markdown", "OrderedCollections", "REPL", "Test"]
-git-tree-sha1 = "40f540ec96e50c0b2b9efdb11b5e4d0c63f90923"
+git-tree-sha1 = "eec0fe16344cc14aa2e6251874ab30d62aff4f7c"
 uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
-version = "0.10.1"
+version = "0.10.2"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -391,9 +389,7 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[ShammaModel]]
 deps = ["AxisArrays", "Colors", "DSP", "DataFrames", "FFTW", "FileIO", "JLD2", "MetaArrays", "PlotAxes", "ProgressMeter", "Requires", "SampledSignals", "Statistics", "Test", "Unitful"]
-git-tree-sha1 = "14dcc5cfc4a06746f7871233343a6d44e1a9221b"
-repo-rev = "master"
-repo-url = "https://github.com/haberdashPI/ShammaModel.jl"
+path = "/Users/davidlittle/googledrive/juliadev/ShammaModel"
 uuid = "80f90042-ac61-11e8-0ace-f1a8d5e03555"
 version = "0.2.10"
 
@@ -422,9 +418,9 @@ version = "0.7.2"
 
 [[StaticArrays]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Random", "Statistics", "Test"]
-git-tree-sha1 = "ebc5c2a27d91d5ec611a9861168182e2168effd3"
+git-tree-sha1 = "97c4bf0f647488dd7ac01ea12be5885f88762938"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.9.2"
+version = "0.10.0"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -503,9 +499,9 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [[Unitful]]
 deps = ["LinearAlgebra", "Random", "Test"]
-git-tree-sha1 = "15c921708e19258fc9e7723aafc5f15c973ee77f"
+git-tree-sha1 = "cef7da6d4e9735fae7c11cd28e77b76fd87db468"
 uuid = "1986cc42-f94f-5a68-af5c-568840ba703d"
-version = "0.13.0"
+version = "0.12.0"
 
 [[VersionParsing]]
 deps = ["Compat"]
