@@ -180,11 +180,21 @@ function length_dfh()
             nlength = exp.(zscore(log.(ph[:length]))));
 end
 
+function normlength(x)
+  x = log.(x)
+  x .-= mean(x)
+  s = std(x)
+  if !iszero(s)
+    x ./= s
+  end
+  exp.(x)
+end
+
 function length_dfs(df,params;kwds...)
   selection = select_params(params;Δf=6,kwds...)
   dfs = @where(df,(:pindex .== selection))
   DataFrame(length = dfs[:length],experiment="simulation",
-            nlength = exp.(zscore(log.(dfs[:length]))));
+            nlength = normlength(dfs[:length]));
 end
 
 length_df(df,params;kwds...) = vcat(length_dfh(), length_dfs(df,params;kwds...))
