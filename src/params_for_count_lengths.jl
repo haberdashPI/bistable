@@ -50,12 +50,13 @@ function write_params(label,df)
   save(joinpath(dir,"params.jld2"),"params",df)
 end
 
-a_vals = [0; round.(Int,10 .^ range(0.7,stop=4,length=8))]
-m_vals = [0; round.(Int,10 .^ range(0.7,stop=4,length=8))]
+function clean(x)
+  d = floor(Int,log10(x))
+  round(x,digits=-(d-1))
+end
 
-# this parameter set surveys all values for the 3st case. A second search will
-# cover all three stimuli across any parameter sets that generate bistability
-# for 3st
+a_vals = [0; clean.(10 .^ range(0.7,stop=4,length=8))]
+m_vals = [0; clean.(10 .^ range(0.7,stop=6,length=8))]
 
 write_params("individual_levels",vcat(
   byparams(Dict(
@@ -132,30 +133,34 @@ write_params("individual_levels",vcat(
   )),
  ))
 
-write_params("survey_interact",
-byparams(Dict(
-  :Δt         => [120ms],
-  :Δf         => [6],
-  :f          => [500Hz],
+# this parameter set surveys all values for the 3st case. A second search will
+# cover all three stimuli across any parameter sets that generate bistability
+# for 3st
 
-  :f_c_x      => [3.0],    :f_τ_x     => [500ms],
-  :f_c_σ      => [0.2],    :f_τ_σ     => [500ms],
-  :f_c_a      => a_vals,   :f_τ_a     => [3s],
-  :f_c_m      => m_vals,   :f_τ_m     => [350ms],
-  :f_W_m_σ    => [5.6],    :f_W_m_c   => [6.0],
+# write_params("survey_interact",
+# byparams(Dict(
+#   :Δt         => [120ms],
+#   :Δf         => [6],
+#   :f          => [500Hz],
 
-  :s_c_x      => [3.0],    :s_τ_x     => [500ms],
-  :s_c_σ      => [0.2],    :s_τ_σ     => [500ms],
-  :s_c_a      => a_vals,   :s_τ_a     => [3s],
-  :s_c_m      => m_vals,   :s_τ_m     => [350ms],
-  :s_W_m_σ    => [15.0],   :s_W_m_c   => [6.0],
+#   :f_c_x      => [3.0],    :f_τ_x     => [500ms],
+#   :f_c_σ      => [0.2],    :f_τ_σ     => [500ms],
+#   :f_c_a      => a_vals,   :f_τ_a     => [3s],
+#   :f_c_m      => m_vals,   :f_τ_m     => [350ms],
+#   :f_W_m_σ    => [5.6],    :f_W_m_c   => [6.0],
 
-  :t_c_x      => [3.0],    :t_τ_x     => [500ms],
-  :t_c_σ      => [0.2],    :t_τ_σ     => [500ms],
-  :t_c_a      => a_vals,   :t_τ_a     => [3s],
-  :t_c_m      => m_vals,   :t_τ_m     => [350ms],
-  :t_W_m_σ_t  => [7.0],    :t_W_m_σ_ϕ => [7.0],
-  :t_W_m_σ_N  => [3.0],    :t_W_m_c    => [6.0]
- ))
-)
+#   :s_c_x      => [3.0],    :s_τ_x     => [500ms],
+#   :s_c_σ      => [0.2],    :s_τ_σ     => [500ms],
+#   :s_c_a      => a_vals,   :s_τ_a     => [3s],
+#   :s_c_m      => m_vals,   :s_τ_m     => [350ms],
+#   :s_W_m_σ    => [15.0],   :s_W_m_c   => [6.0],
+
+#   :t_c_x      => [3.0],    :t_τ_x     => [500ms],
+#   :t_c_σ      => [0.2],    :t_τ_σ     => [500ms],
+#   :t_c_a      => a_vals,   :t_τ_a     => [3s],
+#   :t_c_m      => m_vals,   :t_τ_m     => [350ms],
+#   :t_W_m_σ_t  => [7.0],    :t_W_m_σ_ϕ => [7.0],
+#   :t_W_m_σ_N  => [3.0],    :t_W_m_c    => [6.0]
+#  ))
+# )
 
