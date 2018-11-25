@@ -13,8 +13,10 @@ using StatsBase
 using Dates
 using ProgressMeter
 using Colors
+using Formatting
 
 const srcdir = @__DIR__
+const plotdir = joinpath(@__DIR__,"..","plots","paper")
 include(joinpath(srcdir,"count_lengths.jl"))
 include(joinpath(srcdir,"measures.jl"))
 include(joinpath(srcdir,"plotting.jl"))
