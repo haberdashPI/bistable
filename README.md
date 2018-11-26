@@ -31,12 +31,11 @@ e.g. a cluster. Each experiment, listed under `data`, is run using
 the `src/run_all_count_lengths.sh` script.
 
 For interactive use, and to view the results, you'll also want to
-add the `IJulia`, `VegaLite`, and `RCall` packages:
+add the `IJulia` and `Gadfly`.
 
 ```julia
-(bistability) pkg> add IJulia VegaLite RCall
+(bistability) pkg> add IJulia Gadfly
 ```
-
 You can open a Jupyter notebook server and view the notebooks
 (under `notebooks` folder) by returning to the Julia prompt (by hitting
 backspace on an empty line), and calling the `notebook` function
@@ -46,11 +45,10 @@ of the `IJulia` package.
 julia> using IJulia; notebook()
 ```
 
-## Experimental Noter
+## Experimental Notes
 
 These are odds and ends I need to remember when writing up the paper:
 
 To get the data from Húpe and Pressnitzer 2006 I extracted the data of
 the histogram using https://automeris.io/WebPlotDigitizer/ for the auditory
-data. I think computed the skew and the kurtosis assuming
-that all binned data were at the mean of their bins.
+data, assuming each percept had a length equal to the bin center.
