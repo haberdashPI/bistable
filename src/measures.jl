@@ -15,9 +15,9 @@ function setup_human_data()
   (stream=stream_dfh(),lengths=length_dfh())
 end
 
-function model_rms(df,params,dfh;return_parts=false,kwds...)
+function model_rms(df,params,dfh;return_parts=false,N=1000,kwds...)
   ((stream,stream_mean),lengths) =
-  (stream_rms(df,params,dfh.stream,mean_v_ind=true;kwds...),
+  (stream_rms(df,params,dfh.stream,mean_v_ind=true,N=N;kwds...),
    length_rms(df,params,dfh.lengths;kwds...))
 
   if return_parts
