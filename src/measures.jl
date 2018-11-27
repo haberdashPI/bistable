@@ -12,7 +12,7 @@ function select_params(params;kwds...)
 end
 
 function setup_human_data()
-  (stream=stream_dfh(),lengths=length_dfh())
+  (stream=stream_dfh(),lengths=length_hdata())
 end
 
 function model_rms(df,params,dfh;return_parts=false,N=1000,kwds...)
@@ -153,48 +153,69 @@ const N_for_pressnitzer_hupe_2006 = 23
 # the original data from P&H 2006
 const normalized_hist_range = 0:0.166666:10
 
-function length_rms(df,params,dfh;kwds...)
-  slen = length_dfs(df,params;kwds...).nlength;
-  hlen = dfh.nlength;
+function length_rms(df,params,human;kwds...)
+  len = length_sdata(df,params;kwds...)
+  hist = fit(Histogram,len,weights(len),normalized_hist_range)
 
-  shist = fit(Histogram,slen,weights(slen),normalized_hist_range)
-  hhist = fit(Histogram,hlen,weights(hlen),normalized_hist_range)
+  Σ = sum(hist.weights)
+  dens = Σ > 0 ? hist.weights ./ Σ : hist.weights
+  serr = rms(human.dens .- dens)
 
-  hdens = hhist.weights ./ sum(hhist.weights)
-  sdens = shist.weights ./ sum(shist.weights)
-  serr = rms(hdens .- sdens)
-
-  nsamples = div(length(hlen),N_for_pressnitzer_hupe_2006)
-  herr = mean(dbootinds(hlen,numobsperresample=nsamples)) do inds
-    hhist = fit(Histogram,hlen[inds],weights(hlen[inds]),normalized_hist_range)
-    hdens_ = hhist.weights ./ sum(hhist.weights)
-    rms(hdens_ .- hdens)
-  end
-  serr / herr
+  serr / human.err
 end
 
 function length_dfh()
   ph = CSV.read(joinpath("..","data","pressnitzer_hupe",
                          "pressnitzer_hupe_inferred.csv"))
-  DataFrame(length = ph[:length],experiment="human",
-            nlength = exp.(zscore(log.(ph[:length]))));
+  DataFrame(length = ph.length,experiment="human",
+            nlength = normlength(ph.length))
 end
 
+function length_hdata()
+  ph = CSV.read(joinpath("..","data","pressnitzer_hupe",
+                         "pressnitzer_hupe_inferred.csv"))
+  len = normlength(ph.length)
+
+  hist = fit(Histogram,len,weights(len),normalized_hist_range)
+  dens = hist.weights ./ sum(hist.weights)
+
+  nsamples = div(length(len),N_for_pressnitzer_hupe_2006)
+  err = mean(dbootinds(len,numobsperresample=nsamples,numresample=10^5)) do inds
+    hist = fit(Histogram,len[inds],weights(len[inds]),normalized_hist_range)
+    dens_ = hist.weights ./ sum(hist.weights)
+    rms(dens_ .- dens)
+  end
+
+  (dens=dens,err=err)
+end
+
+# THOUGHTS: in P&H 2006, the mean normalization is on a per-individual basis.
+# This might incline us to use a mean on a per-simulation basis, but I think it
+# makes more sense to do across all runs, because the simulation represents
+# repeated measurements from the same "individual"
 function normlength(x)
   x = log.(x)
-  x .-= mean(x)
-  s = std(x)
+  x ./= mean(x)
+  s = std(x.-1)
   if !iszero(s)
     x ./= s
   end
+  x .+= 1
   exp.(x)
+end
+
+function length_sdata(df,params;kwds...)
+  selection = select_params(params;Δf=6,kwds...)
+  dfs = @where(df,(:pindex .== selection))
+  dfs.length
+  normlength(dfs.length)
 end
 
 function length_dfs(df,params;kwds...)
   selection = select_params(params;Δf=6,kwds...)
   dfs = @where(df,(:pindex .== selection))
-  DataFrame(length = dfs[:length],experiment="simulation",
-            nlength = normlength(dfs[:length]));
+  DataFrame(length = dfs.length,experiment="simulation",
+            nlength = normlength(dfs.length));
 end
 
 length_df(df,params;kwds...) = vcat(length_dfh(), length_dfs(df,params;kwds...))
