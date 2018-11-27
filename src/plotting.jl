@@ -21,21 +21,41 @@ function select_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
   audiospect(masks[simulation],settings)[start_time .. stop_time]
 end
 
-function plot_fit(df,params;kwds...)
+function plot_fit(df,params;separate_plots=false,kwds...)
   lens = length_df(df,params;kwds...)
 
   stream = @transform(stream_df(df,params;kwds...),
-                      pos = @.(log(:st)/log(2) -
+                      pos = @.(log2(:st) -
                                ifelse(:experiment == "human",0.05,-0.05)));
   splot = plot(stream,x=:pos,y=:mean,ymin=:lowerc,ymax=:upperc,
      color=:experiment,shape=:experiment,
-     Geom.point,Geom.line,Geom.errorbar,Coord.cartesian(xmin=1,xmax=4))
+     Guide.shapekey(pos=[log2(3),1.4]),
+     Guide.xticks(ticks=log2.([3,6,12])),
+     Scale.color_discrete_manual("lightgray","black"),
+     Scale.x_continuous(labels=x -> string(floor(Int,2.0^x))),
+     Scale.y_continuous(labels=x -> string(floor(Int,100*x))),
+     Guide.xlabel("Δf (semitones)",orientation=:horizontal),
+     Guide.ylabel("% streaming",orientation=:vertical),
+     Coord.cartesian(xmin=log2(3)-0.25,xmax=log2(12)+0.25),
+     Geom.point,Geom.line,Geom.errorbar,
+     Theme(discrete_highlight_color=x->"black"))
 
   hplot = plot(lens,x=:nlength,color=:experiment,
+               Guide.colorkey(pos=[5,0.8]),
+               Scale.color_discrete_manual("black","lightgray"),
                Coord.cartesian(xmin=0,xmax=10),
-               Geom.histogram(position=:dodge,bincount=60,density=true))
+               Guide.xlabel("log-z-scored length",
+                            orientation=:horizontal),
+               Guide.ylabel("density",orientation=:vertical),
+               Geom.histogram(position=:dodge,bincount=60,density=true),
+               Theme(discrete_highlight_color=x->"black",
+                     bar_highlight=x->"black"))
 
-  hstack(splot,hplot)
+  if separate_plots
+    splot,hplot
+  else
+    hstack(splot,hplot)
+  end
 end
 
 function plot_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
