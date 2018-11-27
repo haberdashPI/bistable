@@ -2,6 +2,7 @@ using StatsBase: fit, Histogram, weights
 using Random
 
 rms(x) = sqrt(mean(x.^2))
+ms(x) = mean(x.^2)
 
 function select_params(params;kwds...)
   condition = trues(size(params,1))
@@ -16,14 +17,14 @@ function setup_human_data()
 end
 
 function model_rms(df,params,dfh;return_parts=false,N=1000,kwds...)
-  ((stream,stream_mean),lengths) =
+  ((stream,stream_sd),lengths) =
   (stream_rms(df,params,dfh.stream,mean_v_ind=true,N=N;kwds...),
    length_rms(df,params,dfh.lengths;kwds...))
 
   if return_parts
     (rms = mean((stream,lengths)),
      stream_rms = stream,
-     stream_mean_rms_error = stream_mean,
+     stream_sd = stream_sd,
      length_rms = lengths)
   else
     mean((stream,lengths))
@@ -114,51 +115,58 @@ dfh[:experiment] = "human"
 dfh
 end
 
+addtuple(x,y) = NamedTuple{keys(x)}(map(+,x,y))
+
 function stream_rms(df,params,dfh;N=1000,mean_v_ind=false,kwds...)
-# use the individual runs of the simulation
-# and get the rms of each: then bootstrap it
-dfsm, dfs = stream_dfs(df,params;keep_simulations=true,findci=false,kwds...)
+  # use the individual runs of the simulation
+  # and get the rms of each: then bootstrap it
+  dfsm, dfs = stream_dfs(df,params;keep_simulations=true,findci=false,kwds...)
 
-# shuffle the indices ensures that the measure does not reflect any accidental
-# correlation across stimulus conditions (since we know there is nothing
-# special about the ordering)
-result = mean(1:N) do n
-  dfs[:index] = 0
-  for g in groupby(dfs,:st)
-    g.index = shuffle(1:size(g,1))
+  # shuffle the indices ensures that the measure does not reflect any accidental
+  # correlation across stimulus conditions (since we know there is nothing
+  # special about the ordering)
+  result = mapreduce(addtuple,1:N) do n
+    dfs[:index] = 0
+    for g in groupby(dfs,:st)
+      g.index = shuffle(1:size(g,1))
+    end
+
+    means = by(dfs,[:index]) do dfind
+      DataFrame(var = rms(dfsm.mean .- dfind.streaming),
+                rms = rms(dfh.mean .- dfind.streaming),
+                rms_unbound = ms(dfh.mean .- dfind.streaming_unbound),
+                var_unbound = ms(dfsm.mean .- dfind.streaming_unbound))
+    end
+
+    if all(!ismissing,means.rms)
+      (rms = mean(skipmissing(means.rms)), var = ms(skipmissing(means.var)))
+    else
+      (rms = mean(means.rms_unbound), var = ms(means.var_unbound))
+    end
   end
 
-  means = by(dfs,[:index]) do dfind
-    DataFrame(mean = mean(dfind.streaming),
-              rms = rms(dfh.mean .- dfind.streaming),
-              rms_unbound = rms(dfh.mean .- dfind.streaming_unbound))
-  end
-
-  if all(!ismissing,means.rms)
-    (mean(skipmissing(means.rms))) ./ (rms(dfh.rms))
+  if mean_v_ind
+    (result.rms/N) / rms(dfh.rms), √(result.var/N) / rms(dfh.rms)
   else
-    mean(means.rms_unbound) ./ rms(dfh.rms)
+    (result.rms/N) / rms(dfh.rms)
   end
-end
-
-if mean_v_ind
-  result, result - mean(dfsm.mean .- dfh.mean) ./ rms(dfh.rms)
-else
-  result
-end
 end
 
 const N_for_pressnitzer_hupe_2006 = 23
 # manually selected range to ensure reasonable bin size given the bin size of
 # the original data from P&H 2006
-const normalized_hist_range = 0:0.166666:10
+const normalized_hist_range = 0:0.33333:20
+
+function normweights(x)
+  total = sum(x)
+  total > 0 ? x ./ total : x
+end
 
 function length_rms(df,params,human;kwds...)
   len = length_sdata(df,params;kwds...)
   hist = fit(Histogram,len,weights(len),normalized_hist_range)
 
-  Σ = sum(hist.weights)
-  dens = Σ > 0 ? hist.weights ./ Σ : hist.weights
+  dens = normweights(hist.weights)
   serr = rms(human.dens .- dens)
 
   serr / human.err
@@ -180,9 +188,9 @@ function length_hdata()
   dens = hist.weights ./ sum(hist.weights)
 
   nsamples = div(length(len),N_for_pressnitzer_hupe_2006)
-  err = mean(dbootinds(len,numobsperresample=nsamples,numresample=10^5)) do inds
+  err = mean(dbootinds(len,numobsperresample=nsamples,numresample=10^4)) do inds
     hist = fit(Histogram,len[inds],weights(len[inds]),normalized_hist_range)
-    dens_ = hist.weights ./ sum(hist.weights)
+    dens_ = normweights(hist.weights)
     rms(dens_ .- dens)
   end
 
@@ -200,7 +208,6 @@ function normlength(x)
   if !iszero(s)
     x ./= s
   end
-  x .+= 1
   exp.(x)
 end
 
