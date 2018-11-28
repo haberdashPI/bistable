@@ -17,6 +17,7 @@ using Formatting
 
 const srcdir = @__DIR__
 const plotdir = joinpath(@__DIR__,"..","plots","paper")
+const grantdir = joinpath(@__DIR__,"..","plots","grant")
 include(joinpath(srcdir,"count_lengths.jl"))
 include(joinpath(srcdir,"measures.jl"))
 include(joinpath(srcdir,"plotting.jl"))

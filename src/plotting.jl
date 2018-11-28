@@ -22,7 +22,8 @@ function select_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
 end
 
 function plot_fit(df,params;separate_plots=false,kwds...)
-  lens = length_df(df,params;kwds...)
+  lens = @where(length_df(df,params;kwds...),
+                :nlength .<= maximum(normalized_hist_range))
 
   stream = @transform(stream_df(df,params;kwds...),
                       pos = @.(log2(:st) -
@@ -31,7 +32,7 @@ function plot_fit(df,params;separate_plots=false,kwds...)
      color=:experiment,shape=:experiment,
      Guide.shapekey(pos=[log2(3),1.4]),
      Guide.xticks(ticks=log2.([3,6,12])),
-     Scale.color_discrete_manual("lightgray","black"),
+     Scale.color_discrete_manual("lightgray","darkgray"),
      Scale.x_continuous(labels=x -> string(floor(Int,2.0^x))),
      Scale.y_continuous(labels=x -> string(floor(Int,100*x))),
      Guide.xlabel("Δf (semitones)",orientation=:horizontal),
@@ -41,13 +42,13 @@ function plot_fit(df,params;separate_plots=false,kwds...)
      Theme(discrete_highlight_color=x->"black"))
 
   hplot = plot(lens,x=:nlength,color=:experiment,
-               Guide.colorkey(pos=[5,0.8]),
-               Scale.color_discrete_manual("black","lightgray"),
-               Coord.cartesian(xmin=0,xmax=10),
+               Guide.colorkey(pos=[0.65*Gadfly.w,-0.3*Gadfly.h]),
+               Scale.color_discrete_manual("darkgray","lightgray"),
+               Coord.cartesian(xmin=0,xmax=20),
                Guide.xlabel("log-z-scored length",
                             orientation=:horizontal),
                Guide.ylabel("density",orientation=:vertical),
-               Geom.histogram(position=:dodge,bincount=60,density=true),
+               Geom.histogram(position=:dodge,bincount=30,density=true),
                Theme(discrete_highlight_color=x->"black",
                      bar_highlight=x->"black"))
 
@@ -71,12 +72,13 @@ function plot_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
                    ymin=-1,ymax=1);
 
   band=plot(dfl,xmax=:time,ymin=:ymin,xmin=:lagtime,ymax=:ymax,color=:value,
-       Geom.rect)
+               Scale.color_discrete_manual("black","lightgray"),
+               Geom.rect)
 
   spect=plot(asplotable(mask,quantize_size=(200,128))[1],
        x=:time,y=:logfreq,color=:value,Geom.rectbin,
        Coord.cartesian(xmin=ustrip(start_time),xmax=ustrip(stop_time)),
-       Scale.color_continuous(colormap=Scale.lab_gradient("white","red")))
+       Scale.color_continuous(colormap=Scale.lab_gradient("white","black")))
 
   vstack(band,spect)
 end

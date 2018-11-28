@@ -17,14 +17,14 @@ function setup_human_data()
 end
 
 function model_rms(df,params,dfh;return_parts=false,N=1000,kwds...)
-  ((stream,stream_sd),lengths) =
+  ((stream,stream_mratio),lengths) =
   (stream_rms(df,params,dfh.stream,mean_v_ind=true,N=N;kwds...),
    length_rms(df,params,dfh.lengths;kwds...))
 
   if return_parts
     (rms = mean((stream,lengths)),
      stream_rms = stream,
-     stream_sd = stream_sd,
+     stream_mratio = stream_mratio,
      length_rms = lengths)
   else
     mean((stream,lengths))
@@ -99,23 +99,21 @@ end
 
 
 function stream_dfh(;findci=true)
-dfh = if findci
-  @by(CSV.read(joinpath("..","analysis","context","stream_prop.csv")),:st,
-            mean = mean(skipmissing(:response)),
-            rms = rms(mean(skipmissing(:response)) .- skipmissing(:response)),
-            lowerc = dbootconf(collect(skipmissing(:response)))[1],
-            upperc = dbootconf(collect(skipmissing(:response)))[2])
-else
-  @by(CSV.read(joinpath("..","analysis","context","stream_prop.csv")),:st,
-            mean = mean(skipmissing(:response)),
-            rms = rms(mean(skipmissing(:response)) .- skipmissing(:response)))
-end
+  dfh = if findci
+    @by(CSV.read(joinpath("..","analysis","context","stream_prop.csv")),:st,
+        mean = mean(skipmissing(:response)),
+        rms = rms(mean(skipmissing(:response)) .- skipmissing(:response)),
+    lowerc = dbootconf(collect(skipmissing(:response)))[1],
+    upperc = dbootconf(collect(skipmissing(:response)))[2])
+  else
+    @by(CSV.read(joinpath("..","analysis","context","stream_prop.csv")),:st,
+        mean = mean(skipmissing(:response)),
+        rms = rms(mean(skipmissing(:response)) .- skipmissing(:response)))
+  end
 
-dfh[:experiment] = "human"
-dfh
+  dfh[:experiment] = "human"
+  dfh
 end
-
-addtuple(x,y) = NamedTuple{keys(x)}(map(+,x,y))
 
 function stream_rms(df,params,dfh;N=1000,mean_v_ind=false,kwds...)
   # use the individual runs of the simulation
@@ -125,30 +123,28 @@ function stream_rms(df,params,dfh;N=1000,mean_v_ind=false,kwds...)
   # shuffle the indices ensures that the measure does not reflect any accidental
   # correlation across stimulus conditions (since we know there is nothing
   # special about the ordering)
-  result = mapreduce(addtuple,1:N) do n
+  result = mean(1:N) do n
     dfs[:index] = 0
     for g in groupby(dfs,:st)
       g.index = shuffle(1:size(g,1))
     end
 
     means = by(dfs,[:index]) do dfind
-      DataFrame(var = rms(dfsm.mean .- dfind.streaming),
-                rms = rms(dfh.mean .- dfind.streaming),
-                rms_unbound = ms(dfh.mean .- dfind.streaming_unbound),
-                var_unbound = ms(dfsm.mean .- dfind.streaming_unbound))
+      DataFrame(rms = rms(dfh.mean .- dfind.streaming),
+                rms_unbound = ms(dfh.mean .- dfind.streaming_unbound))
     end
 
     if all(!ismissing,means.rms)
-      (rms = mean(skipmissing(means.rms)), var = ms(skipmissing(means.var)))
+      mean(skipmissing(means.rms))
     else
-      (rms = mean(means.rms_unbound), var = ms(means.var_unbound))
+      mean(means.rms_unbound)
     end
   end
 
   if mean_v_ind
-    (result.rms/N) / rms(dfh.rms), √(result.var/N) / rms(dfh.rms)
+    result / rms(dfh.rms), result / rms(dfsm.mean .- dfh.mean)
   else
-    (result.rms/N) / rms(dfh.rms)
+    result / rms(dfh.rms)
   end
 end
 
