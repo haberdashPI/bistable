@@ -5,6 +5,47 @@ using DataFramesMeta
 using ShiftedArrays
 using PlotAxes
 
+function packing(x)
+    vals = sort!(unique(x))
+    pos = [0; cumsum([1.5; fill(1,length(vals)-3); 1.5])]
+    vals, pos
+end
+
+function packaxes(x)
+    p = Dict(zip(packing(x)...))
+    [p[xi] for xi in x]
+end
+
+function packaxes_invfn(x)
+   p,v = packing(x)
+   p = Dict(zip(v,p))
+   xi -> p[xi]
+end
+
+function rename_levels_for(df,vals)
+    df[:c_m] = NaN
+    df[:c_a] = NaN
+    df[:level] = "unknown"
+    @byrow! df begin
+        if :f_c_σ > 0
+           :level = "Peripheral"
+            :c_m = :f_c_m
+            :c_a = :f_c_a
+        elseif :s_c_σ > 0
+            :level = "Cortical"
+            :c_m = :s_c_m
+            :c_a = :s_c_a
+        elseif :t_c_σ > 0
+            :level = "Object"
+            :c_m = :t_c_m
+            :c_a = :t_c_a
+        end
+    end
+    df[[:c_m;:c_a;:level;vals]]
+end
+
+DataFramesMeta.linq(::DataFramesMeta.SymbolParameter{:rename_levels}, df, vals) = :(rename_levels($df,$vals))
+
 function select_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
                      stop_time=20s,kwds...)
   selections = select_params(params;Δf=Δf,kwds...)

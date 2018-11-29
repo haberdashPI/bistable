@@ -17,17 +17,19 @@ function setup_human_data()
 end
 
 function model_rms(df,params,dfh;return_parts=false,N=1000,kwds...)
-  ((stream,stream_mratio),lengths) =
-  (stream_rms(df,params,dfh.stream,mean_v_ind=true,N=N;kwds...),
-   length_rms(df,params,dfh.lengths;kwds...))
+  (streaming,lengths) =
+  (stream_rms(df,params,dfh.stream,return_parts=true,N=N;kwds...),
+   length_rms(df,params,dfh.lengths,return_parts=true;kwds...))
 
   if return_parts
-    (rms = mean((stream,lengths)),
-     stream_rms = stream,
-     stream_mratio = stream_mratio,
-     length_rms = lengths)
+    (rms = mean((streaming.rms,lengths.rms)),
+     stream_rms = streaming.rms,
+     stream_sd = streaming.sd,
+     stream_mratio = streaming.mratio,
+     length_rms = lengths.rms,
+     length_sd = lengths.sd)
   else
-    mean((stream,lengths))
+    mean((streaming.rms,lengths.rms))
   end
 end
 
@@ -115,7 +117,9 @@ function stream_dfh(;findci=true)
   dfh
 end
 
-function stream_rms(df,params,dfh;N=1000,mean_v_ind=false,kwds...)
+addtuple(x,y) = NamedTuple{keys(x)}(map(+,x,y))
+
+function stream_rms(df,params,dfh;N=1000,return_parts=false,kwds...)
   # use the individual runs of the simulation
   # and get the rms of each: then bootstrap it
   dfsm, dfs = stream_dfs(df,params;keep_simulations=true,findci=false,kwds...)
@@ -123,28 +127,32 @@ function stream_rms(df,params,dfh;N=1000,mean_v_ind=false,kwds...)
   # shuffle the indices ensures that the measure does not reflect any accidental
   # correlation across stimulus conditions (since we know there is nothing
   # special about the ordering)
-  result = mean(1:N) do n
+  result = mapreduce(addtuple,1:N) do n
     dfs[:index] = 0
     for g in groupby(dfs,:st)
       g.index = shuffle(1:size(g,1))
     end
 
     means = by(dfs,[:index]) do dfind
-      DataFrame(rms = rms(dfh.mean .- dfind.streaming),
-                rms_unbound = ms(dfh.mean .- dfind.streaming_unbound))
+      DataFrame(var = ms(dfsm.mean .- dfind.streaming),
+                rms = rms(dfh.mean .- dfind.streaming),
+                rms_unbound = rms(dfh.mean .- dfind.streaming_unbound),
+                var_unbound = ms(dfsm.mean .- dfind.streaming_unbound))
     end
 
     if all(!ismissing,means.rms)
-      mean(skipmissing(means.rms))
+      (rms = mean(skipmissing(means.rms)), var = ms(skipmissing(means.var)))
     else
-      mean(means.rms_unbound)
+      (rms = mean(means.rms_unbound), var = ms(means.var_unbound))
     end
   end
 
-  if mean_v_ind
-    result / rms(dfh.rms), result / rms(dfsm.mean .- dfh.mean)
+  if return_parts
+    (rms = (result.rms/N) / rms(dfh.rms),
+     sd = √(result.var/N), #/ rms(dfh.rms),
+     mratio = (result.rms/N) / rms(dfsm.mean .- dfh.mean))
   else
-    result / rms(dfh.rms)
+    (result.rms/N) / rms(dfh.rms)
   end
 end
 
@@ -158,14 +166,18 @@ function normweights(x)
   total > 0 ? x ./ total : x
 end
 
-function length_rms(df,params,human;kwds...)
-  len = length_sdata(df,params;kwds...)
+function length_rms(df,params,human;return_parts = false,kwds...)
+  len, unlen = length_sdata(df,params;kwds...)
   hist = fit(Histogram,len,weights(len),normalized_hist_range)
 
   dens = normweights(hist.weights)
   serr = rms(human.dens .- dens)
 
-  serr / human.err
+  if return_parts
+    (rms = serr / human.err, sd = std(log.(unlen)))
+  else
+    serr / human.err
+  end
 end
 
 function length_dfh()
@@ -210,8 +222,7 @@ end
 function length_sdata(df,params;kwds...)
   selection = select_params(params;Δf=6,kwds...)
   dfs = @where(df,(:pindex .== selection))
-  dfs.length
-  normlength(dfs.length)
+  normlength(dfs.length), dfs.length
 end
 
 function length_dfs(df,params;kwds...)
