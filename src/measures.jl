@@ -44,8 +44,9 @@ end
 function stream_dfs(df,params;keep_simulations=false,findci=true,
                     bound=true,bound_threshold=0.8,kwds...)
   selection = select_params(params;kwds...)
-  if length(selection) != 3
-    error("Expected three parameter entires, one for each Δf.",
+  Nst = length(unique(params.Δf))
+  if length(selection) != Nst
+    error("Expected $Nst parameter entires, one for each Δf.",
           "\nInstead found the entires: ",string(selection),
           "\nKeyword selection: ",string(kwds))
   end
@@ -252,6 +253,25 @@ function handlebound(fn,seconds;bound=true,threshold=0.8)
     else
         fn(2:length(seconds)-1)
     end
+end
+
+function buildup_mean(buildup_df;delta,length)
+  buildup = DataFrame(time=range(0,stop=length,step=delta))
+  buildup[:value] = 0.0
+  runs = groupby(buildup_df,:run)
+  for run in runs
+    j = 1
+    ts = cumsum(run.length)
+    for (i,t) in enumerate(buildup.time)
+      while j <= Base.length(ts) && t > ts[j]
+        j += 1
+      end
+      j <= Base.length(ts) || break
+      buildup.value[i] += (buildup_df.response[j]-1)
+    end
+  end
+  buildup.value ./= Base.length(runs)
+  buildup
 end
 
 function streamprop(percepts,seconds;kwds...)

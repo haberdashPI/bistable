@@ -100,6 +100,15 @@ function plot_fit(df,params;separate_plots=false,kwds...)
   end
 end
 
+function plot_lengths((len,value))
+  dfl = DataFrame(value=value,time=cumsum(len));
+  dfl = @transform(dfl,lagtime = lag(:time,default=0.0),ymin=-1,ymax=1);
+
+  plot(dfl,xmax=:time,ymin=:ymin,xmin=:lagtime,ymax=:ymax,color=:value,
+       Scale.color_discrete_manual("black","lightgray"),
+       Geom.rect)
+end
+
 function plot_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
                    stop_time=20s,kwds...)
   selection = select_params(params;Δf=Δf,kwds...)
@@ -107,19 +116,12 @@ function plot_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
                      start_time=start_time,stop_time=stop_time,kwds...)
   input = audiospect_stimulus(params[selection,:],settings)
   input = input[start_time .. stop_time]
-  l,v = percept_lengths(mask,input,settings)
-  dfl = DataFrame(value=v,time=ustrip(start_time).+cumsum(l));
-  dfl = @transform(dfl,lagtime = lag(:time,default=float(ustrip(start_time))),
-                   ymin=-1,ymax=1);
-
-  band=plot(dfl,xmax=:time,ymin=:ymin,xmin=:lagtime,ymax=:ymax,color=:value,
-               Scale.color_discrete_manual("black","lightgray"),
-               Geom.rect)
+  plot_lengths(percept_lengths(mask,input,settings))
 
   spect=plot(asplotable(mask,quantize_size=(200,128))[1],
-       x=:time,y=:logfreq,color=:value,Geom.rectbin,
-       Coord.cartesian(xmin=ustrip(start_time),xmax=ustrip(stop_time)),
-       Scale.color_continuous(colormap=Scale.lab_gradient("white","black")))
+             x=:time,y=:logfreq,color=:value,Geom.rectbin,
+             Coord.cartesian(xmin=ustrip(start_time),xmax=ustrip(stop_time)),
+             Scale.color_continuous(colormap=Scale.lab_gradient("white","black")))
 
   vstack(band,spect)
 end
