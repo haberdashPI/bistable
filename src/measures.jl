@@ -121,9 +121,8 @@ end
 addtuple(x,y) = NamedTuple{keys(x)}(map(+,x,y))
 
 function stream_rms(df,params,dfh;N=1000,return_parts=false,kwds...)
-  # use the individual runs of the simulation
-  # and get the rms of each: then bootstrap it
   dfsm, dfs = stream_dfs(df,params;keep_simulations=true,findci=false,kwds...)
+  dfh = @where(dfh,:st .∈ Ref(dfsm.st))
 
   # shuffle the indices ensures that the measure does not reflect any accidental
   # correlation across stimulus conditions (since we know there is nothing
@@ -135,10 +134,17 @@ function stream_rms(df,params,dfh;N=1000,return_parts=false,kwds...)
     end
 
     means = by(dfs,[:index]) do dfind
-      DataFrame(var = ms(dfsm.mean .- dfind.streaming),
-                rms = rms(dfh.mean .- dfind.streaming),
-                rms_unbound = rms(dfh.mean .- dfind.streaming_unbound),
-                var_unbound = ms(dfsm.mean .- dfind.streaming_unbound))
+      if size(dfind.streaming,1) != size(dfh.mean,1)
+        @warn("Found some missing simulations. We got $(dfind), "*
+              "but this was expected to have $(size(dfh.mean,1)) rows.")
+        DataFrame(var = missing, rms = missing,
+                  rms_unbound = missing, var_unbound = missing)
+      else
+        DataFrame(var = ms(dfsm.mean .- dfind.streaming),
+                  rms = rms(dfh.mean .- dfind.streaming),
+                  rms_unbound = rms(dfh.mean .- dfind.streaming_unbound),
+                  var_unbound = ms(dfsm.mean .- dfind.streaming_unbound))
+      end
     end
 
     if all(!ismissing,means.rms)

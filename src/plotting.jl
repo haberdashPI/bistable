@@ -4,20 +4,21 @@ using DependentBootstrap
 using DataFramesMeta
 using ShiftedArrays
 using PlotAxes
+PlotAxes.set_backend!(:gadfly)
 
-function packing(x)
+function packing(x;maxpad=true)
     vals = sort!(unique(x))
-    pos = [0; cumsum([1.5; fill(1,length(vals)-3); 1.5])]
+    pos = [0; cumsum([1.5; fill(1,length(vals)-3); maxpad ? 1.5 : 1])]
     vals, pos
 end
 
-function packaxes(x)
-    p = Dict(zip(packing(x)...))
+function packaxes(x;kwds...)
+    p = Dict(zip(packing(x;kwds...)...))
     [p[xi] for xi in x]
 end
 
-function packaxes_invfn(x)
-   p,v = packing(x)
+function packaxes_invfn(x;kwds...)
+   p,v = packing(x;kwds...)
    p = Dict(zip(v,p))
    xi -> p[xi]
 end
