@@ -1,7 +1,8 @@
-include(joinpath(@__DIR__,"setup.jl"))
-datadir = joinpath(@__DIR__,"..","data","count_lengths")
-for dir in readdir(joinpath(@__DIR__,"..","data","count_lengths"))
-  if occursin(r"run_[0-9-]+",dir)
+include(joinpath(@__DIR__,"count_lengths.jl"))
+# datadir = joinpath(@__DIR__,"..","data","count_lengths")
+datadir = joinpath(homedir(),"work","dlittle","bistable_individual_levels")
+for dir in readdir(datadir)
+  if occursin(r"run_[0-9-]+",dir) && isdir(joinpath(datadir,dir))
     @info "Updating params in $dir."
 
     files = readdir(joinpath(datadir,dir))

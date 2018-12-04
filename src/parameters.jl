@@ -40,8 +40,8 @@ function load_params(params)
   # (move away form this because feather files don't currently guarantee
   # that new versions will be compatible with the format)
   if occursin(r"\.feather$",params)
-    handle_units!(Feather.read(params))
     @warn "Using old parameter file format, run `clean_up_param_files.jl`"
+    handle_units!(Feather.read(params))
 
   elseif occursin(r"\.jld2$",params)
     data = jldopen(params,"r")
@@ -49,8 +49,8 @@ function load_params(params)
     # (move away form this because DataFrames has no gaurantee of consistency
     # across versions yet)
     if "version" ∉ keys(data) # version 0.2.0
-      data["params"]
       @warn "Using old parameter file format, run `clean_up_param_files.jl`"
+      data["params"]
 
     # version 0.3.0: save as arrays of columns with any units stored separately
     # this way, just basic types are stored, and hdf is a well established
