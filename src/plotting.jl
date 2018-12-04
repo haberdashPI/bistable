@@ -47,6 +47,21 @@ end
 
 DataFramesMeta.linq(::DataFramesMeta.SymbolParameter{:rename_levels}, df, vals) = :(rename_levels($df,$vals))
 
+function colorscale(smap;reverse=false,minvalue,maxvalue,colorstart=minvalue,
+                    colorstop=maxvalue,
+                    midvalue=(colorstop-colorstart)/2+colorstart)
+    scale(x,min,max) = (x - min)/(max - min)
+    scalei(x,min,max) = x*(max - min) + min
+    fi(x) = clamp(scalei(x,minvalue,maxvalue),minvalue,maxvalue)
+    c(x) = scale(x,colorstart,colorstop)
+    colors = !reverse ? colormap(smap,mid=c(midvalue)) :
+      reverse!(colormap(smap,mid=1-c(midvalue)))
+
+    function(x)
+        colors[1+clamp(floor(Int,99*c(fi(x))),0,99)]
+    end
+end
+
 function select_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
                      stop_time=20s,kwds...)
   selections = select_params(params;Δf=Δf,kwds...)
