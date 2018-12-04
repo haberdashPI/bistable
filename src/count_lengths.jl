@@ -13,6 +13,7 @@ using ProgressMeter
 using AxisArrays
 
 include("logger.jl")
+include("parameters.jl")
 
 struct CountLength
   ratio::Array{Float64}
@@ -84,48 +85,6 @@ function read_git_hash()
   cd(olddir)
 
   hash
-end
-
-totime(x) = x.*ms
-tofreq(x) = x.*Hz
-const data_dir = if occursin("Mycroft",gethostname())
-  joinpath(@__DIR__,"..","data")
-else
-  joinpath(homedir(),"work","dlittle","bistable_individual")
-end
-
-from_unit_table = Dict(r"τ" => totime, r"Δt" => totime, r"^f$" => tofreq)
-function handle_units!(df)
-  for col in names(df)
-    for (pattern,fn) in pairs(from_unit_table)
-      if occursin(pattern,string(col))
-        df[col] = fn.(df[col])
-      end
-    end
-  end
-  df
-end
-
-function getparams(filterfn,file)
-  asdict(params) = Dict(k => params[1,k] for k in names(params))
-
-  params = load_params(file)
-  rows = filter(ri -> filterfn(ri,asdict(params[ri,:])),Base.axes(params,1))
-  if length(rows) > 1
-    @warn("Specification ambiguous, multiple rows match.")
-  elseif length(rows) < 1
-    error("No rows matching specification")
-  else
-    asdict(params[rows[1],:])
-  end
-end
-
-function load_params(params)
-  if occursin(r"\.feather$",params)
-    handle_units!(Feather.read(params))
-  elseif occursin(r"\.jld2$",params)
-    load(params,"params")
-  end
 end
 
 function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
