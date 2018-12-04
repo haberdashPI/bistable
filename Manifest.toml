@@ -24,9 +24,11 @@ version = "0.2.3"
 
 [[AuditoryBistabilityLE]]
 deps = ["AxisArrays", "CodecZlib", "Combinatorics", "DSP", "DataFrames", "DataStructures", "Distributions", "LinearAlgebra", "MacroTools", "Match", "MetaArrays", "NMF", "Parameters", "PlotAxes", "ProgressMeter", "Requires", "Rmath", "SampledSignals", "ShammaModel", "SparseArrays", "SpecialFunctions", "Statistics", "StatsFuns", "TOML", "Unitful"]
-path = "/Users/davidlittle/googledrive/juliadev/AuditoryBistabilityLE"
+git-tree-sha1 = "99ffad920e351fffc5183ca51b7cbe3a5bf40624"
+repo-rev = "master"
+repo-url = "https://github.com/haberdashPI/AuditoryBistabilityLE"
 uuid = "7e25a372-ade5-11e8-17af-a30e5a9e2c28"
-version = "0.5.2"
+version = "0.5.4"
 
 [[AxisAlgorithms]]
 deps = ["Compat", "WoodburyMatrices"]
@@ -111,9 +113,9 @@ version = "0.5.1"
 
 [[DataFrames]]
 deps = ["CategoricalArrays", "CodecZlib", "Compat", "DataStreams", "Dates", "InteractiveUtils", "IteratorInterfaceExtensions", "LinearAlgebra", "Missings", "Printf", "Random", "Reexport", "SortingAlgorithms", "Statistics", "StatsBase", "TableTraits", "Tables", "Test", "TranscodingStreams", "Unicode", "WeakRefStrings"]
-git-tree-sha1 = "ad34fefb72b18a8dd5c17fab9089d11111b61935"
+git-tree-sha1 = "60c2820c9ae93cc33e98cd820e0b449d551c7874"
 uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "0.14.1"
+version = "0.15.1"
 
 [[DataFramesMeta]]
 deps = ["DataFrames", "Random", "Statistics", "Test"]
@@ -429,11 +431,11 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[ShammaModel]]
 deps = ["AxisArrays", "Colors", "DSP", "DataFrames", "FFTW", "FileIO", "JLD2", "MetaArrays", "PlotAxes", "ProgressMeter", "Requires", "SampledSignals", "Statistics", "Test", "Unitful"]
-git-tree-sha1 = "10147ca0497690e76fedfa8d9114ba936c849623"
+git-tree-sha1 = "086ccb6af1c8ba8ed0738a9bee712f535e77bba8"
 repo-rev = "master"
 repo-url = "https://github.com/haberdashPI/ShammaModel.jl"
 uuid = "80f90042-ac61-11e8-0ace-f1a8d5e03555"
-version = "0.2.11"
+version = "0.2.12"
 
 [[SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
