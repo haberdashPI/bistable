@@ -2,7 +2,7 @@ using StatsBase: fit, Histogram, weights
 using Random
 
 rms(x) = sqrt(mean(x.^2))
-ms(x) = mean(x.^2)
+meansqr(x) = mean(x.^2)
 
 function select_params(params;kwds...)
   condition = trues(size(params,1))
@@ -41,7 +41,8 @@ function stream_df(df,params;findci=true,bound=true,bound_threshold=0.8,kwds...)
   vcat(dfs,dfh)
 end
 
-function stream_dfs(df,params;keep_simulations=false,findci=true,
+function stream_dfs(df,params;resample_N=missing,resampling=Colon(),
+                    keep_simulations=false,findci=true,
                     bound=true,bound_threshold=0.8,kwds...)
   selection = select_params(params;kwds...)
   Nst = length(unique(params.Δf))
@@ -59,9 +60,11 @@ function stream_dfs(df,params;keep_simulations=false,findci=true,
        streaming_unbound = streamprop(:percepts,:length,bound=false))
 
   dfstream = by(dfstream_ind,:st) do dfind
+    @assert ismissing(resampling_N) || resampling_N == size(dfind,1)
+
     if any(!ismissing,dfind[:streaming])
       @with dfind begin
-        streaming = collect(skipmissing(:streaming))
+        streaming = collect(skipmissing(:streaming[resampling]))
         if findci
           if length(streaming) > 3 &&
               any(x != streaming[1] for x in streaming)
@@ -82,7 +85,7 @@ function stream_dfs(df,params;keep_simulations=false,findci=true,
       # if we don't have any (or very little) bistability at all
       # the analysis above will fail: we still want to report the
       # dominant percept (but no estimate of bounds)
-      val = @with(dfind,mean(:streaming_unbound))
+      val = @with(dfind,mean(:streaming_unbound[resampling]))
       if findci
         DataFrame(mean = val, lowerc=val, upperc=val)
       else
@@ -140,17 +143,17 @@ function stream_rms(df,params,dfh;N=1000,return_parts=false,kwds...)
         DataFrame(var = missing, rms = missing,
                   rms_unbound = missing, var_unbound = missing)
       else
-        DataFrame(var = ms(dfsm.mean .- dfind.streaming),
+        DataFrame(var = meansqr(dfsm.mean .- dfind.streaming),
                   rms = rms(dfh.mean .- dfind.streaming),
                   rms_unbound = rms(dfh.mean .- dfind.streaming_unbound),
-                  var_unbound = ms(dfsm.mean .- dfind.streaming_unbound))
+                  var_unbound = meansqr(dfsm.mean .- dfind.streaming_unbound))
       end
     end
 
     if all(!ismissing,means.rms)
-      (rms = mean(skipmissing(means.rms)), var = ms(skipmissing(means.var)))
+      (rms = mean(skipmissing(means.rms)), var = meansqr(skipmissing(means.var)))
     else
-      (rms = mean(means.rms_unbound), var = ms(means.var_unbound))
+      (rms = mean(means.rms_unbound), var = meansqr(means.var_unbound))
     end
   end
 
@@ -226,10 +229,14 @@ function normlength(x)
   exp.(x)
 end
 
-function length_sdata(df,params;kwds...)
+function length_sdata(df,params;resample_N,resampling=Colon(),kwds...)
   selection = select_params(params;Δf=6,kwds...)
   dfs = @where(df,(:pindex .== selection))
-  normlength(dfs.length), dfs.length
+  if resampling isa Colon
+    normlength(dfs.length), dfs.length
+  else
+    # TODO:
+  end
 end
 
 function length_dfs(df,params;kwds...)
