@@ -93,11 +93,7 @@ function count_lengths(first_index,last_index,logfile,datadir,dataprefix,
   dir = abspath(datadir)
   isdir(dir) || mkdir(dir)
 
-  verbuf = IOBuffer()
-  versioninfo(verbuf)
-  @info String(take!(verbuf))
   @info "Source code hash: "*(git_hash == "DETECT" ? read_git_hash() : git_hash)
-
   @info "Loading parameters from "*params
   params = load_params(params)
   if first_index > size(params,1)

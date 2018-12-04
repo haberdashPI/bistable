@@ -66,5 +66,5 @@ thresh_ratio = 0.75
 level_threshold = 0.95
 
 [percept_lengths]
-min_length_ms = 500
+min_length_ms = 250
 threshold = 0.2

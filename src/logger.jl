@@ -8,6 +8,9 @@ function setup_logging(body,logfile)
       redirect_stdout(stream) do
         redirect_stderr(stream) do
           try
+            verbuf = IOBuffer()
+            versioninfo(verbuf)
+            @info String(take!(verbuf))
             body()
           catch ex
             exstring = sprint() do exstream
@@ -35,7 +38,7 @@ Logging.shouldlog(logger::DatedLogger, level, _module, group, id) = true
 Logging.min_enabled_level(logger::DatedLogger) = logger.level
 
 function Logging.handle_message(logger::DatedLogger, level, message,
-                                _module, group, id, filepath, line, keys...)
+                                _module, group, id, filepath, line; keys...)
 
   # copied and modified from
   # https://github.com/JuliaLang/julia/blob/v1.0.0/base/logging.jl
