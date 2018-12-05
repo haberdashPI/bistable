@@ -22,7 +22,6 @@ struct CountLength
   created::DateTime
 end
 
-
 function for_results_in(fn,dir;reinterpret=nothing)
   @showprogress for file in readdir(dir)
     if occursin(r"jld2$",file)

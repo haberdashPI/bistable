@@ -16,10 +16,14 @@ function setup_human_data()
   (stream=stream_dfh(),lengths=length_hdata())
 end
 
-function model_rms(df,params,dfh;return_parts=false,N=1000,kwds...)
+function model_rms(df,params,dfh;resampling=Colon(),return_parts=false,
+                   N=1000,kwds...)
+  resampling isa Colon || sort!(resampling)
   (streaming,lengths) =
-  (stream_rms(df,params,dfh.stream,return_parts=true,N=N;kwds...),
-   length_rms(df,params,dfh.lengths,return_parts=true;kwds...))
+    (stream_rms(df,params,dfh.stream;resampling=resampling,
+                return_parts=true,N=N,kwds...),
+     length_rms(df,params,dfh.lengths;resampling=resampling,
+                return_parts=true,kwds...))
 
   if return_parts
     (rms = mean((streaming.rms,lengths.rms)),
@@ -60,7 +64,7 @@ function stream_dfs(df,params;resample_N=missing,resampling=Colon(),
        streaming_unbound = streamprop(:percepts,:length,bound=false))
 
   dfstream = by(dfstream_ind,:st) do dfind
-    @assert ismissing(resampling_N) || resampling_N == size(dfind,1)
+    @assert ismissing(resample_N) || resample_N == size(dfind,1)
 
     if any(!ismissing,dfind[:streaming])
       @with dfind begin
@@ -229,13 +233,27 @@ function normlength(x)
   exp.(x)
 end
 
-function length_sdata(df,params;resample_N,resampling=Colon(),kwds...)
+
+function length_sdata(df,params;resample_N=missing,resampling=Colon(),kwds...)
   selection = select_params(params;Δf=6,kwds...)
   dfs = @where(df,(:pindex .== selection))
   if resampling isa Colon
     normlength(dfs.length), dfs.length
   else
-    # TODO:
+    ucreated = unique(dfs.created)
+    @assert ismissing(resample_N) || resample_N == length(ucreated)
+    dfs[:run] = indexin(dfs.created,ucreated)
+    regroups = collect(groupby(dfs,:run))[resampling]
+    lengths = Array{Float64}(undef,sum(g -> size(g,1),regroups))
+    i = 0
+    for group in regroups
+      for len in group.length
+        i += 1
+        lengths[i] = len
+      end
+    end
+
+    normlength(lengths), lengths
   end
 end
 
