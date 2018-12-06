@@ -67,7 +67,7 @@ end
 
 units = [:ms,:s,:Hz,:kHz,:cycoct]
 for unit in units
-  @eval unitname(x::typeof(1*$unit)) = $(string(unit))
+  @eval unitname(x::Quantity{<:Any,<:Any,typeof($unit)}) = $(string(unit))
 end
 unitname(x::Number) = "nothing"
 
