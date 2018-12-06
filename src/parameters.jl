@@ -55,7 +55,7 @@ function load_params(params)
     # version 0.3.0: save as arrays of columns with any units stored separately
     # this way, just basic types are stored, and hdf is a well established
     # standard
-    elseif data["version"] == v"0.3.0"
+    elseif v"0.3" <= data["version"] < v"0.4"
       df = DataFrame()
       for col in keys(data["params"])
         df[Symbol(col)] = withunit(data["params"][col],data["units"][col])
