@@ -79,12 +79,26 @@ function select_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
 end
 
 function plot_fit(df,params;separate_plots=false,kwds...)
-  lens = @where(length_df(df,params;kwds...),
-                :nlength .<= maximum(normalized_hist_range))
+  df,params = select_data(data,params;kwds...)
+  lens = [DataFrame(nlength=normlength(human_length_data()),experiment="human");
+          DataFrame(nlength=normlength(df,params),experiment="simulation")]
 
-  stream = @transform(stream_df(df,params;kwds...),
+  sim = by(stream_summary(df,params),:st) do g
+    DataFrame([findci(g.streaming)])
+  end
+  sim[:experiment] = "simulation"
+
+  human = by(human_stream_data(),:st) do g
+    DataFrame([findci(g.streaming)])
+  end
+  sim[:experiment] = "human"
+
+  stream = vcat(datas,datah)
+
+  stream = @transform(stream,
                       pos = @.(log2(:st) -
                                ifelse(:experiment == "human",0.05,-0.05)));
+
   splot = plot(stream,x=:pos,y=:mean,ymin=:lowerc,ymax=:upperc,
      color=:experiment,shape=:experiment,
      Guide.shapekey(pos=[log2(3),1.4]),
@@ -123,6 +137,14 @@ function plot_lengths((len,value))
   plot(dfl,xmax=:time,ymin=:ymin,xmin=:lagtime,ymax=:ymax,color=:value,
        Scale.color_discrete_manual("black","lightgray"),
        Geom.rect)
+end
+
+function plot_fitmask(data,params,settings;Δf=6,simulation=1,start_time=0s,
+                      stop_time=20s,kwds...)
+  fit = plot_fit(data,params;kwds...)
+  mask = plot_mask(data,params,settings;Δf=Δf,simulation=simulation,
+                   start_time=start_time,stop_time=stop_time,kwds...)
+  vstack(fit,mask)
 end
 
 function plot_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
