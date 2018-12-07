@@ -13,6 +13,8 @@ using Dates
 using ProgressMeter
 using Colors
 using Formatting
+using CSV
+using DependentBootstrap
 
 const srcdir = @__DIR__
 const plotdir = joinpath(@__DIR__,"..","plots","paper")

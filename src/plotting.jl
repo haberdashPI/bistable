@@ -79,22 +79,23 @@ function select_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
 end
 
 function plot_fit(df,params;separate_plots=false,kwds...)
-  df,params = select_data(data,params;kwds...)
-  lens = [DataFrame(nlength=normlength(human_length_data()),experiment="human");
-          DataFrame(nlength=normlength(df,params),experiment="simulation")]
+  df,params = select_data(df,params;kwds...)
+  hdata = human_data()
+  lens = [DataFrame(nlength=normlength(hdata.lengths),experiment="human");
+          DataFrame(nlength=normlength(length_summary(df,params)),
+                    experiment="simulation")]
 
   sim = by(stream_summary(df,params),:st) do g
     DataFrame([findci(g.streaming)])
   end
   sim[:experiment] = "simulation"
 
-  human = by(human_stream_data(),:st) do g
+  human = by(hdata.stream,:st) do g
     DataFrame([findci(g.streaming)])
   end
-  sim[:experiment] = "human"
+  human[:experiment] = "human"
 
-  stream = vcat(datas,datah)
-
+  stream = vcat(sim,human)
   stream = @transform(stream,
                       pos = @.(log2(:st) -
                                ifelse(:experiment == "human",0.05,-0.05)));
@@ -119,7 +120,7 @@ function plot_fit(df,params;separate_plots=false,kwds...)
                Guide.xlabel("log-z-scored length",
                             orientation=:horizontal),
                Guide.ylabel("density",orientation=:vertical),
-               Geom.histogram(position=:dodge,bincount=30,density=true),
+               Geom.histogram(position=:dodge,bincount=60,density=true),
                Theme(discrete_highlight_color=x->"black",
                      bar_highlight=x->"black"))
 

@@ -21,17 +21,15 @@ function select_data(df,params;kwds...)
           "\nInstead, only found entires: ",string(found),
           "\nKeyword selection: ",string(kwds))
   end
+  dfsel[:st] = params.Δf[indexin(dfsel.pindex,params.pindex)]
   dfsel, params[sel,:]
 end
 
 function model_data(df,params;kwds...)
   df,params = select_data(df,params;kwds...)
-  df[:st] = params.Δf[indexin(df.pindex,params.pindex)]
   (stream=stream_summary(df,params), lengths=length_summary(df,params))
 end
 
-const HMEAN = data_summarize(human_data())
-const HERR = human_error()
 error_ratio(a,b=HERR) = (a.stream / b.stream + a.lengths / b.lengths)/2
 function model_error(df::DataFrame,params::DataFrame;kwds...)
   mdata = model_data(df,params;kwds...)
@@ -90,9 +88,9 @@ end
 
 function findci(x;kwds...)
   if length(x) > 3
-    if any(x != x[1] for x in x)
-      cint = dbootconf(x;kwds...)
-      (mean=mean(x), lowerc=cint[1], upperc=cint[2])
+    if any(xi != x[1] for xi in x)
+      cint = dbootconf(collect(skipmissing(x));kwds...)
+      (mean=mean(skipmissing(x)), lowerc=cint[1], upperc=cint[2])
     else
       (mean=x[1], lowerc=x[1], upperc=x[1])
     end
@@ -244,3 +242,6 @@ function stim_per_second(seconds;kwds...)
     length(range) / sum(seconds[range])
   end
 end
+
+const HMEAN = data_summarize(human_data())
+const HERR = human_error()
