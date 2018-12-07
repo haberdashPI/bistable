@@ -46,7 +46,7 @@ function stream_df(df,params;findci=true,bound=true,bound_threshold=0.8,kwds...)
 end
 
 function stream_dfs(df,params;resample_N=missing,resampling=Colon(),
-                    keep_simulations=false,findci=true,
+                    keep_simulations=false,findci=false,
                     bound=true,bound_threshold=0.8,kwds...)
   selection = select_params(params;kwds...)
   Nst = length(unique(params.Δf))
@@ -108,7 +108,7 @@ function stream_dfs(df,params;resample_N=missing,resampling=Colon(),
 end
 
 
-function stream_dfh(;findci=true)
+function stream_dfh(;findci=false)
   dfh = if findci
     @by(CSV.read(joinpath("..","analysis","context","stream_prop.csv")),:st,
         mean = mean(skipmissing(:response)),
@@ -279,10 +279,10 @@ function handlebound(fn,seconds;bound=true,threshold=0.8)
         return missing
     end
 
-    if !bound || (sum(seconds[2:end-1]) > threshold*sum(seconds))
-        fn(1:length(seconds))
+    if bound && (sum(seconds[2:end-1]) > threshold*sum(seconds))
+      fn(2:length(seconds)-1)
     else
-        fn(2:length(seconds)-1)
+      fn(1:length(seconds))
     end
 end
 

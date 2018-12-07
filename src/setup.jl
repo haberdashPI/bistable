@@ -13,7 +13,6 @@ using Dates
 using ProgressMeter
 using Colors
 using Formatting
-using Query
 
 const srcdir = @__DIR__
 const plotdir = joinpath(@__DIR__,"..","plots","paper")

@@ -132,9 +132,9 @@ function plot_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
                      start_time=start_time,stop_time=stop_time,kwds...)
   input = audiospect_stimulus(params[selection,:],settings)
   input = input[start_time .. stop_time]
-  plot_lengths(percept_lengths(mask,input,settings))
+  band = plot_lengths(percept_lengths(mask,input,settings))
 
-  spect=plot(asplotable(mask,quantize_size=(200,128))[1],
+  spect=plot(asplotable(mask,quantize=(200,128))[1],
              x=:time,y=:logfreq,color=:value,Geom.rectbin,
              Coord.cartesian(xmin=ustrip(start_time),xmax=ustrip(stop_time)),
              Scale.color_continuous(colormap=Scale.lab_gradient("white","black")))
