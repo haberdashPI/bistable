@@ -52,3 +52,5 @@ These are odds and ends I need to remember when writing up the paper:
 To get the data from Húpe and Pressnitzer 2006 I extracted the data of
 the histogram using https://automeris.io/WebPlotDigitizer/ for the auditory
 data, assuming each percept had a length equal to the bin center.
+
+describe format of jld2 files (they are hdf5 files)

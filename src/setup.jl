@@ -9,7 +9,6 @@ using VegaLite
 using DataFramesMeta
 using LinearAlgebra
 using Statistics
-using StatsBase
 using Dates
 using ProgressMeter
 using Colors

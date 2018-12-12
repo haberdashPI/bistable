@@ -22,19 +22,35 @@ struct CountLength
   created::DateTime
 end
 
-function for_results_in(fn,dir)
+function for_results_in(fn,dir;reinterpret=nothing)
   @showprogress for file in readdir(dir)
     if occursin(r"jld2$",file)
+      restream = if reinterpret isa Nothing
+        nothing
+      else
+        jldopen(joinpath(dir,reinterpret,file))
+      end
+
       jldopen(joinpath(dir,file),"r") do stream
         for param in keys(stream)
           if occursin(r"param[0-9]{2}",param)
             for run in keys(stream[param])
               entry = stream[param][run]
-              fn(entry)
-            end
-          end
-        end
-      end
+              if !(restream isa Nothing)
+                reentry = Dict("created"  =>   stream[param][run]["created"],
+                               "pindex"   =>   stream[param][run]["pindex"],
+                               "lengths"  => restream[param][run]["lengths"],
+                               "percepts" => restream[param][run]["percepts"])
+                fn(reentry)
+              else
+                fn(entry)
+              end # if restream
+            end # for run
+          end # if occursin
+        end # for param
+      end # jldopen
+
+      restream isa Nothing || close(restream)
     end
   end
 end
@@ -43,23 +59,26 @@ end
 # count_lengths(args) = count_lengths(;(Symbol(k) => v for (k,v) in args)...)
 # but some sort of inference bug in julia v1.0.1 is keeping this from working
 # (I'll try again in v1.0.2, and if not submit a pull request)
-function count_lengths(args::Dict)
-  datadir = get(args,"datadir",joinpath(data_dir,"count_lengths"))
-  logfile = get(args,"logfile",joinpath(datadir,"sim.log"))
-  setup_logging(logfile) do
-    @info("Results will be saved to $datadir")
-    count_lengths(get(args,"first_index",1),
-                  get(args,"last_index",1),
-                  logfile,datadir,
-                  get(args,"dataprefix","results"),
-                  get(args,"params",joinpath(datadir,"params.jld2")),
-                  get(args,"git_hash","DETECT"),
-                  get(args,"sim_repeat",2),
-                  get(args,"settings",
-                            joinpath(@__DIR__,"settings.toml")),
-                  get(args,"progressbar",false))
-  end
-end
+#
+# trying again...
+count_lengths(args) = count_lengths(;(Symbol(k) => v for (k,v) in args)...)
+# function count_lengths(args::Dict)
+#   datadir = get(args,"datadir",joinpath(data_dir,"count_lengths"))
+#   logfile = get(args,"logfile",joinpath(datadir,"sim.log"))
+#   setup_logging(logfile) do
+#     @info("Results will be saved to $datadir")
+#     count_lengths(get(args,"first_index",1),
+#                   get(args,"last_index",1),
+#                   logfile,datadir,
+#                   get(args,"dataprefix","results"),
+#                   get(args,"params",joinpath(datadir,"params.jld2")),
+#                   get(args,"git_hash","DETECT"),
+#                   get(args,"sim_repeat",2),
+#                   get(args,"settings",
+#                             joinpath(@__DIR__,"settings.toml")),
+#                   get(args,"progressbar",false))
+#   end
+# end
 
 function count_lengths(;first_index,last_index,
                        datadir=joinpath(data_dir,"count_lengths"),

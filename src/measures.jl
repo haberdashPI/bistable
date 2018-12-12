@@ -12,207 +12,180 @@ function select_params(params;kwds...)
   params[condition,:pindex]
 end
 
-function setup_human_data()
-  (stream=stream_dfh(),lengths=length_hdata())
-end
-
-function model_rms(df,params,dfh;return_parts=false,N=1000,kwds...)
-  (streaming,lengths) =
-  (stream_rms(df,params,dfh.stream,return_parts=true,N=N;kwds...),
-   length_rms(df,params,dfh.lengths,return_parts=true;kwds...))
-
-  if return_parts
-    (rms = mean((streaming.rms,lengths.rms)),
-     stream_rms = streaming.rms,
-     stream_sd = streaming.sd,
-     stream_mratio = streaming.mratio,
-     length_rms = lengths.rms,
-     length_sd = lengths.sd)
-  else
-    mean((streaming.rms,lengths.rms))
-  end
-end
-
-function stream_df(df,params;findci=true,bound=true,bound_threshold=0.8,kwds...)
-  dfs = stream_dfs(df,params;findci=findci,bound=bound,
-                   bound_threshold=bound_threshold,kwds...)
-  dfh = stream_dfh(findci=findci)
-  delete!(dfh,:rms)
-  vcat(dfs,dfh)
-end
-
-function stream_dfs(df,params;resample_N=missing,resampling=Colon(),
-                    keep_simulations=false,findci=true,
-                    bound=true,bound_threshold=0.8,kwds...)
-  selection = select_params(params;kwds...)
-  Nst = length(unique(params.Δf))
-  if length(selection) != Nst
-    error("Expected $Nst parameter entires, one for each Δf.",
-          "\nInstead found the entires: ",string(selection),
+function select_data(df,params;kwds...)
+  sel = select_params(params;kwds...)
+  dfsel = df[in.(df.pindex,Ref(sel)),:]
+  found = params[unique(dfsel.pindex),:]
+  if size(found,1) < length(sel)
+    @warn("Expected $(length(sel)) parameter entries. ",
+          "\nInstead, only found entires: ",string(found),
           "\nKeyword selection: ",string(kwds))
   end
-  dfstream_ind = @linq df |>
-    where(in.(:pindex,Ref(selection))) |>
-    by([:pindex,:created],
-       st = params[first(:pindex),:].Δf,
-       streaming = streamprop(:percepts,:length,bound=bound,
-                              threshold=bound_threshold),
-       streaming_unbound = streamprop(:percepts,:length,bound=false))
+  dfsel, params[sel,:]
+end
 
-  dfstream = by(dfstream_ind,:st) do dfind
-    @assert ismissing(resampling_N) || resampling_N == size(dfind,1)
+function model_data(df,params;kwds...)
+  df,params = select_data(df,params;kwds...)
+  df[:st] = params.Δf[indexin(df.pindex,params.pindex)]
+  (stream=stream_summary(df,params), lengths=length_summary(df,params))
+end
 
-    if any(!ismissing,dfind[:streaming])
-      @with dfind begin
-        streaming = collect(skipmissing(:streaming[resampling]))
-        if findci
-          if length(streaming) > 3 &&
-              any(x != streaming[1] for x in streaming)
-            cint = dbootconf(streaming)
-            DataFrame(mean = mean(streaming),
-                      lowerc = cint[1],
-                      upperc = cint[2])
-          else
-            DataFrame(mean = mean(streaming),
-                      lowerc = minimum(streaming),
-                      upperc = maximum(streaming))
-          end
-        else
-          DataFrame(mean = mean(streaming))
-        end
-      end
+const HMEAN = data_summarize(human_data())
+const HERR = human_error()
+error_ratio(a,b=HERR) = (a.stream / b.stream + a.lengths / b.lengths)/2
+function model_error(df::DataFrame,params::DataFrame;kwds...)
+  mdata = model_data(df,params;kwds...)
+  model_error(mdata,HMEAN)
+end
+
+function model_error(data::NamedTuple,mean::NamedTuple)
+  str_error = mean_bysid(data.stream) do str
+    stream_rms(str,mean.stream)^2
+  end |> sqrt
+  len_error = length_rms(data.lengths,mean.lengths)
+
+  (stream=str_error,lengths=len_error)
+end
+
+function mean_bysid(fn,data)
+  total = 0.0
+  n = 0
+  for g in groupby(data,:sid)
+    total += fn(g)
+    n += 1
+  end
+  total / n
+end
+
+function stream_rms(data,mean)
+  diffs = map(1:size(mean,1)) do row
+    i = findfirst(isequal(mean.st[row]),data.st)
+    if i isa Nothing
+      missing
     else
-      # if we don't have any (or very little) bistability at all
-      # the analysis above will fail: we still want to report the
-      # dominant percept (but no estimate of bounds)
-      val = @with(dfind,mean(:streaming_unbound[resampling]))
-      if findci
-        DataFrame(mean = val, lowerc=val, upperc=val)
-      else
-        DataFrame(mean = val)
-      end
+      data[i,:streaming] - mean[row,:streaming]
     end
   end
-
-  dfstream.experiment = "simulation"
-
-  if keep_simulations
-    dfstream, dfstream_ind
-  else
-    dfstream
-  end
+  rms(coalesce.(diffs,0.0))
 end
 
-
-function stream_dfh(;findci=true)
-  dfh = if findci
-    @by(CSV.read(joinpath("..","analysis","context","stream_prop.csv")),:st,
-        mean = mean(skipmissing(:response)),
-        rms = rms(mean(skipmissing(:response)) .- skipmissing(:response)),
-    lowerc = dbootconf(collect(skipmissing(:response)))[1],
-    upperc = dbootconf(collect(skipmissing(:response)))[2])
-  else
-    @by(CSV.read(joinpath("..","analysis","context","stream_prop.csv")),:st,
-        mean = mean(skipmissing(:response)),
-        rms = rms(mean(skipmissing(:response)) .- skipmissing(:response)))
-  end
-
-  dfh[:experiment] = "human"
-  dfh
+function length_rms(len,mean)
+  dens = length_hist(len)
+  rms(mean .- dens)
 end
 
-addtuple(x,y) = NamedTuple{keys(x)}(map(+,x,y))
-
-function stream_rms(df,params,dfh;N=1000,return_parts=false,kwds...)
-  dfsm, dfs = stream_dfs(df,params;keep_simulations=true,findci=false,kwds...)
-  dfh = @where(dfh,:st .∈ Ref(dfsm.st))
-
-  # shuffle the indices ensures that the measure does not reflect any accidental
-  # correlation across stimulus conditions (since we know there is nothing
-  # special about the ordering)
-  result = mapreduce(addtuple,1:N) do n
-    dfs[:index] = 0
-    for g in groupby(dfs,:st)
-      g.index = shuffle(1:size(g,1))
-    end
-
-    means = by(dfs,[:index]) do dfind
-      if size(dfind.streaming,1) != size(dfh.mean,1)
-        @warn("Found some missing simulations. We got $(dfind), "*
-              "but this was expected to have $(size(dfh.mean,1)) rows.")
-        DataFrame(var = missing, rms = missing,
-                  rms_unbound = missing, var_unbound = missing)
-      else
-        DataFrame(var = meansqr(dfsm.mean .- dfind.streaming),
-                  rms = rms(dfh.mean .- dfind.streaming),
-                  rms_unbound = rms(dfh.mean .- dfind.streaming_unbound),
-                  var_unbound = meansqr(dfsm.mean .- dfind.streaming_unbound))
-      end
-    end
-
-    if all(!ismissing,means.rms)
-      (rms = mean(skipmissing(means.rms)), var = meansqr(skipmissing(means.var)))
-    else
-      (rms = mean(means.rms_unbound), var = meansqr(means.var_unbound))
-    end
-  end
-
-  if return_parts
-    (rms = (result.rms/N) / rms(dfh.rms),
-     sd = √(result.var/N), #/ rms(dfh.rms),
-     mratio = (result.rms/N) / rms(dfsm.mean .- dfh.mean))
-  else
-    (result.rms/N) / rms(dfh.rms)
-  end
-end
-
-const N_for_pressnitzer_hupe_2006 = 23
 # manually selected range to ensure reasonable bin size given the bin size of
 # the original data from P&H 2006
 const normalized_hist_range = 0:0.33333:20
-
 function normweights(x)
   total = sum(x)
   total > 0 ? x ./ total : x
 end
 
-function length_rms(df,params,human;return_parts = false,kwds...)
-  len, unlen = length_sdata(df,params;kwds...)
+function length_hist(len)
+  len = collect(skipmissing(len))
   hist = fit(Histogram,len,weights(len),normalized_hist_range)
+  normweights(hist.weights)
+end
 
-  dens = normweights(hist.weights)
-  serr = rms(human.dens .- dens)
-
-  if return_parts
-    (rms = serr / human.err, sd = std(log.(unlen)))
+function findci(x;kwds...)
+  if length(x) > 3
+    if any(x != x[1] for x in x)
+      cint = dbootconf(x;kwds...)
+      (mean=mean(x), lowerc=cint[1], upperc=cint[2])
+    else
+      (mean=x[1], lowerc=x[1], upperc=x[1])
+    end
   else
-    serr / human.err
+    (mean = mean(x), lowerc = minimum(x), upperc = maximum(x))
   end
 end
 
-function length_dfh()
-  ph = CSV.read(joinpath("..","data","pressnitzer_hupe",
-                         "pressnitzer_hupe_inferred.csv"))
-  DataFrame(length = ph.length,experiment="human",
-            nlength = normlength(ph.length))
+function stream_summary(data,params;bound_threshold=0.8)
+  result = by(data,[:st,:created]) do g
+    DataFrame(streaming = streamprop(g.percepts,g.length,bound=true,
+                                     threshold=bound_threshold))
+  end
+  if all(ismissing,result.streaming)
+    result = by(data,[:st,:created]) do g
+      DataFrame(streaming = streamprop(g.percepts,g.length,bound=false))
+    end
+  end
+  result[:sid] = 0
+  for g in groupby(result,:st)
+    g[:sid] = 1:size(g,1)
+  end
+  sort!(result,(:sid,:st))
+
+  result
 end
 
-function length_hdata()
+function length_summary(data,params;Δf=6)
+  pindex = params.pindex[params.Δf .== Δf]
+  data[data.pindex .== pindex,:length]
+end
+
+function mean_streaming(df;findci=false)
+  by(df,:st) do st
+    if findci
+      DataFrame([findci(st.streaming)])
+    else
+      DataFrame(streaming=mean(st.streaming))
+    end
+  end
+end
+
+function human_data(;resample=nothing)
+  (stream=human_stream_data(),lengths=human_length_data(resample=resample))
+end
+
+function data_summarize(data)
+  stream = by(data.stream,:st) do g
+    DataFrame(streaming = mean(g.streaming))
+  end
+  lengths = length_hist(data.lengths)
+
+  (stream=stream,lengths=lengths)
+end
+
+function human_error(;resample=1000)
+  means,meanl = data_summarize(human_data())
+  stream,lengths = human_data(resample=resample)
+
+  str_error = mean_bysid(stream) do str
+    stream_rms(str,means)^2
+  end |> sqrt
+
+  len_error = mean_bysid(lengths) do len
+    length_rms(len.lengths,meanl)^2
+  end |> sqrt
+
+  (stream=str_error,lengths=len_error)
+end
+
+function human_stream_data()
+  df = CSV.read(joinpath("..","analysis","context","stream_prop.csv"))
+  rename!(df,:response => :streaming)
+  sort!(df,(:sid,:st))
+  df
+end
+
+const N_for_pressnitzer_hupe_2006 = 23
+function human_length_data(;resample=nothing)
   ph = CSV.read(joinpath("..","data","pressnitzer_hupe",
                          "pressnitzer_hupe_inferred.csv"))
-  len = normlength(ph.length)
+  if resample isa Nothing
+    ph.length
+  else
+    lengths = collect(skipmissing(ph.length))
+    nsamples = div(length(lengths),N_for_pressnitzer_hupe_2006)
+    inds = dbootinds(lengths,numobsperresample=nsamples,numresample=resample)
+    dfs = map(enumerate(inds)) do (i,inds)
+      DataFrame(lengths = lengths[inds], sid = i)
+    end
 
-  hist = fit(Histogram,len,weights(len),normalized_hist_range)
-  dens = hist.weights ./ sum(hist.weights)
-
-  nsamples = div(length(len),N_for_pressnitzer_hupe_2006)
-  err = mean(dbootinds(len,numobsperresample=nsamples,numresample=10^4)) do inds
-    hist = fit(Histogram,len[inds],weights(len[inds]),normalized_hist_range)
-    dens_ = normweights(hist.weights)
-    rms(dens_ .- dens)
+    vcat(dfs...)
   end
-
-  (dens=dens,err=err)
 end
 
 # THOUGHTS: in P&H 2006, the mean normalization is on a per-individual basis.
@@ -229,49 +202,22 @@ function normlength(x)
   exp.(x)
 end
 
-function length_sdata(df,params;resample_N,resampling=Colon(),kwds...)
-  selection = select_params(params;Δf=6,kwds...)
-  dfs = @where(df,(:pindex .== selection))
-  if resampling isa Colon
-    normlength(dfs.length), dfs.length
-  else
-    # TODO:
-  end
-end
-
-function length_dfs(df,params;kwds...)
-  selection = select_params(params;Δf=6,kwds...)
-  dfs = @where(df,(:pindex .== selection))
-  DataFrame(length = dfs.length,experiment="simulation",
-            nlength = normlength(dfs.length));
-end
-
-length_df(df,params;kwds...) = vcat(length_dfh(), length_dfs(df,params;kwds...))
-
-function plot_fitmask(df,params,settings;Δf=6,simulation=1,start_time=0s,
-                      stop_time=20s,kwds...)
-  fit = plot_fit(df,params;kwds...)
-  mask = plot_mask(df,params,settings;Δf=Δf,simulation=simulation,
-                   start_time=start_time,stop_time=stop_time,kwds...)
-  vstack(fit,mask)
-end
-
 function handlebound(fn,seconds;bound=true,threshold=0.8)
-    if bound && length(seconds) < 3
-        return missing
+    if length(seconds) < 3
+      fn(1:length(seconds))
     end
 
-    if !bound || (sum(seconds[2:end-1]) > threshold*sum(seconds))
-        fn(1:length(seconds))
+    if bound && (sum(seconds[2:end-1]) > threshold*sum(seconds))
+      fn(2:length(seconds)-1)
     else
-        fn(2:length(seconds)-1)
+      fn(1:length(seconds))
     end
 end
 
-function buildup_mean(buildup_df;delta,length)
+function buildup_mean(buildup_data;delta,length)
   buildup = DataFrame(time=range(0,stop=length,step=delta))
   buildup[:value] = 0.0
-  runs = groupby(buildup_df,:run)
+  runs = groupby(buildup_data,:run)
   for run in runs
     j = 1
     ts = cumsum(run.length)
@@ -280,7 +226,7 @@ function buildup_mean(buildup_df;delta,length)
         j += 1
       end
       j <= Base.length(ts) || break
-      buildup.value[i] += (buildup_df.response[j]-1)
+      buildup.value[i] += (buildup_data.response[j]-1)
     end
   end
   buildup.value ./= Base.length(runs)
@@ -288,13 +234,13 @@ function buildup_mean(buildup_df;delta,length)
 end
 
 function streamprop(percepts,seconds;kwds...)
-    handlebound(seconds;kwds...) do range
-        sum(seconds[range][percepts[range] .== 2]) / sum(seconds[range])
-    end
+  handlebound(seconds;kwds...) do range
+    sum(seconds[range][percepts[range] .== 2]) / sum(seconds[range])
+  end
 end
 
 function stim_per_second(seconds;kwds...)
-    handlebound(seconds;kwds...) do range
-        length(range) / sum(seconds[range])
-    end
+  handlebound(seconds;kwds...) do range
+    length(range) / sum(seconds[range])
+  end
 end
