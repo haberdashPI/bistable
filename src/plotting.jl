@@ -23,26 +23,19 @@ function packaxes_invfn(x;kwds...)
    xi -> p[xi]
 end
 
-function rename_levels_for(df,vals)
-    df[:c_m] = NaN
-    df[:c_a] = NaN
-    df[:level] = "unknown"
-    @byrow! df begin
-        if :f_c_σ > 0
-           :level = "Peripheral"
-            :c_m = :f_c_m
-            :c_a = :f_c_a
-        elseif :s_c_σ > 0
-            :level = "Cortical"
-            :c_m = :s_c_m
-            :c_a = :s_c_a
-        elseif :t_c_σ > 0
-            :level = "Object"
-            :c_m = :t_c_m
-            :c_a = :t_c_a
-        end
+function rename_levels_for(df,vals;suffixes=[:c_a,:c_m])
+  for suf in suffixes
+    df[suf] = zero(df[Symbol("f_"*string(suf))])
+  end
+  df[:level] = "unknown"
+  for (prefix,level) in [("f_","Peripheral"),("s_","Cortical"),("t_","Object")]
+    rows = df[Symbol(prefix*"c_σ")] .> 0
+    df[rows,:level] = level
+    for suffix in suffixes
+      df[rows,suffix] = df[rows,Symbol(prefix*string(suffix))]
     end
-    df[[:c_m;:c_a;:level;vals]]
+  end
+  df[[suffixes;:level;vals]]
 end
 
 DataFramesMeta.linq(::DataFramesMeta.SymbolParameter{:rename_levels}, df, vals) = :(rename_levels($df,$vals))
@@ -177,16 +170,17 @@ function plot_fit(df,params;separate_plots=false,showci=true,kwds...)
 
   qh,qs = qqdata(hlens,slens)
   nsamples = div(length(hlens),N_for_pressnitzer_hupe_2006)
-  cisim,cihuman_lower,cihuman_upper =
-    qqci(slens,hlens, dbootinds(hlens,numobsperresample=nsamples,
-                                numresample=1000))
-
   mean = DataFrame(qhuman = qh, qsim = qs)
+
+  # cisim,cihuman_lower,cihuman_upper =
+  #   qqci(slens,hlens, dbootinds(hlens,numobsperresample=nsamples,
+  #                               numresample=1000))
   # bounds = DataFrame(human_lower = cihuman_lower,human_upper = cihuman_upper,
   #                    sim = cisim)
+
   hplot = plot(mean,x=:qhuman,y=:qsim,xintercept=[0],slope=[1],
                Geom.line,Geom.abline,
-               Theme(default_color="grey"))
+               Theme(default_color="grey"),Coord.cartesian(xmax=1,ymax=1))
 
   # hplot = plot(layer(mean,x=:qhuman,y=:qsim,xintercept=[0],slope=[1],
   #                    Geom.line,Geom.abline,

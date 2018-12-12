@@ -7,7 +7,7 @@ meansqr(x) = mean(x.^2)
 function select_params(params;kwds...)
   condition = trues(size(params,1))
   for (var,val) in pairs(kwds)
-    condition .&= abs.(params[var] .- val) .<= 0.1
+    condition .&= ustrip.(abs.(params[var] .- val)) .<= 1e-2
   end
   params[condition,:pindex]
 end
