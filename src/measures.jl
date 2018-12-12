@@ -161,6 +161,21 @@ function human_error(;resample=1000)
   (stream=str_error,lengths=len_error)
 end
 
+function human_error_by_sid(;resample=1000)
+  means,meanl = data_summarize(human_data())
+  stream = human_stream_data()
+  lengths = human_length_data(resample=resample)
+
+  str_error = map(groupby(stream,:sid)) do str
+    stream_rms(str,means)
+  end |> combine
+  len_error = map(groupby(lengths,:sid)) do len
+    length_rms(len.lengths,meanl)
+  end |> combine
+
+  str_error, len_error
+end
+
 function human_stream_data()
   df = CSV.read(joinpath("..","analysis","context","stream_prop.csv"))
   rename!(df,:response => :streaming)
@@ -169,14 +184,14 @@ function human_stream_data()
 end
 
 const N_for_pressnitzer_hupe_2006 = 23
-function human_length_data(;resample=nothing)
+function human_length_data(;resample=nothing,N = N_for_pressnitzer_hupe_2006)
   ph = CSV.read(joinpath("..","data","pressnitzer_hupe",
                          "pressnitzer_hupe_inferred.csv"))
   if resample isa Nothing
     ph.length
   else
     lengths = collect(skipmissing(ph.length))
-    nsamples = div(length(lengths),N_for_pressnitzer_hupe_2006)
+    nsamples = div(length(lengths),N)
     inds = dbootinds(lengths,numobsperresample=nsamples,numresample=resample)
     dfs = map(enumerate(inds)) do (i,inds)
       DataFrame(lengths = lengths[inds], sid = i)

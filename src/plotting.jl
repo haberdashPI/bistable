@@ -127,18 +127,18 @@ end
 #   cumsum(sort(x)) ./ sum(x), yvals
 # end
 
-# function qqdata(x,y)
-#   nx = length(x)
-#   ny = length(y)
-#   sumx = sum(x)
-#   sumy = sum(y)
-#   order = sortperm([x; y])
-#   qx,qy = mapreduce((x,a) -> push!(x,x[end].+a),order,init=[(0.0,0.0)]) do i
-#     i <= nx ? (x[i]/sumx,0.0) : (0.0,y[i-nx]/sumy)
-#   end |> unzip
+function qqdata(x,y)
+  nx = length(x)
+  ny = length(y)
+  sumx = sum(x)
+  sumy = sum(y)
+  order = sortperm([x; y])
+  qx,qy = mapreduce((x,a) -> push!(x,x[end].+a),order,init=[(0.0,0.0)]) do i
+    i <= nx ? (x[i]/sumx,0.0) : (0.0,y[i-nx]/sumy)
+  end |> unzip
 
-#   qx, qy, order
-# end
+  qx, qy, order
+end
 
 function plot_fit(df,params;separate_plots=false,showci=true,kwds...)
   df,params = select_data(df,params;kwds...)
@@ -175,15 +175,19 @@ function plot_fit(df,params;separate_plots=false,showci=true,kwds...)
   hlens = normlength(hdata.lengths)
   slens = normlength(length_summary(df,params))
 
-  # qh,qs = qqdata(hlens,slens)
-  # nsamples = div(length(hlens),N_for_pressnitzer_hupe_2006)
-  # cisim,cihuman_lower,cihuman_upper =
-  #   qqci(slens,hlens, dbootinds(hlens,numobsperresample=nsamples,
-  #                               numresample=1000))
+  qh,qs = qqdata(hlens,slens)
+  nsamples = div(length(hlens),N_for_pressnitzer_hupe_2006)
+  cisim,cihuman_lower,cihuman_upper =
+    qqci(slens,hlens, dbootinds(hlens,numobsperresample=nsamples,
+                                numresample=1000))
 
-  # mean = DataFrame(qhuman = qh, qsim = qs)
+  mean = DataFrame(qhuman = qh, qsim = qs)
   # bounds = DataFrame(human_lower = cihuman_lower,human_upper = cihuman_upper,
   #                    sim = cisim)
+  hplot = plot(mean,x=:qhuman,y=:qsim,xintercept=[0],slope=[1],
+               Geom.line,Geom.abline,
+               Theme(default_color="grey"))
+
   # hplot = plot(layer(mean,x=:qhuman,y=:qsim,xintercept=[0],slope=[1],
   #                    Geom.line,Geom.abline,
   #                    Theme(default_color="grey")),
@@ -192,18 +196,18 @@ function plot_fit(df,params;separate_plots=false,showci=true,kwds...)
   #              layer(bounds,x=:human_upper,y=:sim,Geom.line,
   #                    Theme(default_color="lightgrey")))
 
-  lens = [DataFrame(nlength=hlens,experiment="human");
-          DataFrame(nlength=slens,experiment="simulation")]
-  hplot = plot(lens,x=:nlength,color=:experiment,
-               Guide.colorkey(pos=[0.65*Gadfly.w,-0.3*Gadfly.h]),
-               Scale.color_discrete_manual("darkgray","lightgray"),
-               Coord.cartesian(xmin=0,xmax=20),
-               Guide.xlabel("log-z-scored length",
-                            orientation=:horizontal),
-               Guide.ylabel("density",orientation=:vertical),
-               Geom.histogram(position=:dodge,bincount=60,density=true),
-               Theme(discrete_highlight_color=x->"black",
-                     bar_highlight=x->"black"))
+#   lens = [DataFrame(nlength=hlens,experiment="human");
+#           DataFrame(nlength=slens,experiment="simulation")]
+#   hplot = plot(lens,x=:nlength,color=:experiment,
+#                Guide.colorkey(pos=[0.65*Gadfly.w,-0.3*Gadfly.h]),
+#                Scale.color_discrete_manual("darkgray","lightgray"),
+#                Coord.cartesian(xmin=0,xmax=20),
+#                Guide.xlabel("log-z-scored length",
+#                             orientation=:horizontal),
+#                Guide.ylabel("density",orientation=:vertical),
+#                Geom.histogram(position=:dodge,bincount=60,density=true),
+#                Theme(discrete_highlight_color=x->"black",
+#                      bar_highlight=x->"black"))
 
   if separate_plots
     splot,hplot
