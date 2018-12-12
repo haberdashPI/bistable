@@ -78,12 +78,71 @@ function select_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
   audiospect(masks[simulation],settings)[start_time .. stop_time]
 end
 
-function plot_fit(df,params;separate_plots=false,kwds...)
+function unzip(xs)
+  fns = map(enumerate(first(xs))) do (i,el)
+    ys -> map(y -> y[i],ys)
+  end |> Tuple
+  map(fns) do fn
+    fn(xs)
+  end
+end
+
+# okay, the below is *clearly* wrong somehow, and I don't
+# know how to fix it right now; abandon for the moment
+
+# """
+#     qqci(x,y,indices)
+
+# Compute a confidence interval around each quantile of x
+# over the samples of y selected by indices. Indicies
+# is an iterable where each element is an array of indices
+# to select: e.g. the output of dbootinds.
+# """
+# function qqci(x,y,indices;alpha=0.05)
+#   x, yvals = qqdistboot(x,y,indices)
+#   ylower, yupper = mapslices(yvals,dims=2) do samples
+#     quantile(samples,(alpha/2,1-alpha/2))
+#   end |> unzip
+
+#   x,vec(ylower),vec(yupper)
+# end
+
+# function qqdistboot(x,y,indices)
+#   nx = length(x)
+#   yvals = Array{float(eltype(x))}(undef,nx,length(indices))
+
+#   for (i,ixs) in enumerate(indices)
+#     qx, qy, order = qqdata(x,y[ixs])
+#     lastxi = 1
+#     for (j,xi) in enumerate(order)
+#       if xi <= nx
+#         yvals[xi,i] = qy[j]
+#         lastxi = xi
+#       else
+#         yvals[lastxi,i] = qy[j]
+#       end
+#     end
+#   end
+
+#   cumsum(sort(x)) ./ sum(x), yvals
+# end
+
+# function qqdata(x,y)
+#   nx = length(x)
+#   ny = length(y)
+#   sumx = sum(x)
+#   sumy = sum(y)
+#   order = sortperm([x; y])
+#   qx,qy = mapreduce((x,a) -> push!(x,x[end].+a),order,init=[(0.0,0.0)]) do i
+#     i <= nx ? (x[i]/sumx,0.0) : (0.0,y[i-nx]/sumy)
+#   end |> unzip
+
+#   qx, qy, order
+# end
+
+function plot_fit(df,params;separate_plots=false,showci=true,kwds...)
   df,params = select_data(df,params;kwds...)
   hdata = human_data()
-  lens = [DataFrame(nlength=normlength(hdata.lengths),experiment="human");
-          DataFrame(nlength=normlength(length_summary(df,params)),
-                    experiment="simulation")]
 
   sim = by(stream_summary(df,params),:st) do g
     DataFrame([findci(g.streaming)])
@@ -113,6 +172,28 @@ function plot_fit(df,params;separate_plots=false,kwds...)
      Geom.point,Geom.line,Geom.errorbar,
      Theme(discrete_highlight_color=x->"black"))
 
+  hlens = normlength(hdata.lengths)
+  slens = normlength(length_summary(df,params))
+
+  # qh,qs = qqdata(hlens,slens)
+  # nsamples = div(length(hlens),N_for_pressnitzer_hupe_2006)
+  # cisim,cihuman_lower,cihuman_upper =
+  #   qqci(slens,hlens, dbootinds(hlens,numobsperresample=nsamples,
+  #                               numresample=1000))
+
+  # mean = DataFrame(qhuman = qh, qsim = qs)
+  # bounds = DataFrame(human_lower = cihuman_lower,human_upper = cihuman_upper,
+  #                    sim = cisim)
+  # hplot = plot(layer(mean,x=:qhuman,y=:qsim,xintercept=[0],slope=[1],
+  #                    Geom.line,Geom.abline,
+  #                    Theme(default_color="grey")),
+  #              layer(bounds,x=:human_lower,y=:sim,Geom.line,
+  #                    Theme(default_color="lightgrey")),
+  #              layer(bounds,x=:human_upper,y=:sim,Geom.line,
+  #                    Theme(default_color="lightgrey")))
+
+  lens = [DataFrame(nlength=hlens,experiment="human");
+          DataFrame(nlength=slens,experiment="simulation")]
   hplot = plot(lens,x=:nlength,color=:experiment,
                Guide.colorkey(pos=[0.65*Gadfly.w,-0.3*Gadfly.h]),
                Scale.color_discrete_manual("darkgray","lightgray"),
