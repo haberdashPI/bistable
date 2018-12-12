@@ -1,9 +1,9 @@
 using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 include("count_lengths.jl")
 
-# datadir = joinpath(homedir(),"work","dlittle","bistable_individual_levels","run_2018-11-06")
-datadir = joinpath(@__DIR__,"..","data","count_lengths",
-                   "bistable_individual_levels","run_2018-11-15")
+datadir = joinpath(homedir(),"work","dlittle","bistable_individual_sensitive","run_2018-12-06")
+# datadir = joinpath(@__DIR__,"..","data","count_lengths",
+#                    "bistable_individual_levels","run_2018-11-15")
 
 count_lengths(
   datadir=joinpath(datadir,"data"),

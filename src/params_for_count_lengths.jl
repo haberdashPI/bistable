@@ -124,7 +124,9 @@ elseif kind == :sensitive
     for (suffix,vals) in tests
       for val in vals
         param = Symbol(prefix*string(suffix))
-        p = Params(param => [val],
+        # @show param
+        # @show float(val)
+        p = Params(param => [float(val)],
                    Symbol(prefix*"c_σ") => [0.2],
                    Symbol(prefix*"c_a") => a_vals,
                    Symbol(prefix*"c_m") => m_vals)
