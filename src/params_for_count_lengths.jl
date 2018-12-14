@@ -33,6 +33,10 @@ end
 unit_table = Dict(r"τ" => in_ms,r"Δt" => in_ms, r"^f$" => in_Hz)
 
 function write_params(label,df)
+  dfsize = size(df,1)
+  unique!(df)
+  @assert size(df,1) == dfsize "All parameter combinations must be unique."
+
   if occursin("Mycroft",gethostname())
     dir = joinpath(@__DIR__,"..","data",
                    "count_lengths",label,"run_$(Date(now()))")
@@ -126,10 +130,10 @@ elseif kind == :sensitive
         param = Symbol(prefix*string(suffix))
         # @show param
         # @show float(val)
-        p = Params(param => [float(val)],
-                   Symbol(prefix*"c_σ") => [0.2],
+        p = Params(Symbol(prefix*"c_σ") => [0.2],
                    Symbol(prefix*"c_a") => a_vals,
-                   Symbol(prefix*"c_m") => m_vals)
+                   Symbol(prefix*"c_m") => m_vals,
+                   param => [float(val)])
         push!(alltests,byparams(p))
       end
     end
