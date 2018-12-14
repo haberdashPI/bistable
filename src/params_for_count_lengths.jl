@@ -90,7 +90,7 @@ const default_params = Dict(
   )
 Params(pairs...) = merge(default_params,Dict(pairs...))
 
-kind = :sensitive
+kind = :sensitive_noise
 
 # look at the variations at each level individually
 if kind == :individual
@@ -139,4 +139,25 @@ elseif kind == :sensitive
     end
   end
   write_params("individual_sensitive",vcat(alltests...))
+# doing just the noise alone, because a bug in the older version
+# of the code above eliminated it.
+elseif kind == :sensitive_noise
+  m_vals = a_vals = [0; clean.(10 .^ range(0.7,stop=4,length=4))]
+  tests = Dict(:c_σ => [0.4,0.8,1.2])
+  alltests = []
+  for prefix in ["f_", "s_", "t_"]
+    for (suffix,vals) in tests
+      for val in vals
+        param = Symbol(prefix*string(suffix))
+        # @show param
+        # @show float(val)
+        p = Params(Symbol(prefix*"c_σ") => [0.2],
+                   Symbol(prefix*"c_a") => a_vals,
+                   Symbol(prefix*"c_m") => m_vals,
+                   param => [float(val)])
+        push!(alltests,byparams(p))
+      end
+    end
+  end
+  write_params("individual_sensitive_noise",vcat(alltests...))
 end
