@@ -40,7 +40,7 @@ function model_error(data::NamedTuple,mean::NamedTuple)
   str_error = mean_bysid(data.stream) do str
     stream_rms(str,mean.stream)^2
   end |> sqrt
-  len_error = length_rms(data.lengths,mean.lengths)
+  len_error = ksstat(data.lengths,mean.lengths)
 
   (stream=str_error,lengths=len_error)
 end
@@ -67,23 +67,12 @@ function stream_rms(data,mean)
   rms(coalesce.(diffs,0.0))
 end
 
-function length_rms(len,mean)
-  dens = length_hist(len)
-  rms(mean .- dens)
-end
-
-# manually selected range to ensure reasonable bin size given the bin size of
-# the original data from P&H 2006
-const normalized_hist_range = 0:0.33333:20
-function normweights(x)
-  total = sum(x)
-  total > 0 ? x ./ total : x
-end
-
-function length_hist(len)
-  len = collect(skipmissing(len))
-  hist = fit(Histogram,len,weights(len),normalized_hist_range)
-  normweights(hist.weights)
+function ksstat(x,y)
+  nx = length(x)
+  ny = length(y)
+  order = sortperm([x; y])
+  diffs = cumsum(map(i -> i <= nx ? 1/nx : -1/ny,order))
+  maximum(abs,diffs)
 end
 
 function findci(x;kwds...)
@@ -141,36 +130,26 @@ function data_summarize(data)
   stream = by(data.stream,:st) do g
     DataFrame(streaming = mean(g.streaming))
   end
-  lengths = length_hist(data.lengths)
+  lengths = data.lengths
 
   (stream=stream,lengths=lengths)
 end
 
-function human_error(;resample=1000)
-  means,meanl = data_summarize(human_data())
-  stream,lengths = human_data(resample=resample)
-
-  str_error = mean_bysid(stream) do str
-    stream_rms(str,means)^2
-  end |> sqrt
-
-  len_error = mean_bysid(lengths) do len
-    length_rms(len.lengths,meanl)^2
-  end |> sqrt
-
-  (stream=str_error,lengths=len_error)
+function human_error(;kwds...)
+  str, len = human_error_by_sid(;kwds...)
+  (stream=mean(str.x1), lengths=mean(len.x1))
 end
 
-function human_error_by_sid(;resample=1000)
+function human_error_by_sid(;resample=1000,N=1)
   means,meanl = data_summarize(human_data())
   stream = human_stream_data()
-  lengths = human_length_data(resample=resample)
+  lengths = human_length_data(resample=resample,N=N)
 
   str_error = map(groupby(stream,:sid)) do str
     stream_rms(str,means)
   end |> combine
   len_error = map(groupby(lengths,:sid)) do len
-    length_rms(len.lengths,meanl)
+    ksstat(len.lengths,meanl)
   end |> combine
 
   str_error, len_error
@@ -216,12 +195,12 @@ function normlength(x)
 end
 
 function handlebound(fn,seconds;bound=true,threshold=0.8)
-    if length(seconds) < 3
+    if length(seconds) < 2
       fn(1:length(seconds))
     end
 
-    if bound && (sum(seconds[2:end-1]) > threshold*sum(seconds))
-      fn(2:length(seconds)-1)
+    if bound && (sum(seconds[2:end]) > threshold*sum(seconds))
+      fn(2:length(seconds))
     else
       fn(1:length(seconds))
     end

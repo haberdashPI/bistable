@@ -80,60 +80,28 @@ function unzip(xs)
   end
 end
 
-# okay, the below is *clearly* wrong somehow, and I don't
-# know how to fix it right now; abandon for the moment
-
-# """
-#     qqci(x,y,indices)
-
-# Compute a confidence interval around each quantile of x
-# over the samples of y selected by indices. Indicies
-# is an iterable where each element is an array of indices
-# to select: e.g. the output of dbootinds.
-# """
-# function qqci(x,y,indices;alpha=0.05)
-#   x, yvals = qqdistboot(x,y,indices)
-#   ylower, yupper = mapslices(yvals,dims=2) do samples
-#     quantile(samples,(alpha/2,1-alpha/2))
-#   end |> unzip
-
-#   x,vec(ylower),vec(yupper)
-# end
-
-# function qqdistboot(x,y,indices)
-#   nx = length(x)
-#   yvals = Array{float(eltype(x))}(undef,nx,length(indices))
-
-#   for (i,ixs) in enumerate(indices)
-#     qx, qy, order = qqdata(x,y[ixs])
-#     lastxi = 1
-#     for (j,xi) in enumerate(order)
-#       if xi <= nx
-#         yvals[xi,i] = qy[j]
-#         lastxi = xi
-#       else
-#         yvals[lastxi,i] = qy[j]
-#       end
-#     end
-#   end
-
-#   cumsum(sort(x)) ./ sum(x), yvals
-# end
-
 function qqdata(x,y)
   nx = length(x)
   ny = length(y)
-  sumx = sum(x)
-  sumy = sum(y)
   order = sortperm([x; y])
   qx,qy = mapreduce((x,a) -> push!(x,x[end].+a),order,init=[(0.0,0.0)]) do i
-    i <= nx ? (x[i]/sumx,0.0) : (0.0,y[i-nx]/sumy)
+    i <= nx ? (1/nx,0.0) : (0.0,1/ny)
   end |> unzip
 
   qx, qy, order
 end
 
-function plot_fit(df,params;separate_plots=false,showci=true,kwds...)
+function cumreduce(fn,xs)
+  reduce(xs[2:end];init=[first(xs)]) do result,x
+    push!(result,fn(result[end],x))
+  end
+end
+
+function plot_stream_many(df,params,selections)
+
+
+
+function plot_stream(df,params;kwds...)
   df,params = select_data(df,params;kwds...)
   hdata = human_data()
 
@@ -152,7 +120,7 @@ function plot_fit(df,params;separate_plots=false,showci=true,kwds...)
                       pos = @.(log2(:st) -
                                ifelse(:experiment == "human",0.05,-0.05)));
 
-  splot = plot(stream,x=:pos,y=:mean,ymin=:lowerc,ymax=:upperc,
+  plot(stream,x=:pos,y=:mean,ymin=:lowerc,ymax=:upperc,
      color=:experiment,shape=:experiment,
      Guide.shapekey(pos=[log2(3),1.4]),
      Guide.xticks(ticks=log2.([3,6,12])),
@@ -164,6 +132,33 @@ function plot_fit(df,params;separate_plots=false,showci=true,kwds...)
      Coord.cartesian(xmin=log2(3)-0.25,xmax=log2(12)+0.25),
      Geom.point,Geom.line,Geom.errorbar,
      Theme(discrete_highlight_color=x->"black"))
+end
+
+# if a line doesn't move stepwise (always horizontal or vertical lines) add
+# points in-between so that it does move stepwise
+function addsteps(xs,ys)
+  xr = eltype(xs)[]
+  yr = eltype(ys)[]
+  oldx = 0
+  oldy = 0
+  for (x,y) in zip(xs,ys)
+    if oldx != x
+      push!(xr,x)
+      push!(yr,oldy)
+    end
+    push!(xr,x)
+    push!(yr,y)
+
+    oldx = x
+    oldy = y
+  end
+  xr, yr
+end
+
+function plot_lengths(df,params;showci=true,
+                     alpha=0.05,resample=400,kwds...)
+  df,params = select_data(df,params;kwds...)
+  hdata = human_data()
 
   hlens = normlength(hdata.lengths)
   slens = normlength(length_summary(df,params))
@@ -172,16 +167,39 @@ function plot_fit(df,params;separate_plots=false,showci=true,kwds...)
   nsamples = div(length(hlens),N_for_pressnitzer_hupe_2006)
   mean = DataFrame(qhuman = qh, qsim = qs)
 
-  # cisim,cihuman_lower,cihuman_upper =
-  #   qqci(slens,hlens, dbootinds(hlens,numobsperresample=nsamples,
-  #                               numresample=1000))
-  # bounds = DataFrame(human_lower = cihuman_lower,human_upper = cihuman_upper,
-  #                    sim = cisim)
+  allinds = dbootinds(hlens,numresample=resample)
+  samples = map(enumerate(allinds)) do (i,inds)
+    qh,qs = qqdata(hlens[inds],slens)
+    DataFrame(qhuman=qh,qsim=qs,run=i)
+  end |> x -> vcat(x...)
+  cis = by(samples,:qsim) do sim
+    starts = [minimum(run.qhuman) for run in groupby(sim,:run)]
+    ends = [maximum(run.qhuman) for run in groupby(sim,:run)]
+    l = quantile(starts,alpha/2)
+    h = quantile(ends,1-alpha/2)
+    DataFrame(qhuman = [l,h],quant=[:lower,:upper])
+  end
+  sort!(cis,(:qsim,:qhuman))
+  cis = by(cis,:quant) do quant
+    if quant.quant[1] == :lower
+      quant.qhuman = cumreduce(max,quant.qhuman)
+    else
+      quant.qhuman = reverse(cumreduce(min,reverse(quant.qhuman)))
+    end
+    quant
+  end
+  cis = by(cis,:quant) do quant
+    x,y = addsteps(quant.qhuman,quant.qsim)
+    DataFrame(qhuman = x,qsim = y)
+  end
 
-  hplot = plot(mean,x=:qhuman,y=:qsim,xintercept=[0],slope=[1],
-               Geom.line,Geom.abline,
-               Theme(default_color="grey"),Coord.cartesian(xmax=1,ymax=1))
-
+  plot(layer(mean,x=:qhuman,y=:qsim,yintercept=[0],slope=[1],
+                     Geom.line,Geom.abline,
+                     Theme(default_color="black")),
+               layer(cis,x=:qhuman,y=:qsim,group=:quant,Geom.line,
+                     Theme(default_color="gray",
+                           discrete_highlight_color=x->RGBA(0,0,0,0))),
+               Coord.cartesian(xmax=1,ymax=1))
   # hplot = plot(layer(mean,x=:qhuman,y=:qsim,xintercept=[0],slope=[1],
   #                    Geom.line,Geom.abline,
   #                    Theme(default_color="grey")),
@@ -202,15 +220,16 @@ function plot_fit(df,params;separate_plots=false,showci=true,kwds...)
 #                Geom.histogram(position=:dodge,bincount=60,density=true),
 #                Theme(discrete_highlight_color=x->"black",
 #                      bar_highlight=x->"black"))
-
-  if separate_plots
-    splot,hplot
-  else
-    hstack(splot,hplot)
-  end
 end
 
-function plot_lengths((len,value))
+function plot_fit(df,params;showci=true,
+                  alpha=0.05,resample=400,kwds...)
+  hstack(plot_stream(df,params;kwds...),
+         plot_lengths(df,params;kwds...,showci=showci,
+                      alpha=alpha,resample=resample))
+end
+
+function plot_responses((len,value))
   dfl = DataFrame(value=value,time=cumsum(len));
   dfl = @transform(dfl,lagtime = lag(:time,default=0.0),ymin=-1,ymax=1);
 
@@ -234,7 +253,7 @@ function plot_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,
                      start_time=start_time,stop_time=stop_time,kwds...)
   input = audiospect_stimulus(params[selection,:],settings)
   input = input[start_time .. stop_time]
-  band = plot_lengths(percept_lengths(mask,input,settings))
+  band = plot_responses(percept_lengths(mask,input,settings))
 
   spect=plot(asplotable(mask,quantize=(200,128))[1],
              x=:time,y=:logfreq,color=:value,Geom.rectbin,
