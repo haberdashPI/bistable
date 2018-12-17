@@ -194,6 +194,7 @@ function normlength(x)
   exp.(x)
 end
 
+
 function handlebound(fn,seconds;bound=true,threshold=0.8)
     if length(seconds) < 2
       fn(1:length(seconds))
