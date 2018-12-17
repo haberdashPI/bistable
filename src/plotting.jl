@@ -97,11 +97,33 @@ function cumreduce(fn,xs)
   end
 end
 
-function plot_stream_many(df,params,selections)
+function plot_stream_data(df,params,selections::Vector)
+  sims = map(enumerate(selections)) do (i,sel)
+    df_,params_ = select_data(df,params;sel...)
+    sim = by(stream_summary(df_,params_),:st) do g
+      DataFrame([findci(g.streaming)])
+    end
+    sim[:experiment] = "simulation"
+    sim[:sid] = "sel"*string(i)
 
+    sim
+  end |> x -> vcat(x...)
 
+  sim = by(sims,:st) do g
+    DataFrame([findci(g.mean)])
+  end
+  sim[:experiment] = "simulation"
 
-function plot_stream(df,params;kwds...)
+  hdata = human_data()
+  human = by(hdata.stream,:st) do g
+    DataFrame([findci(g.streaming)])
+  end
+  human[:experiment] = "human"
+
+  vcat(sim,human)
+end
+
+function plot_stream_data(df,params;kwds...)
   df,params = select_data(df,params;kwds...)
   hdata = human_data()
 
@@ -115,7 +137,14 @@ function plot_stream(df,params;kwds...)
   end
   human[:experiment] = "human"
 
-  stream = vcat(sim,human)
+  vcat(sim,human)
+end
+
+function plot_stream(df,others...)
+  plot_stream_data(df,others...) |> plot_stream
+end
+
+function plot_stream(stream)
   stream = @transform(stream,
                       pos = @.(log2(:st) -
                                ifelse(:experiment == "human",0.05,-0.05)));
@@ -155,14 +184,57 @@ function addsteps(xs,ys)
   xr, yr
 end
 
-function plot_lengths(df,params;showci=true,
-                     alpha=0.05,resample=400,kwds...)
+function cleanline(xs,ys)
+  indices = filter(2:length(xs)-1) do i
+    !(xs[i-1] == xs[i] == xs[i+1]) ||
+    !(ys[i-1] == ys[i] == ys[i+1])
+  end
+  xs[[1;indices;end]], ys[[1;indices;end]]
+end
+
+function plot_lengths_data(df,params,selections::Vector;normlengths=true,kwds...)
+  lengths = map(enumerate(selections)) do (i,sel)
+    df_,params_ = select_data(df,params;sel...)
+    lens = length_summary(df_,params_)
+    lens ./= mean(lens)
+  end |> x -> vcat(x...)
+  if normlengths
+    slens = Main.normlength(lengths)
+  else
+    slens = collect(skipmissing(lengths))
+  end
+
+  hdata = human_data()
+  if normlengths
+    hlens = Main.normlength(hdata.lengths)
+  else
+    hlens = collect(skipmissing(hdata.lengths))
+  end
+
+  (human=hlens,simulation=slens)
+end
+
+function plot_lenths_data(df,params;normlengths=true,kwds...)
   df,params = select_data(df,params;kwds...)
   hdata = human_data()
 
-  hlens = normlength(hdata.lengths)
-  slens = normlength(length_summary(df,params))
+  if normlengths
+    hlens = normlength(hdata.lengths)
+    slens = normlength(length_summary(df,params))
+  else
+    hlens = collect(skipmissing(hdata.lengths))
+    slens = collect(skipmissing(length_summary(df,params)))
+  end
 
+  (human=hlens,simulation=slens)
+end
+
+function plot_lengths_qq(df,others...;kwds...)
+  plot_lengths(plot_lengths_data(df,others...);kwds...)
+end
+
+function plot_lengths_qq((hlens,slens)::NamedTuple,
+                      alpha=0.05,resample=400,kwds...)
   qh,qs = qqdata(hlens,slens)
   nsamples = div(length(hlens),N_for_pressnitzer_hupe_2006)
   mean = DataFrame(qhuman = qh, qsim = qs)
@@ -189,44 +261,49 @@ function plot_lengths(df,params;showci=true,
     quant
   end
   cis = by(cis,:quant) do quant
-    x,y = addsteps(quant.qhuman,quant.qsim)
+    x,y = addsteps(quant.qhuman,quant.qsim) |> x -> cleanline(x...)
     DataFrame(qhuman = x,qsim = y)
   end
 
-  plot(layer(mean,x=:qhuman,y=:qsim,yintercept=[0],slope=[1],
+  plot(layer(mean,x=:qhuman,y=:qsim,intercept=[0],slope=[1],
                      Geom.line,Geom.abline,
                      Theme(default_color="black")),
                layer(cis,x=:qhuman,y=:qsim,group=:quant,Geom.line,
                      Theme(default_color="gray",
                            discrete_highlight_color=x->RGBA(0,0,0,0))),
                Coord.cartesian(xmax=1,ymax=1))
-  # hplot = plot(layer(mean,x=:qhuman,y=:qsim,xintercept=[0],slope=[1],
-  #                    Geom.line,Geom.abline,
-  #                    Theme(default_color="grey")),
-  #              layer(bounds,x=:human_lower,y=:sim,Geom.line,
-  #                    Theme(default_color="lightgrey")),
-  #              layer(bounds,x=:human_upper,y=:sim,Geom.line,
-  #                    Theme(default_color="lightgrey")))
+end
+function plot_lengths_hist((hlens,slens)::NamedTuple;xmax=20,binstep=1)
+  if any(hlens .> xmax)
+    @warn("Ignoring ~$(100round(mean(hlens .> xmax)))% of human data")
+  elseif any(slens .> xmax)
+    @warn("Ignoring ~$(100round(mean(slens .> xmax)))% of simulation data")
+  end
+  hheight = normalize(fit(Histogram,hlens,0:binstep:xmax))
+  sheight = normalize(fit(Histogram,slens,0:binstep:xmax))
+  lens = DataFrame(height = [hheight.weights; sheight.weights],
+                   experiment = repeat(["human","simulation"],
+                                       inner=length(hheight.weights)),
+                   length = repeat((0:binstep:xmax)[1:end-1].+binstep/2,2))
 
-#   lens = [DataFrame(nlength=hlens,experiment="human");
-#           DataFrame(nlength=slens,experiment="simulation")]
-#   hplot = plot(lens,x=:nlength,color=:experiment,
-#                Guide.colorkey(pos=[0.65*Gadfly.w,-0.3*Gadfly.h]),
-#                Scale.color_discrete_manual("darkgray","lightgray"),
-#                Coord.cartesian(xmin=0,xmax=20),
-#                Guide.xlabel("log-z-scored length",
-#                             orientation=:horizontal),
-#                Guide.ylabel("density",orientation=:vertical),
-#                Geom.histogram(position=:dodge,bincount=60,density=true),
-#                Theme(discrete_highlight_color=x->"black",
-#                      bar_highlight=x->"black"))
+  hplot = plot(lens,x=:length,color=:experiment,y=:height,
+               ygroup=:experiment,
+               Guide.colorkey(pos=[0.65*Gadfly.w,-0.3*Gadfly.h]),
+               Scale.color_discrete_manual("darkgray","lightgray"),
+               Geom.subplot_grid(Guide.xlabel("log-z-scored length",
+                                              orientation=:horizontal),
+                                 Guide.ylabel("density",orientation=:vertical),
+                                 Coord.cartesian(xmin=0,xmax=xmax),
+                                 Geom.bar,free_x_axis=true),
+               Theme(discrete_highlight_color=x->"black",
+                     bar_highlight=x->"black"))
 end
 
 function plot_fit(df,params;showci=true,
                   alpha=0.05,resample=400,kwds...)
   hstack(plot_stream(df,params;kwds...),
-         plot_lengths(df,params;kwds...,showci=showci,
-                      alpha=alpha,resample=resample))
+         plot_lengths_qq(df,params;kwds...,showci=showci,
+                         alpha=alpha,resample=resample))
 end
 
 function plot_responses((len,value))
