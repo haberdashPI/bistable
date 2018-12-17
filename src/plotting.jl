@@ -6,9 +6,9 @@ using ShiftedArrays
 using PlotAxes
 PlotAxes.set_backend!(:gadfly)
 
-function packing(x;maxpad=true)
+function packing(x;maxpad=true,pad=0.5)
     vals = sort!(unique(x))
-    pos = [0; cumsum([1.5; fill(1,length(vals)-3); maxpad ? 1.5 : 1])]
+    pos = [0; cumsum([1.0+pad; fill(1,length(vals)-3); maxpad ? 1.0+pad : 1])]
     vals, pos
 end
 
