@@ -30,7 +30,7 @@ function model_data(df,params;kwds...)
   (stream=stream_summary(df,params), lengths=length_summary(df,params))
 end
 
-error_ratio(a,b=HERR) = (a.stream / b.stream + a.lengths / b.lengths)/2
+error_ratio(a,b=human_error()) = (a.stream / b.stream + a.lengths / b.lengths)/2
 function model_error(df::DataFrame,params::DataFrame;kwds...)
   mdata = model_data(df,params;kwds...)
   model_error(mdata,HMEAN)
@@ -163,13 +163,17 @@ function human_stream_data()
 end
 
 const N_for_pressnitzer_hupe_2006 = 23
+const pressnitzer_hupe_binsize = 1/6
+
 function human_length_data(;resample=nothing,N = N_for_pressnitzer_hupe_2006)
   ph = CSV.read(joinpath("..","data","pressnitzer_hupe",
                          "pressnitzer_hupe_inferred.csv"))
+  ph.length .+= pressnitzer_hupe_binsize.*(-0.5.+rand(size(ph,1)))
+  lengths = collect(skipmissing(ph.length))
+
   if resample isa Nothing
-    ph.length
+    lengths
   else
-    lengths = collect(skipmissing(ph.length))
     nsamples = div(length(lengths),N)
     inds = dbootinds(lengths,numobsperresample=nsamples,numresample=resample)
     dfs = map(enumerate(inds)) do (i,inds)
