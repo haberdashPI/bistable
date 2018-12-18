@@ -273,30 +273,42 @@ function plot_lengths_qq((hlens,slens)::NamedTuple,
                            discrete_highlight_color=x->RGBA(0,0,0,0))),
                Coord.cartesian(xmax=1,ymax=1))
 end
-function plot_lengths_hist((hlens,slens)::NamedTuple;xmax=20,binstep=1)
-  if any(hlens .> xmax)
-    @warn("Ignoring ~$(100round(mean(hlens .> xmax)))% of human data")
-  elseif any(slens .> xmax)
-    @warn("Ignoring ~$(100round(mean(slens .> xmax)))% of simulation data")
-  end
-  hheight = normalize(fit(Histogram,hlens,0:binstep:xmax))
-  sheight = normalize(fit(Histogram,slens,0:binstep:xmax))
-  lens = DataFrame(height = [hheight.weights; sheight.weights],
-                   experiment = repeat(["human","simulation"],
-                                       inner=length(hheight.weights)),
-                   length = repeat((0:binstep:xmax)[1:end-1].+binstep/2,2))
+function plot_lengths_hist((hlens,slens)::NamedTuple;xmax=20,binstep=1,
+                           density=false)
+  if density
+    df = DataFrame(length = [hlens;slens],
+                   experiment = [fill("human",length(hlens));
+                                 fill("simulation",length(slens))])
+    plot(df,x=:length,color=:experiment,
+         Stat.density, Geom.polygon(fill=true,preserve_order=true),
+         Guide.colorkey(pos=[0.65*Gadfly.w,-0.3*Gadfly.h]),
+         Theme(lowlight_color=c->RGBA{Float32}(c.r, c.g, c.b, 0.4)),
+         Coord.cartesian(xmax=xmax))
+  else
+    if any(hlens .> xmax)
+      @warn("Ignoring ~$(100round(mean(hlens .> xmax)))% of human data")
+    elseif any(slens .> xmax)
+      @warn("Ignoring ~$(100round(mean(slens .> xmax)))% of simulation data")
+    end
+    hheight = normalize(fit(Histogram,hlens,0:binstep:xmax))
+    sheight = normalize(fit(Histogram,slens,0:binstep:xmax))
+    lens = DataFrame(height = [hheight.weights; sheight.weights],
+                     experiment = repeat(["human","simulation"],
+                                         inner=length(hheight.weights)),
+                     length = repeat((0:binstep:xmax)[1:end-1].+binstep/2,2))
 
-  hplot = plot(lens,x=:length,color=:experiment,y=:height,
-               ygroup=:experiment,
-               Guide.colorkey(pos=[0.65*Gadfly.w,-0.3*Gadfly.h]),
-               Scale.color_discrete_manual("darkgray","lightgray"),
-               Geom.subplot_grid(Guide.xlabel("log-z-scored length",
-                                              orientation=:horizontal),
-                                 Guide.ylabel("density",orientation=:vertical),
-                                 Coord.cartesian(xmin=0,xmax=xmax),
-                                 Geom.bar,free_x_axis=true),
-               Theme(discrete_highlight_color=x->"black",
-                     bar_highlight=x->"black"))
+    hplot = plot(lens,x=:length,color=:experiment,y=:height,
+                 ygroup=:experiment,
+                 Guide.colorkey(pos=[0.65*Gadfly.w,-0.3*Gadfly.h]),
+                 Scale.color_discrete_manual("darkgray","lightgray"),
+                 Geom.subplot_grid(Guide.xlabel("log-z-scored length",
+                                                orientation=:horizontal),
+                                   Guide.ylabel("density",orientation=:vertical),
+                                   Coord.cartesian(xmin=0,xmax=xmax),
+                                   Geom.bar,free_x_axis=true),
+                 Theme(discrete_highlight_color=x->"black",
+                       bar_highlight=x->"black"))
+  end
 end
 
 function plot_fit(df,params;showci=true,
