@@ -169,7 +169,7 @@ function human_length_data(;resample=nothing,N = N_for_pressnitzer_hupe_2006)
   ph = CSV.read(joinpath("..","data","pressnitzer_hupe",
                          "pressnitzer_hupe_inferred.csv"))
   ph.length .+= pressnitzer_hupe_binsize.*(-0.5.+rand(size(ph,1)))
-  lengths = collect(skipmissing(ph.length))
+  lengths = shuffle!(collect(skipmissing(ph.length)))
 
   if resample isa Nothing
     lengths
