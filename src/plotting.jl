@@ -239,7 +239,8 @@ function plot_lengths_qq((hlens,slens)::NamedTuple,
   nsamples = div(length(hlens),N_for_pressnitzer_hupe_2006)
   mean = DataFrame(qhuman = qh, qsim = qs)
 
-  allinds = dbootinds(hlens,numresample=resample)
+  allinds = dbootinds(shuffle!(hlens),numresample=resample,
+                      numobsperresample=nsamples)
   samples = map(enumerate(allinds)) do (i,inds)
     qh,qs = qqdata(hlens[inds],slens)
     DataFrame(qhuman=qh,qsim=qs,run=i)

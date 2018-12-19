@@ -140,7 +140,7 @@ function human_error(;kwds...)
   (stream=mean(str.x1), lengths=mean(len.x1))
 end
 
-function human_error_by_sid(;resample=1000,N=1)
+function human_error_by_sid(;resample=1000,N=N_for_pressnitzer_hupe_2006)
   means,meanl = data_summarize(human_data())
   stream = human_stream_data()
   lengths = human_length_data(resample=resample,N=N)
@@ -166,9 +166,13 @@ const N_for_pressnitzer_hupe_2006 = 23
 const pressnitzer_hupe_binsize = 1/6
 
 function human_length_data(;resample=nothing,N = N_for_pressnitzer_hupe_2006)
+  # @show N
   ph = CSV.read(joinpath("..","data","pressnitzer_hupe",
                          "pressnitzer_hupe_inferred.csv"))
   ph.length .+= pressnitzer_hupe_binsize.*(-0.5.+rand(size(ph,1)))
+  # NOTE: we dont' have any knowledge about the ordering of responses so
+  # eliminate the sequential correlations induced by sorting the lengths in the
+  # csv file (this is important for proper bootstrapping)
   lengths = shuffle!(collect(skipmissing(ph.length)))
 
   if resample isa Nothing
