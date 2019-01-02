@@ -160,4 +160,23 @@ elseif kind == :sensitive_noise
     end
   end
   write_params("individual_sensitive_noise",vcat(alltests...))
+elseif kind == :sensitive_W
+  m_vals = a_vals = [0; clean.(10 .^ range(0.7,stop=4,length=4))]
+  tests = Dict("f_" => Dict(:f_W_m_σ => [2.8, 11.2]),
+               "s_" => Dict(:s_W_m_σ => [7.5, 30.0]),
+               "t_" => Dict(:t_W_m_σ_t => [3.5, 14.0],
+                            :t_W_m_σ_ϕ => [3.5, 14.0],
+                            :t_W_m_σ_N => [1.5, 6.0]))
+
+  for prefix in ["f_", "s_", "t_"]
+    for (param,vals) in tests[prefix]
+      for val in vals
+        p = Params(Symbol(prefix*"c_σ") => [0.2],
+                   Symbol(prefix*"c_a") => a_vals,
+                   Symbol(prefix*"c_m") => m_vals,
+                   param => [float(val)])
+        push!(alltests,byparams(p))
+      end
+    end
+  end
 end
