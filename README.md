@@ -24,17 +24,18 @@ reference and other members of the lab.
 (bistable) pkg> add https://github.com/haberdashPI/ShammaModel.jl
 (bistable) pkg> add https://github.com/haberdashPI/AuditoryBistabilityLE
 (bistable) pkg> instantiate
-```
+``
 
 This is all that's necessary to re-run the computational simulations on,
 e.g. a cluster. Each experiment, listed under `data`, is run using
 the `src/run_all_count_lengths.sh` script.
 
 For interactive use, and to view the results, you'll also want to
-add the `IJulia` and `Gadfly`.
+add the `IJulia`, `RCall` and `Gadfly`. You should [install
+R](https://cloud.r-project.org/) first.
 
 ```julia
-(bistability) pkg> add IJulia Gadfly
+(bistability) pkg> add IJulia Gadfly RCall
 ```
 You can open a Jupyter notebook server and view the notebooks
 (under `notebooks` folder) by returning to the Julia prompt (by hitting
@@ -45,12 +46,11 @@ of the `IJulia` package.
 julia> using IJulia; notebook()
 ```
 
+To reproduce the plots which make use of statistics functions available in R
+(Figure 3) you will need to run R and call the following command.
+```R
+> install.packages('logKDE')
+```
 ## Experimental Notes
 
-These are odds and ends I need to remember when writing up the paper:
-
-To get the data from Húpe and Pressnitzer 2006 I extracted the data of
-the histogram using https://automeris.io/WebPlotDigitizer/ for the auditory
-data, assuming each percept had a length equal to the bin center.
-
-describe format of jld2 files (they are hdf5 files)
+TODO: describe format of jld2 files (they are hdf5 files)
