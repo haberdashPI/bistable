@@ -38,7 +38,10 @@ function rename_levels_for(df,vals;suffixes=[:c_a,:c_m])
   df[[suffixes;:level;vals]]
 end
 
-DataFramesMeta.linq(::DataFramesMeta.SymbolParameter{:rename_levels}, df, vals) = :(rename_levels($df,$vals))
+function DataFramesMeta.linq(::DataFramesMeta.SymbolParameter{:rename_levels},
+                             df, vals)
+  :(rename_levels($df,$vals))
+end
 
 function colorscale(smap;reverse=false,minvalue,maxvalue,colorstart=minvalue,
                     colorstop=maxvalue,
