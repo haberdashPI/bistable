@@ -397,9 +397,9 @@ version = "0.6.0"
 
 [[RecursiveArrayTools]]
 deps = ["RecipesBase", "Requires", "StaticArrays", "Statistics", "Test"]
-git-tree-sha1 = "5ac1ea7d018bec90b0be614a9a37d1fd80dce8d9"
+git-tree-sha1 = "152afd0272d2f468c9f564d6f64cc3c10a8c1e94"
 uuid = "731186ca-8d62-57ce-b412-fbd966d074cd"
-version = "0.18.4"
+version = "0.18.5"
 
 [[Reexport]]
 deps = ["Pkg"]
@@ -518,9 +518,9 @@ version = "0.4.0"
 
 [[TableTraits]]
 deps = ["IteratorInterfaceExtensions", "Test"]
-git-tree-sha1 = "da062a2c31f16178f68190243c24140801720a43"
+git-tree-sha1 = "eba4b1d0a82bdd773307d652c6e5f8c82104c676"
 uuid = "3783bdb8-4a98-5b6b-af9a-565f29a5fe9c"
-version = "0.4.0"
+version = "0.4.1"
 
 [[Tables]]
 deps = ["Requires", "Test"]
