@@ -24,13 +24,24 @@ reference and other members of the lab.
 (bistable) pkg> add https://github.com/haberdashPI/ShammaModel.jl
 (bistable) pkg> add https://github.com/haberdashPI/AuditoryBistabilityLE
 (bistable) pkg> instantiate
-``
+```
 
 This is all that's necessary to re-run the computational simulations on,
 e.g. a cluster. Each experiment, listed under `data`, is run using
 the `src/run_all_count_lengths.sh` script.
 
-For interactive use, and to view the results, you'll also want to
+It is recommended that before running a simulation you should first precompile.
+
+```julia
+(bistable> pkg> precompile
+```
+
+This will avoid race conditions that can occur in julia's package manager
+when running multiple instances of the script across a cluster.
+
+## Interactive use and figure creation
+
+For interactive use, and to recreate the figures, you'll also want to
 add the `IJulia`, `RCall` and `Gadfly`. You should [install
 R](https://cloud.r-project.org/) first.
 
