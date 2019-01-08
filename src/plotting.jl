@@ -25,14 +25,26 @@ end
 
 function rename_levels_for(df,vals;suffixes=[:c_a,:c_m])
   for suf in suffixes
-    df[suf] = zero(df[Symbol("f_"*string(suf))])
+    if Symbol("f_"*string(suf)) in names(df)
+      df[suf] = zero(df[Symbol("f_"*string(suf))])
+    elseif Symbol("s_"*string(suf)) in names(df)
+      df[suf] = zero(df[Symbol("s_"*string(suf))])
+    elseif Symbol("t_"*string(suf)) in names(df)
+      df[suf] = zero(df[Symbol("t_"*string(suf))])
+    else
+      error("No level parameter with suffix $suf")
+    end
   end
   df[:level] = "unknown"
   for (prefix,level) in [("f_","Peripheral"),("s_","Cortical"),("t_","Object")]
     rows = df[Symbol(prefix*"c_σ")] .> 0
     df[rows,:level] = level
     for suffix in suffixes
-      df[rows,suffix] = df[rows,Symbol(prefix*string(suffix))]
+      if Symbol(prefix*string(suffix)) in names(df)
+        df[rows,suffix] = df[rows,Symbol(prefix*string(suffix))]
+      else
+        df[rows,suffix] = NaN
+      end
     end
   end
   df[[suffixes;:level;vals]]
