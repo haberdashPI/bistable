@@ -17,9 +17,11 @@ function select_data(df,params;kwds...)
   dfsel = df[in.(df.pindex,Ref(sel)),:]
   found = params[unique(dfsel.pindex),:]
   if size(found,1) < length(sel)
-    @warn("Expected $(length(sel)) parameter entries. ",
-          "\nInstead, only found entires: ",string(found),
-          "\nKeyword selection: ",string(kwds))
+    kwdbuf = IOBuffer()
+    show(kwdbuf,kwds.data)
+    @warn("Expected $(length(sel)) parameter entries. "*
+          "\nInstead, only found entires: "*string(found)*
+          "\nKeyword selection: "*String(take!(kwdbuf)))
   end
   dfsel[:st] = params.Δf[indexin(dfsel.pindex,params.pindex)]
   dfsel, params[sel,:]
