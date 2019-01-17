@@ -90,7 +90,7 @@ const default_params = Dict(
   )
 Params(pairs...) = merge(default_params,Dict(pairs...))
 
-kind = :sensitive_noise
+kind = :sensitive_W
 
 # look at the variations at each level individually
 if kind == :individual
@@ -168,6 +168,7 @@ elseif kind == :sensitive_W
                             :t_W_m_σ_ϕ => [3.5, 14.0],
                             :t_W_m_σ_N => [1.5, 6.0]))
 
+  alltests = []
   for prefix in ["f_", "s_", "t_"]
     for (param,vals) in tests[prefix]
       for val in vals
@@ -179,4 +180,5 @@ elseif kind == :sensitive_W
       end
     end
   end
+  write_params("individual_sensitive_W",vcat(alltests...))
 end

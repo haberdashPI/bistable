@@ -24,9 +24,11 @@ version = "0.2.3"
 
 [[AuditoryBistabilityLE]]
 deps = ["AxisArrays", "CodecZlib", "Combinatorics", "DSP", "DataFrames", "DataStructures", "Distributions", "LinearAlgebra", "MacroTools", "Match", "MetaArrays", "NMF", "Parameters", "PlotAxes", "ProgressMeter", "Requires", "Rmath", "SampledSignals", "ShammaModel", "SparseArrays", "SpecialFunctions", "Statistics", "StatsFuns", "TOML", "Unitful"]
-path = "/Users/davidlittle/googledrive/juliadev/AuditoryBistabilityLE"
+git-tree-sha1 = "308692601c36cefab68af8fe26bfedde037271be"
+repo-rev = "master"
+repo-url = "https://github.com/haberdashPI/AuditoryBistabilityLE"
 uuid = "7e25a372-ade5-11e8-17af-a30e5a9e2c28"
-version = "0.5.5"
+version = "0.5.6"
 
 [[AxisAlgorithms]]
 deps = ["Compat", "WoodburyMatrices"]
@@ -183,9 +185,9 @@ version = "0.5.3"
 
 [[FlatBuffers]]
 deps = ["Parameters", "Pkg", "Test"]
-git-tree-sha1 = "b8b14bad95fdbe40a45b0bd0fa10d71b70213c2b"
+git-tree-sha1 = "69cd49a5010314aeb099b998dcb16c3ca4a49e02"
 uuid = "53afe959-3a16-52fa-a8da-cf864710bae9"
-version = "0.5.0"
+version = "0.5.1"
 
 [[Formatting]]
 deps = ["Compat"]
@@ -478,9 +480,9 @@ version = "0.7.2"
 
 [[StaticArrays]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Random", "Statistics", "Test"]
-git-tree-sha1 = "97c4bf0f647488dd7ac01ea12be5885f88762938"
+git-tree-sha1 = "1eb114d6e23a817cd3e99abc3226190876d7c898"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.10.0"
+version = "0.10.2"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
