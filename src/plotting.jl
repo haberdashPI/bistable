@@ -112,7 +112,7 @@ function cumreduce(fn,xs)
   end
 end
 
-function plot_stream_data(df,params,selections::Vector)
+function plot_stream_data(df,params,selections::Vector;exclude_human=false)
   sims = map(enumerate(selections)) do (i,sel)
     df_,params_ = select_data(df,params;sel...)
     sim = by(stream_summary(df_,params_),:st) do g
@@ -129,16 +129,23 @@ function plot_stream_data(df,params,selections::Vector)
   end
   sim[:experiment] = "simulation"
 
-  hdata = human_data()
-  human = by(hdata.stream,:st) do g
-    DataFrame([findci(g.streaming)])
-  end
-  human[:experiment] = "human"
+  if !exclude_human
+    hdata = human_data()
+    human = by(hdata.stream,:st) do g
+      DataFrame([findci(g.streaming)])
+    end
+    human[:experiment] = "human"
 
-  vcat(sim,human)
+    vcat(sim,human)
+  else
+    sim
+  end
 end
 
-function plot_stream_data(df,params;kwds...)
+function plot_stream_data(df,params;exclude_human=false,kwds...)
+  @show head(df)
+  @show head(params)
+  @show kwds
   df,params = select_data(df,params;kwds...)
   hdata = human_data()
 
@@ -147,16 +154,20 @@ function plot_stream_data(df,params;kwds...)
   end
   sim[:experiment] = "simulation"
 
-  human = by(hdata.stream,:st) do g
-    DataFrame([findci(g.streaming)])
-  end
-  human[:experiment] = "human"
+  if !exclude_human
+    human = by(hdata.stream,:st) do g
+      DataFrame([findci(g.streaming)])
+    end
+    human[:experiment] = "human"
 
-  vcat(sim,human)
+    vcat(sim,human)
+  else
+    sim
+  end
 end
 
-function plot_stream(df,others...)
-  plot_stream_data(df,others...) |> plot_stream
+function plot_stream(df,others...;kwds...)
+  plot_stream_data(df,others...;kwds...) |> plot_stream
 end
 
 function plot_stream(stream)
