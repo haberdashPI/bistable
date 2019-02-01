@@ -223,7 +223,7 @@ function buildup_mean(buildup_data;delta,length)
   runs = groupby(buildup_data,:run)
   for run in runs
     j = 1
-    ts = cumsum(run.length)
+    ts = cumsum([0;run.length])
     for (i,t) in enumerate(buildup.time)
       while j <= Base.length(ts) && t > ts[j]
         j += 1

@@ -181,4 +181,14 @@ elseif kind == :sensitive_W
     end
   end
   write_params("individual_sensitive_W",vcat(alltests...))
+elseif kind = :buildup
+  alltests =
+  for τ_factor in range(0.2,stop=6.0,length=20)
+    p = Params(:t_c_a => 5, :t_c_m => 5,
+              :t_τ_a => 3s * τ_factor,:t_τ_m => 350ms * τ_factor,
+              :t_c_σ => 1.2,
+              :s_c_σ => 1.2,
+              :f_c_σ => 1.2)
+    push!(alltests,byparams(p))
+  end
 end
