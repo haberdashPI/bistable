@@ -7,7 +7,7 @@
 stimuli/*.wav
 *.swp
 data/count_lengths/
-tags
+.tags
 .undo
 presentation/pitch
 presentation/paper/*.png
