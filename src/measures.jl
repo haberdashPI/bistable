@@ -47,6 +47,21 @@ function model_error(data::NamedTuple,mean::NamedTuple)
   (stream=str_error,lengths=len_error)
 end
 
+function model_stream_stats(data::DataFrame,params::DataFrame;kwds...)
+  mdata = model_data(data,params;kwds...)
+  model_stream_stats(mdata,HMEAN)
+end
+
+function model_stream_stats(data::NamedTuple,mean::NamedTuple)
+  shift = mean_bysid(data.stream) do str
+    stream_shift(str,mean.stream)
+  end
+  spread = mean_bysid(data.stream) do str
+    stream_spread(str,mean.stream)
+  end
+  (shift=shift,spread=spread)
+end
+
 function mean_bysid(fn,data)
   total = 0.0
   n = 0
@@ -55,6 +70,31 @@ function mean_bysid(fn,data)
     n += 1
   end
   total / n
+end
+
+function stream_shift(data,mean)
+  diffs = map(1:size(mean,1)) do row
+    i = findfirst(isequal(mean.st[row]),data.st)
+    if i isa Nothing
+      missing
+    else
+      data[i,:streaming] - mean[row,:streaming]
+    end
+  end
+  sum(coalesce.(diffs,0.0))
+end
+
+const st_spread = Dict(3 => -1,6 => 0,12 => 1)
+function stream_spread(data,mean)
+  diffs = map(1:size(mean,1)) do row
+    i = findfirst(isequal(mean.st[row]),data.st)
+    if i isa Nothing
+      missing
+    else
+      st_spread[mean.st[row]]*(data[i,:streaming] - mean[row,:streaming])
+    end
+  end
+  sum(coalesce.(diffs,0.0))
 end
 
 function stream_rms(data,mean)
