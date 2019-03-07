@@ -9,8 +9,6 @@ df = read.csv("exp1A.csv")
 df = df %>%
   group_by(sid) %>%
   mutate(trial = cumsum(lag(sample,default=first(sample)) > sample))
-
-
 # compute percept lens
 lens = df %>%
   group_by(sid,trial) %>%
@@ -30,17 +28,15 @@ ggplot(lens,aes(x=len,fill=factor(stimulus))) +
 
 df = read.csv("exp1A.csv")
 stream_prop = df %>%
-  filter(st > 1,time > 3,time < 6.72,same_freq) %>%
-  group_by(sid,st) %>%
+  filter(st > 1, time > 3,time < 6.72, same_freq) %>%
+  group_by(sid, st) %>%
   summarize(response = mean(response))
 
-write.csv('stream_prop.csv')
+write.csv("stream_prop.csv")
 
 ggplot(stream_prop,aes(x=factor(st),y=response)) +
-  stat_summary(geom='pointrange',fun.data=mean_cl_boot,
+  stat_summary(geom="pointrange",fun.data=mean_cl_boot,
                fun.args=list(conf.int=0.95)) +
-  stat_summary(geom='line',fun.data=mean_cl_boot,group=1) +
+  stat_summary(geom="line",fun.data=mean_cl_boot,group=1) +
   coord_cartesian(ylim=c(0,1)) +
   theme_classic()
-
-
