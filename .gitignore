@@ -6,7 +6,9 @@
 .juliahistory
 stimuli/*.wav
 *.swp
-data/count_lengths/
+data/*
+data
+Config.toml
 .tags
 .undo
 presentation/pitch

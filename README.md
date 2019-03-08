@@ -11,20 +11,15 @@ organization may still change dramatically.
 These are the steps to initialize this code on a new machine. Mostly for my own
 reference and other members of the lab.
 
-1.  Install [Julia](https://julialang.org/downloads/) version v1.0
-2.  Open Julia in the terminal, from the root directory of this project
-3.  Run the following commands in the `Pkg` REPL (by hitting `]` after opening
-    Julia)
-
-```julia
-(v1.0) pkg> activate .
-(bistable) pkg> add https://github.com/wildart/TOML.jl#v0.4.0
-(bistable) pkg> add https://github.com/haberdashPI/MetaArrays.jl
-(bistable) pkg> add https://github.com/JuliaAudio/SampledSignals.jl#master
-(bistable) pkg> add https://github.com/haberdashPI/ShammaModel.jl
-(bistable) pkg> add https://github.com/haberdashPI/AuditoryBistabilityLE
-(bistable) pkg> instantiate
-```
+1. Install [Julia](https://julialang.org/downloads/) version v1.0
+2. Create a file called `Config.toml` in the base directory of the project and
+a line with `data = "[data dir]"` with `[data dir]` replaced with the location
+of the experimental data. This can be found the location of the experimental
+data. This folder can be found in the lab file server under David Little's
+personal data, under `data/bistability`. Copy this file to a locally
+accessable folder and point to it in `Config.toml`.
+2. Make sure the julia binary [can be found on your PATH](https://en.wikibooks.org/wiki/Introducing_Julia/Getting_started). 
+2. Run the install.sh (Mac or Unix) script or install.cmd (Windows)
 
 This is all that's necessary to re-run the computational simulations on,
 e.g. a cluster. Each experiment, listed under `data`, is run using
