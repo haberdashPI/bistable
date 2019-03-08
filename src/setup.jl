@@ -5,7 +5,6 @@ using Unitful
 using AxisArrays
 using TOML
 using RCall
-using VegaLite
 using DataFramesMeta
 using LinearAlgebra
 using Statistics
