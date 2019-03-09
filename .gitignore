@@ -14,5 +14,4 @@ Config.toml
 presentation/pitch
 presentation/paper/*.png
 presentation/paper/*.pdf
-.vscode
 ~$*

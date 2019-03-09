@@ -12,14 +12,14 @@ These are the steps to initialize this code on a new machine. Mostly for my own
 reference and other members of the lab.
 
 1. Install [Julia](https://julialang.org/downloads/) version v1.0
-2. Create a file called `Config.toml` in the base directory of the project and
-a line with `data = "[data dir]"` with `[data dir]` replaced with the location
-of the experimental data. This can be found the location of the experimental
-data. This folder can be found in the lab file server under David Little's
-personal data, under `data/bistability`. Copy this file to a locally
-accessable folder and point to it in `Config.toml`.
-2. Make sure the julia binary [can be found on your PATH](https://en.wikibooks.org/wiki/Introducing_Julia/Getting_started). 
-2. Run the install.sh (Mac or Unix) script or install.cmd (Windows)
+2. Create a file called `Config.toml` in the base directory of the project that
+contains the line `data = "[data dir]"` where `[data dir]` is replaced with the location
+of the experimental data. This folder can be found in the lab file server under 
+David Little's personal data, under `data/bistability`. Copy this folder to
+your machine and provide it's location in `Config.toml`.
+3. Make sure the julia binary [can be found on your PATH](https://en.wikibooks.org/wiki/Introducing_Julia/Getting_started). 
+4. Run the install.sh (Mac or Unix) script or install.cmd (Windows). Or you can
+run the VSCode build task named "Install".
 
 This is all that's necessary to re-run the computational simulations on,
 e.g. a cluster. Each experiment, listed under `data`, is run using
