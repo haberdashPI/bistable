@@ -30,11 +30,11 @@ df = read.csv("exp1A.csv")
 stream_prop = df %>%
   filter(st > 1, time > 4,time < 6.72, same_freq) %>%
   group_by(sid, st) %>%
-  summarize(response = mean(response))
+  summarize(streaming = mean(response))
 
-write.csv("stream_prop.csv")
+write.csv(stream_prop,"stream_prop.csv")
 
-ggplot(stream_prop,aes(x=factor(st),y=response)) +
+ggplot(stream_prop,aes(x=factor(st),y=streaming)) +
   geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
   stat_summary(geom="pointrange",fun.data=mean_cl_boot,
                fun.args=list(conf.int=0.95)) +
