@@ -143,9 +143,6 @@ function plot_stream_data(df,params,selections::Vector;exclude_human=false)
 end
 
 function plot_stream_data(df,params;exclude_human=false,kwds...)
-  @show head(df)
-  @show head(params)
-  @show kwds
   df,params = select_data(df,params;kwds...)
   hdata = human_data()
 
@@ -259,47 +256,6 @@ function plot_lengths_qq(df,others...;kwds...)
   plot_lengths(plot_lengths_data(df,others...);kwds...)
 end
 
-function plot_lengths_qq((hlens,slens)::NamedTuple,
-                      alpha=0.05,resample=400,kwds...)
-  qh,qs = qqdata(hlens,slens)
-  nsamples = div(length(hlens),N_for_pressnitzer_hupe_2006)
-  mean = DataFrame(qhuman = qh, qsim = qs)
-
-  allinds = dbootinds(shuffle!(hlens),numresample=resample,
-                      numobsperresample=nsamples)
-  samples = map(enumerate(allinds)) do (i,inds)
-    qh,qs = qqdata(hlens[inds],slens)
-    DataFrame(qhuman=qh,qsim=qs,run=i)
-  end |> x -> vcat(x...)
-  cis = by(samples,:qsim) do sim
-    starts = [minimum(run.qhuman) for run in groupby(sim,:run)]
-    ends = [maximum(run.qhuman) for run in groupby(sim,:run)]
-    l = quantile(starts,alpha/2)
-    h = quantile(ends,1-alpha/2)
-    DataFrame(qhuman = [l,h],quant=[:lower,:upper])
-  end
-  sort!(cis,(:qsim,:qhuman))
-  cis = by(cis,:quant) do quant
-    if quant.quant[1] == :lower
-      quant.qhuman = cumreduce(max,quant.qhuman)
-    else
-      quant.qhuman = reverse(cumreduce(min,reverse(quant.qhuman)))
-    end
-    quant
-  end
-  cis = by(cis,:quant) do quant
-    x,y = addsteps(quant.qhuman,quant.qsim) |> x -> cleanline(x...)
-    DataFrame(qhuman = x,qsim = y)
-  end
-
-  plot(layer(mean,x=:qhuman,y=:qsim,intercept=[0],slope=[1],
-                     Geom.line,Geom.abline,
-                     Theme(default_color="black")),
-               layer(cis,x=:qhuman,y=:qsim,group=:quant,Geom.line,
-                     Theme(default_color="gray",
-                           discrete_highlight_color=x->RGBA(0,0,0,0))),
-               Coord.cartesian(xmax=1,ymax=1))
-end
 function plot_lengths_hist((hlens,slens)::NamedTuple;xmax=20,binstep=1,
                            density=false)
   if density
