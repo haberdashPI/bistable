@@ -1,7 +1,7 @@
 using StatsBase: fit, Histogram, weights
 using Random
 
-rmr(x) = sqrt(mean(x.^2))
+rms(x) = sqrt(mean(x.^2))
 meansqr(x) = mean(x.^2)
 
 function select_params(params;kwds...)
