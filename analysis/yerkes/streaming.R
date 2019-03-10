@@ -68,8 +68,11 @@ stream_prop = combined %>%
 
 write.csv(stream_prop,"stream_prop.csv")
 
+pos = position_jitter(width=0.1)
 ggplot(stream_prop,aes(x=factor(st),y=streaming)) +
-  geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+  # geom_point(alpha=0.5,position=pos) +
+  geom_line(alpha=0.5,#position=pos,
+      aes(group=interaction(experiment,sid))) +
   stat_summary(geom="pointrange",fun.data=mean_cl_boot,
                fun.args=list(conf.int=0.95)) +
   stat_summary(geom="line",fun.data=mean_cl_boot,group=1) +

@@ -106,7 +106,11 @@ function stream_rms(data,mean)
       data[i,:streaming] - mean[row,:streaming]
     end
   end
-  rms(coalesce.(diffs,0.0))
+  if all(ismissing.(diffs))
+    return missing
+  else
+    rms(coalesce.(diffs,0.0))
+  end
 end
 
 function ksstat(x,y)
@@ -184,13 +188,14 @@ end
 
 function human_error_by_sid()
   means,meanl = data_summarize(human_data())
+  @show means
   stream = human_stream_data()
   lengths = human_length_data()
 
-  str_error = map(groupby(stream,:sid)) do str
+  str_error = map(groupby(stream,[:sid,:experiment])) do str
     stream_rms(str,means)
   end |> combine
-  len_error = map(groupby(lengths,:sid)) do len
+  len_error = map(groupby(lengths,[:sid])) do len
     ksstat(len.lengths,meanl.lengths)
   end |> combine
 
