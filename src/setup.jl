@@ -14,6 +14,7 @@ using Colors
 using Formatting
 using CSV
 using DependentBootstrap
+import Cairo, Fontconfig
 
 const srcdir = @__DIR__
 const plotdir = joinpath(@__DIR__,"..","plots","paper")

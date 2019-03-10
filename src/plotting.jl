@@ -132,7 +132,7 @@ function plot_stream_data(df,params,selections::Vector;exclude_human=false)
   if !exclude_human
     hdata = human_data()
     human = by(hdata.stream,:st) do g
-      DataFrame([findci(g.streaming)])
+      DataFrame([findci(collect(skipmissing(g.streaming)))])
     end
     human[:experiment] = "human"
 
@@ -221,6 +221,7 @@ function plot_lengths_data(df,params,selections::Vector;normlengths=true,kwds...
     lens = length_summary(df_,params_)
     lens ./= mean(lens)
   end |> x -> vcat(x...)
+  println("simulation")
   if normlengths
     slens = Main.normlength(lengths)
   else
@@ -228,10 +229,11 @@ function plot_lengths_data(df,params,selections::Vector;normlengths=true,kwds...
   end
 
   hdata = human_data()
+  println("human")
   if normlengths
-    hlens = Main.normlength(hdata.lengths)
+    hlens = Main.normlength(hdata.lengths.lengths)
   else
-    hlens = collect(skipmissing(hdata.lengths))
+    hlens = collect(skipmissing(hdata.lengths.lengths))
   end
 
   (human=hlens,simulation=slens)

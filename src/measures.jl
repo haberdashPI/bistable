@@ -42,7 +42,7 @@ function model_error(data::NamedTuple,mean::NamedTuple)
   str_error = mean_bysid(data.stream) do str
     stream_rms(str,mean.stream)^2
   end |> sqrt
-  len_error = ksstat(data.lengths,mean.lengths)
+  len_error = ksstat(data.lengths,mean.lengths.lengths)
 
   (stream=str_error,lengths=len_error)
 end
@@ -165,12 +165,12 @@ function mean_streaming(df;findci=false)
 end
 
 function human_data(;resample=nothing)
-  (stream=human_stream_data(),lengths=human_length_data(resample=resample))
+  (stream=human_stream_data(),lengths=human_length_data())
 end
 
 function data_summarize(data)
   stream = by(data.stream,:st) do g
-    DataFrame(streaming = mean(g.streaming))
+    DataFrame(streaming = mean(skipmissing(g.streaming)))
   end
   lengths = data.lengths
 
@@ -191,15 +191,21 @@ function human_error_by_sid()
     stream_rms(str,means)
   end |> combine
   len_error = map(groupby(lengths,:sid)) do len
-    ksstat(len.lengths,meanl)
+    ksstat(len.lengths,meanl.lengths)
   end |> combine
 
   str_error, len_error
 end
 
+asnum(x::Real) = Float64(x)
+asnum(x::String) = x == "NA" ? missing : parse(Float64,x)
 function human_stream_data()
-  df = vcat(CSV.read(joinpath("..","analysis","context","stream_prop.csv")),
-            CSV.read(joinpath("..","analysis","yerkes","stream_prop.csv")))
+  df1 = CSV.read(joinpath("..","analysis","yerkes","stream_prop.csv"))
+  df2 = CSV.read(joinpath("..","analysis","context","stream_prop.csv"))
+  df2[:experiment] = "3"
+  df = vcat(df1,df2)
+  df.sid = string.(df.sid)
+  df.streaming = asnum.(df.streaming)
   sort!(df,(:sid,:st))
   df
 end
@@ -210,6 +216,7 @@ const pressnitzer_hupe_binsize = 1/6
 function human_length_data()
   df = CSV.read(joinpath("..","data","attention_higgins","phasedurations.csv"))
   rename!(df,:phase => :lengths)
+  df.lengths = asnum.(df.lengths)/10000 # from micorseconds to seconds
   rename!(df,:subject => :sid)
 end
 
@@ -218,7 +225,7 @@ end
 # makes more sense to do across all runs, because the simulation represents
 # repeated measurements from the same "individual"
 function normlength(x)
-  x = log.(x)
+  x = log.(filter(x -> x > 1.0,x))
   x ./= mean(x)
   s = std(x.-1)
   if !iszero(s)
