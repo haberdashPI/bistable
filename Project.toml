@@ -31,7 +31,9 @@ ShiftedArrays = "1277b4bf-5013-50f5-be3d-901d8477a67a"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 TOML = "191fdcea-f9f2-43e0-b922-d33f71e2abc3"
+TableView = "40c74d1a-b44c-5b06-a7c1-6cbea58ea978"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+WebIO = "0f1e0344-ec1d-5b48-a673-e5cf874b6c29"
 
 [compat]
 AuditoryBistabilityLE = ">=0.5.8"

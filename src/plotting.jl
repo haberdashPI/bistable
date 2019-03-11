@@ -219,19 +219,24 @@ function plot_lengths_data(df,params,selections::Vector;normlengths=true,kwds...
   lengths = map(enumerate(selections)) do (i,sel)
     df_,params_ = select_data(df,params;sel...)
     lens = length_summary(df_,params_)
-    lens ./= mean(lens)
+    DataFrame(lengths = lens,sid = i)
   end |> x -> vcat(x...)
-  println("simulation")
+
   if normlengths
-    slens = Main.normlength(lengths)
+    normed = by(lengths,:sid) do df
+      DataFrame(sid = first(df.sid), lengths = Main.normlength(df.lengths))
+    end
+    slens = normed.lengths
   else
-    slens = collect(skipmissing(lengths))
+    slens = collect(skipmissing(lengths.lengths))
   end
 
   hdata = human_data()
-  println("human")
   if normlengths
-    hlens = Main.normlength(hdata.lengths.lengths)
+    normed = by(hdata.lengths,:sid) do df
+      DataFrame(sid = first(df.sid), lengths = Main.normlength(df.lengths))
+    end
+    hlens = normed.lengths
   else
     hlens = collect(skipmissing(hdata.lengths.lengths))
   end

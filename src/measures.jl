@@ -183,7 +183,7 @@ end
 
 function human_error(;kwds...)
   str, len = human_error_by_sid(;kwds...)
-  (stream=mean(str.x1), lengths=mean(len.x1))
+  (stream=mean(skipmissing(str.x1)), lengths=mean(len.x1))
 end
 
 function human_error_by_sid()
@@ -231,8 +231,8 @@ end
 # repeated measurements from the same "individual"
 function normlength(x)
   x = log.(filter(x -> x > 1.0,x))
-  x ./= mean(x)
-  s = std(x.-1)
+  x .-= mean(x)
+  s = std(x)
   if !iszero(s)
     x ./= s
   end
