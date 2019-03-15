@@ -188,7 +188,6 @@ end
 
 function human_error_by_sid()
   means,meanl = data_summarize(human_data())
-  @show means
   stream = human_stream_data()
   lengths = human_length_data()
 
