@@ -1,0 +1,29 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "~/Documents/juliadev/AuditoryBistabilityLE"
+		},
+		{
+			"path": "~/Documents/juliadev/ShammaModel.jl"
+		},
+		{
+			"path": "~/Documents/juliadev/PlotAxes.jl"
+		},
+		{
+			"path": "~/Documents/juliadev/MetaArrays.jl"
+		}
+	],
+	"settings": {},
+	"extensions": {
+		"recommendations": [
+			"bungcip.better-toml",
+			"ikuyadeu.r",
+			"julialang.language-julia",
+			"colinfang.markdown-julia",
+			"davidanson.vscode-markdownlint"
+		]
+	}
+}
