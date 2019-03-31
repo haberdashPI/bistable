@@ -222,6 +222,7 @@ function human_length_data()
   rename!(df,:phase => :lengths)
   df.lengths = asnum.(df.lengths)/10000 # from micorseconds to seconds
   rename!(df,:subject => :sid)
+  @where(df,:code .== 140)
 end
 
 # THOUGHTS: in P&H 2006, the mean normalization is on a per-individual basis.
