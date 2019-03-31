@@ -14,14 +14,14 @@ reference and other members of the lab.
 1. Install [Julia](https://julialang.org/downloads/) version v1.0
 2. Create a file called `Config.toml` in the base directory of the project that
 contains the line `data = "[data dir]"` where `[data dir]` is replaced with the location
-of the experimental data. This folder can be found in the lab file server under 
-David Little's personal data, under `data/bistability`. Copy this folder to
-your machine and provide it's location in `Config.toml`.
+of the experimental data. This should be the location of the uncompressed archived data.
 3. Make sure the julia binary [can be found on your PATH](https://en.wikibooks.org/wiki/Introducing_Julia/Getting_started). 
 4. Run the install.sh (Mac or Unix) script or install.cmd (Windows). Or you can
 run the VSCode build task named "Install".
 
-This is all that's necessary to re-run the computational simulations on,
+## Re-running experiment simulations
+
+Installation is all that's necessary to re-run the computational simulations on,
 e.g. a cluster. Each experiment, listed under `data`, is run using
 the `src/run_all_count_lengths.sh` script.
 
@@ -36,9 +36,9 @@ when running multiple instances of the script across a cluster.
 
 ## Interactive use and figure creation
 
-For interactive use, and to recreate the figures, you'll also want to
-add the `IJulia`, `RCall` and `Gadfly`. You should [install
-R](https://cloud.r-project.org/) first.
+For interactive use and to re-create figures, you should first [install
+R](https://cloud.r-project.org/). Then, you'll also want to add the `IJulia`,
+`RCall` and `Gadfly`.
 
 ```julia
 (bistability) pkg> add IJulia Gadfly RCall
@@ -52,11 +52,8 @@ of the `IJulia` package.
 julia> using IJulia; notebook()
 ```
 
-To reproduce the plots which make use of statistics functions available in R
-(Figure 3) you will need to run R and call the following command.
+To reproduce the plot which make use of statistics functions available in R
+(Figure 2) you will need to run R and call the following command.
 ```R
 > install.packages('logKDE')
 ```
-## Experimental Notes
-
-TODO: describe format of jld2 files (they are hdf5 files)

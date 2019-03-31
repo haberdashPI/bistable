@@ -4,16 +4,16 @@
 			"path": "."
 		},
 		{
-			"path": "~/Documents/juliadev/AuditoryBistabilityLE"
+			"path": "juliadev/AuditoryBistabilityLE"
 		},
 		{
-			"path": "~/Documents/juliadev/ShammaModel.jl"
+			"path": "juliadev/ShammaModel.jl"
 		},
 		{
-			"path": "~/Documents/juliadev/PlotAxes.jl"
+			"path": "juliadev/PlotAxes.jl"
 		},
 		{
-			"path": "~/Documents/juliadev/MetaArrays.jl"
+			"path": "juliadev/MetaArrays.jl"
 		}
 	],
 	"settings": {},

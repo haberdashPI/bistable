@@ -7,7 +7,9 @@ using TOML
 
 config_file = joinpath(@__DIR__,"..","Config.toml")
 if isfile(config_file)
-  datadir = TOML.parsefile(config_file)["data"]
+  config = TOML.parsefile(config_file)
+  datadir = config["data"]
+  juliadir = config["juliadev"]
 else
   error("""
 Missing a file named `Config.toml` with the following contents:
@@ -20,10 +22,13 @@ location in `Config.toml`.
 """)
 end
 
-datadir_link = joinpath(@__DIR__,"..","data")
-if !isdir(datadir_link)
-  symlink(datadir,datadir_link)
-  @info "The folder `data` now links to $datadir"
-else
-  @info "Directory `data` has already been created."
+function makelink(dir,link)
+  if !isdir(link)
+    symlink(dir,link)
+    @info "The folder `$link` now links to $dir"
+  else
+    @info "Directory `$link` has already been created."
+  end
 end
+makelink(joinpath(@__DIR__,"..","data"),datadir)
+makelink(joinpath(@__DIR__,"..","data"),juliadir)
