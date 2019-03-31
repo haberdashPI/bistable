@@ -31,4 +31,4 @@ function makelink(dir,link)
   end
 end
 makelink(joinpath(@__DIR__,"..","data"),datadir)
-makelink(joinpath(@__DIR__,"..","data"),juliadir)
+makelink(joinpath(@__DIR__,"..","juliadev"),juliadir)
