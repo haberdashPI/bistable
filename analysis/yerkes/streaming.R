@@ -8,14 +8,14 @@ library(zoo)
 
 raw_df = NULL
 
-dir = file.path("..","..","data","attention_yerkes","Experiment 1 Data")
+dir = file.path("..","..","data","Yerkes_et_al_2019","Experiment 1 Data")
 files = list.files(dir,"*.txt")
 for(file in files){
   cur_df = read.table(file.path(dir,file),header=F)
   cur_df$experiment = 1
   raw_df = rbind(raw_df,cur_df)
 }
-dir = file.path("..","..","data","attention_yerkes","Experiment 2 Data")
+dir = file.path("..","..","data","Yerkes_et_al_2019","Experiment 2 Data")
 files = list.files(dir,"*.txt")
 for(file in files){
   cur_df = read.table(file.path(dir,file),header=F)

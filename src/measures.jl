@@ -218,7 +218,7 @@ const N_for_pressnitzer_hupe_2006 = 23
 const pressnitzer_hupe_binsize = 1/6
 
 function human_length_data()
-  df = CSV.read(joinpath("..","data","attention_higgins","phasedurations.csv"))
+  df = CSV.read(joinpath("..","data","Higgins_et_al_unpublished","phasedurations.csv"))
   rename!(df,:phase => :lengths)
   df.lengths = asnum.(df.lengths)/10000 # from micorseconds to seconds
   rename!(df,:subject => :sid)
