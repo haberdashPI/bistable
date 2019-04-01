@@ -1,0 +1,169 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	0.0.0	/54afb0f/
+0	.vscode/tasks.json	/^        {$/;"	o	array:tasks
+Abstract	README.md	/^### Abstract $/;"	S
+Bistability Experiment	README.md	/^# Bistability Experiment$/;"	c
+Code Organization	README.md	/^## Code Organization$/;"	s
+CountLength	src/count_lengths.jl	/^struct CountLength$/;"	f
+DataFramesMeta.linq	src/plotting.jl	/^function DataFramesMeta.linq(::DataFramesMeta.SymbolParameter{:rename_levels},$/;"	f
+DatedLogger	src/logger.jl	/^DatedLogger(stream::IOStream) = DatedLogger(stream,Logging.Info)$/;"	f
+DatedLogger	src/logger.jl	/^struct DatedLogger <: AbstractLogger$/;"	f
+Developer tools	README.md	/^### Developer tools$/;"	S
+Email from Breanne	data/attention_yerkes/Experiment 1 Data/notes.md	/^## Email from Breanne$/;"	s
+Figure 2	README.md	/^### Figure 2$/;"	S
+Figure reproducibility	README.md	/^### Figure reproducibility $/;"	S
+Installation	README.md	/^## Installation$/;"	s
+Interactive use and figure creation	README.md	/^## Interactive use and figure creation$/;"	s
+Logging.catch_exceptions	src/logger.jl	/^Logging.catch_exceptions(logger::DatedLogger) = false$/;"	f
+Logging.handle_message	src/logger.jl	/^function Logging.handle_message(logger::DatedLogger, level, message,$/;"	f
+Logging.min_enabled_level	src/logger.jl	/^Logging.min_enabled_level(logger::DatedLogger) = logger.level$/;"	f
+Logging.shouldlog	src/logger.jl	/^Logging.shouldlog(logger::DatedLogger, level, _module, group, id) = true$/;"	f
+Params	src/params_for_count_lengths.jl	/^Params(pairs...) = merge(default_params,Dict(pairs...))$/;"	f
+Plans	plans.md	/^# Plans$/;"	c
+Re-running computational simulations	README.md	/^## Re-running computational simulations$/;"	s
+Research plans	plans.md	/^## Research plans$/;"	s
+Symbol	src/params_for_count_lengths.jl	/^                   Symbol(prefix*"c_a") => a_vals,$/;"	f
+Symbol	src/params_for_count_lengths.jl	/^                   Symbol(prefix*"c_m") => m_vals,$/;"	f
+addsteps	src/plotting.jl	/^function addsteps(xs,ys)$/;"	f
+asdict	src/parameters.jl	/^  asdict(params) = Dict(k => params[1,k] for k in names(params))$/;"	f
+asnum	src/measures.jl	/^asnum(x::Real) = Float64(x)$/;"	f
+asnum	src/measures.jl	/^asnum(x::String) = x == "NA" ? missing : parse(Float64,x)$/;"	f
+buildup_mean	src/measures.jl	/^function buildup_mean(buildup_data;delta,length)$/;"	f
+byparams	src/params_for_count_lengths.jl	/^function byparams(params)$/;"	f
+c	src/plotting.jl	/^    c(x) = scale(x,colorstart,colorstop)$/;"	f
+clean	src/params_for_count_lengths.jl	/^function clean(x)$/;"	f
+cleanline	src/plotting.jl	/^function cleanline(xs,ys)$/;"	f
+clear	.vscode/tasks.json	/^				"clear": false,$/;"	b	object:tasks.0.presentation
+code	data/attention_higgins/parse_data.m	/^  code = [code  subj_task{i}];$/;"	v
+code	data/attention_higgins/parse_data.m	/^code = [];$/;"	v
+code	data/attention_higgins/parse_data.m	/^code = code';$/;"	v
+colorscale	src/plotting.jl	/^function colorscale(smap;reverse=false,minvalue,maxvalue,colorstart=minvalue,$/;"	f
+command	.vscode/tasks.json	/^				"command": "run install.cmd"$/;"	s	object:tasks.0.windows
+command	.vscode/tasks.json	/^			"command": "bash install.sh",$/;"	s	object:tasks.0
+count_lengths	src/count_lengths.jl	/^count_lengths(args) = count_lengths(;(Symbol(k) => v for (k,v) in args)...)$/;"	f
+count_lengths	src/count_lengths.jl	/^function count_lengths(;first_index,last_index,$/;"	f
+count_lengths	src/count_lengths.jl	/^function count_lengths(first_index,last_index,logfile,datadir,dataprefix,$/;"	f
+cumreduce	src/plotting.jl	/^function cumreduce(fn,xs)$/;"	f
+data	data/attention_higgins/parse_data.m	/^data = load('phase_durations2.mat');$/;"	v
+data_summarize	src/measures.jl	/^function data_summarize(data)$/;"	f
+dplyr	analysis/context/exp1A_ind_lengths.R	/^library(dplyr)$/;"	l
+dplyr	analysis/context/exp1A_individual.R	/^library(dplyr)$/;"	l
+dplyr	analysis/context/exp1A_lens.R	/^library(dplyr)$/;"	l
+dplyr	analysis/context/exp1A_load.R	/^library(dplyr)$/;"	l
+dplyr	analysis/yerkes/streaming.R	/^library(dplyr)$/;"	l
+dplyr	data/pressnitzer_hupe/clean.R	/^library(dplyr)$/;"	l
+echo	.vscode/tasks.json	/^				"echo": true,$/;"	b	object:tasks.0.presentation
+error_ratio	src/measures.jl	/^error_ratio(a,b=human_error()) = (a.stream \/ b.stream + a.lengths \/ b.lengths)\/2$/;"	f
+fi	src/plotting.jl	/^    fi(x) = clamp(scalei(x,minvalue,maxvalue),minvalue,maxvalue)$/;"	f
+findci	src/measures.jl	/^function findci(x;kwds...)$/;"	f
+focus	.vscode/tasks.json	/^				"focus": false,$/;"	b	object:tasks.0.presentation
+for_results_in	src/count_lengths.jl	/^function for_results_in(fn,dir;reinterpret=nothing)$/;"	f
+function	.ctags.d/julia.ctags	/^--regex-julia=\/^[ \\t]*(([^@#$ \\t({[]+)|\\(([^@#$ \\t({[]+)\\)|\\((\\$)\\))[ \\t]*(\\{.*\\})?[/;"	k	langdef:julia
+function	.ctags.d/julia.ctags	/^--regex-julia=\/^[ \\t]*(function|macro|abstract type|primitive type|struct|mutable struct|typea/;"	k	langdef:julia
+getparams	src/parameters.jl	/^function getparams(filterfn,file)$/;"	f
+ggplot2	analysis/context/exp1A_ind_lengths.R	/^library(ggplot2)$/;"	l
+ggplot2	analysis/context/exp1A_individual.R	/^library(ggplot2)$/;"	l
+ggplot2	analysis/context/exp1A_lens.R	/^library(ggplot2)$/;"	l
+ggplot2	analysis/yerkes/streaming.R	/^library(ggplot2)$/;"	l
+ggplot2	data/pressnitzer_hupe/clean.R	/^library(ggplot2)$/;"	l
+group	.vscode/tasks.json	/^			"group": "build",$/;"	s	object:tasks.0
+handle_units!	src/parameters.jl	/^function handle_units!(df)$/;"	f
+handlebound	src/measures.jl	/^function handlebound(fn,seconds;bound=true,threshold=0.8)$/;"	f
+human_data	src/measures.jl	/^function human_data(;resample=nothing)$/;"	f
+human_error	src/measures.jl	/^function human_error(;kwds...)$/;"	f
+human_error_by_sid	src/measures.jl	/^function human_error_by_sid()$/;"	f
+human_length_data	src/measures.jl	/^function human_length_data()$/;"	f
+human_stream_data	src/measures.jl	/^function human_stream_data()$/;"	f
+in_Hz	src/params_for_count_lengths.jl	/^in_Hz(x) = Float64.(ustrip.(uconvert.(Hz,x)))$/;"	f
+in_ms	src/params_for_count_lengths.jl	/^in_ms(x) = Float64.(ustrip.(uconvert.(ms,x)))$/;"	f
+julia	.ctags.d/julia.ctags	/^--langdef=julia$/;"	l
+ksstat	src/measures.jl	/^function ksstat(x,y)$/;"	f
+label	.vscode/tasks.json	/^            "label": "Install",$/;"	s	object:tasks.0
+length_summary	src/measures.jl	/^function length_summary(data,params;Δf=6)$/;"	f
+load_params	src/parameters.jl	/^function load_params(params)$/;"	f
+mean_bysid	src/measures.jl	/^function mean_bysid(fn,data)$/;"	f
+mean_streaming	src/measures.jl	/^function mean_streaming(df;findci=false)$/;"	f
+meansqr	src/measures.jl	/^meansqr(x) = mean(x.^2)$/;"	f
+model_data	src/measures.jl	/^function model_data(df,params;kwds...)$/;"	f
+model_error	src/measures.jl	/^function model_error(data::NamedTuple,mean::NamedTuple)$/;"	f
+model_error	src/measures.jl	/^function model_error(df::DataFrame,params::DataFrame;kwds...)$/;"	f
+model_stream_stats	src/measures.jl	/^function model_stream_stats(data::DataFrame,params::DataFrame;kwds...)$/;"	f
+model_stream_stats	src/measures.jl	/^function model_stream_stats(data::NamedTuple,mean::NamedTuple)$/;"	f
+nblocks	data/context/Exp1A/AudRiv_analyze_Exp2.m	/^nblocks = 6; %number of blocks of trials for each ISI condition$/;"	v
+nblocks	data/context/Exp1B/AudRiv_analyze_Exp2v2.m	/^nblocks = 6; %number of blocks of trials for each ISI condition$/;"	v
+normlength	src/measures.jl	/^function normlength(x)$/;"	f
+ntrials	data/context/Exp1A/AudRiv_analyze_Exp2.m	/^ntrials = 12; % (16) number of trials per block$/;"	v
+ntrials	data/context/Exp1B/AudRiv_analyze_Exp2v2.m	/^ntrials = 12; % (16) number of trials per block$/;"	v
+packaxes	src/plotting.jl	/^function packaxes(x;kwds...)$/;"	f
+packaxes_invfn	src/plotting.jl	/^function packaxes_invfn(x;kwds...)$/;"	f
+packing	src/plotting.jl	/^function packing(x;maxpad=true,pad=0.5)$/;"	f
+panel	.vscode/tasks.json	/^				"panel": "shared",$/;"	s	object:tasks.0.presentation
+phase	data/attention_higgins/parse_data.m	/^  phase = [phase  subj_dur{i}];$/;"	v
+phase	data/attention_higgins/parse_data.m	/^phase = [];$/;"	v
+phase	data/attention_higgins/parse_data.m	/^phase = phase';$/;"	v
+plot_fit	src/plotting.jl	/^function plot_fit(df,params;showci=true,$/;"	f
+plot_fitmask	src/plotting.jl	/^function plot_fitmask(data,params,settings;Δf=6,simulation=1,start_time=0s,$/;"	f
+plot_lengths_data	src/plotting.jl	/^function plot_lengths_data(df,params,selections::Vector;normlengths=true,kwds...)$/;"	f
+plot_lengths_hist	src/plotting.jl	/^function plot_lengths_hist((hlens,slens)::NamedTuple;xmax=20,binstep=1,$/;"	f
+plot_lengths_qq	src/plotting.jl	/^function plot_lengths_qq(df,others...;kwds...)$/;"	f
+plot_lenths_data	src/plotting.jl	/^function plot_lenths_data(df,params;normlengths=true,kwds...)$/;"	f
+plot_mask	src/plotting.jl	/^function plot_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,$/;"	f
+plot_responses	src/plotting.jl	/^function plot_responses((len,value))$/;"	f
+plot_stream	src/plotting.jl	/^function plot_stream(df,others...;kwds...)$/;"	f
+plot_stream	src/plotting.jl	/^function plot_stream(stream)$/;"	f
+plot_stream_data	src/plotting.jl	/^function plot_stream_data(df,params,selections::Vector;exclude_human=false)$/;"	f
+plot_stream_data	src/plotting.jl	/^function plot_stream_data(df,params;exclude_human=false,kwds...)$/;"	f
+presentation	.vscode/tasks.json	/^			"presentation": {$/;"	o	object:tasks.0
+qqdata	src/plotting.jl	/^function qqdata(x,y)$/;"	f
+quartz	presentation/demo.jl	/^quartz() = R"quartz()"$/;"	f
+read_git_hash	src/count_lengths.jl	/^function read_git_hash()$/;"	f
+rename_levels_for	src/plotting.jl	/^function rename_levels_for(df,vals;suffixes=[:c_a,:c_m])$/;"	f
+reveal	.vscode/tasks.json	/^				"reveal": "always",$/;"	s	object:tasks.0.presentation
+rms	src/measures.jl	/^rms(x) = sqrt(mean(x.^2))$/;"	f
+runOn	.vscode/tasks.json	/^				"runOn":"folderOpen"$/;"	s	object:tasks.0.runOptions
+runOptions	.vscode/tasks.json	/^			"runOptions": {$/;"	o	object:tasks.0
+save_params	src/parameters.jl	/^function save_params(file,params)$/;"	f
+scale	src/plotting.jl	/^    scale(x,min,max) = (x - min)\/(max - min)$/;"	f
+scalei	src/plotting.jl	/^    scalei(x,min,max) = x*(max - min) + min$/;"	f
+select_data	src/measures.jl	/^function select_data(df,params;kwds...)$/;"	f
+select_mask	src/plotting.jl	/^function select_mask(df,params,settings;Δf=6,simulation=1,start_time=0s,$/;"	f
+select_params	src/measures.jl	/^function select_params(params;kwds...)$/;"	f
+setup_logging	src/logger.jl	/^function setup_logging(body,logfile)$/;"	f
+showReuseMessage	.vscode/tasks.json	/^				"showReuseMessage": true,$/;"	b	object:tasks.0.presentation
+stim_per_second	src/measures.jl	/^function stim_per_second(seconds;kwds...)$/;"	f
+stream_rms	src/measures.jl	/^function stream_rms(data,mean)$/;"	f
+stream_shift	src/measures.jl	/^function stream_shift(data,mean)$/;"	f
+stream_spread	src/measures.jl	/^function stream_spread(data,mean)$/;"	f
+stream_summary	src/measures.jl	/^function stream_summary(data,params;bound_threshold=0.8)$/;"	f
+streamprop	src/measures.jl	/^function streamprop(percepts,seconds;kwds...)$/;"	f
+stringr	analysis/context/exp1A_ind_lengths.R	/^library(stringr)$/;"	l
+stringr	analysis/context/exp1A_individual.R	/^library(stringr)$/;"	l
+stringr	analysis/context/exp1A_lens.R	/^library(stringr)$/;"	l
+stringr	analysis/context/exp1A_load.R	/^library(stringr)$/;"	l
+stringr	analysis/yerkes/streaming.R	/^library(stringr)$/;"	l
+subj_dur	data/attention_higgins/parse_data.m	/^subj_dur = {data.subjdata2.phase_duration};$/;"	v
+subj_task	data/attention_higgins/parse_data.m	/^subj_task = {data.subjdata2.phase_distractor_type};$/;"	v
+subject	data/attention_higgins/parse_data.m	/^  subject = [subject; repmat(i,length(subj_data{i}),1)];$/;"	v
+subject	data/attention_higgins/parse_data.m	/^subject = [];$/;"	v
+tasks	.vscode/tasks.json	/^    "tasks": [$/;"	a
+tidyr	analysis/context/exp1A_ind_lengths.R	/^library(tidyr)$/;"	l
+tidyr	analysis/context/exp1A_individual.R	/^library(tidyr)$/;"	l
+tidyr	analysis/context/exp1A_lens.R	/^library(tidyr)$/;"	l
+tidyr	analysis/context/exp1A_load.R	/^library(tidyr)$/;"	l
+tidyr	analysis/yerkes/streaming.R	/^library(tidyr)$/;"	l
+tofreq	src/parameters.jl	/^tofreq(x) = x.*Hz$/;"	f
+totime	src/parameters.jl	/^totime(x) = x.*ms$/;"	f
+trigger_code	data/attention_yerkes/Experiment 1 Data/attention_prior_deltaf_paradigm_test_NaNexcluded.m	/^        trigger_code = find(trial_type(n_trial)==trigger_code_context)$/;"	v
+type	.vscode/tasks.json	/^            "type": "shell",$/;"	s	object:tasks.0
+unitname	src/parameters.jl	/^unitname(x::Number) = "nothing"$/;"	f
+unzip	src/plotting.jl	/^function unzip(xs)$/;"	f
+version	.vscode/tasks.json	/^    "version": "2.0.0",$/;"	s
+windows	.vscode/tasks.json	/^			"windows": {$/;"	o	object:tasks.0
+withunit	src/parameters.jl	/^function withunit(x,unitname)$/;"	f
+write_params	src/params_for_count_lengths.jl	/^function write_params(label,df)$/;"	f
+zoo	analysis/yerkes/streaming.R	/^library(zoo)$/;"	l

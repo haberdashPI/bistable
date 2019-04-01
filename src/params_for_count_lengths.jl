@@ -92,6 +92,8 @@ const default_params = Dict(
     # W_m_c = inhibition strength (θ_b in the paper)
     #    _σ_ϕ = inhibition breadth for prior variance (row 1, column 1 of Σ_b in paper)
     #    _σ_N = inhibition breadth for prior mean (row 2, column 2 of Σ_b in paper)
+    #    _σ_t = unused parameter (has no effect on model behavior)
+
     :f_c_x      => [3.0],    :f_τ_x     => [500ms],
     :f_c_σ      => [0.0],    :f_τ_σ     => [500ms],
     :f_c_a      => [0.0],   :f_τ_a     => [3s],
@@ -124,9 +126,11 @@ if kind == :individual
     byparams(Params(:t_c_σ => [0.2], :t_c_a => a_vals, :t_c_m => m_vals))))
 
 # this parameter set surveys all variations across the levels simultaneously,
-# but for the 6st case only. A second search will cover all three stimuli across
-# any parameter sets that generate plausible bistability for 6st.
-# (see **TODO NOTEBOOK** for the generation of the second parameter set)
+# but for the 6st case only. A second search will cover all three stimuli
+# across any parameter sets that generate plausible bistability for 6st. (see
+# the commented out cell for Figure 4 of notebook `Figures 2-4.ipynb` to see
+# how to generate this second parameter set)
+
 elseif kind == :survey
   m_vals = a_vals = [0; clean.(10 .^ range(0.7,stop=4,length=4))]
 

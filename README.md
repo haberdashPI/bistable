@@ -40,7 +40,7 @@ in later stages of perceptual processing.
 
 ## Installation
 
-These are the steps to initialize this code on a new machine. 
+These are the steps to initialize this code on a new machine.
 
 1. Install [Julia](https://julialang.org/downloads/) version v1.1
 2. Create a file called `Config.toml` in the base directory of the project that
@@ -52,14 +52,46 @@ this [archive](TODO) of our data
 4. Run the install.sh (Mac or Unix) script or install.cmd (Windows). Or you can
 run the VSCode build task named "Install".
 
-## Editing and Reading the code
+### Developer tools
 
-The project is well set up to be edited in [Visual Studio
+The project is well set up to be easily edited in [Visual Studio
 Code](https://code.visualstudio.com/). When you open
 `bistable.code-workspace` inside VSCode, the project comes with
-recommendations for all of the plugins you will need to read and write code
+recommendations for all of the extensions you will need to read and write code
 for the project. You can also search and edit all of the supporting packages
 written for this project within VSCode as well (e.g. AuditoryBistabilityLE).
+
+## Code Organization
+
+There are a few principles for code organization:
+
+Interactive code---material that involved examining results and frequent
+changes to code based on this output---is stored in Jupyter notebooks,
+organized by the figure numbers from the submitted paper.
+
+Implementation of the specific simulations is organized under `src`. It contains
+all of the material that is specific to the particular simulations and analyses
+run in the paper.
+
+General purpose code---computational models or general-use data
+structures---are organized into packages. These will be installed in
+`$JULIA_PKG_DEVDIR` (default location is `~/.julia/dev/`) when you call
+`install.sh` or `install.cmd`. The packages are:
+
+* `AuditoryBistabilityLE` this is all of the code specific to the model
+implemented in the paper. It is described by the `Model design` subsection of
+the paper.
+* `ShammaModel.jl`. Implements the auditory spectrogram; a high-level port of
+  the basic functionality in the NSLtoolbox for matlab.
+* `PlotAxes.jl`. General utility for creating quick plots in Julia.
+* `MetaArrays.jl`. General utility for adding meta-data to arrays in Julia.
+
+For more details please refer to the README.md files of the individual packages.
+
+The latter three packages will eventually be published to Julia public
+repositories, as they have more general-purpose uses (particularly the latter
+two), but were implemented in the process of running these computational
+simulations.
 
 ## Re-running computational simulations
 
