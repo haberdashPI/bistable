@@ -1,3 +1,10 @@
+# This file can be run to generate a new set of parameters to evaluate the
+# model on.
+
+# change this parameter to do a different kind of parameter search.
+# The kinds of searchs available are listed at the bottom of this file.
+kind = :sensitive_W
+
 using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 using FileIO
 using DataFrames
@@ -16,6 +23,7 @@ drop = Base.Iterators.drop
 in_ms(x) = Float64.(ustrip.(uconvert.(ms,x)))
 in_Hz(x) = Float64.(ustrip.(uconvert.(Hz,x)))
 
+# factoral expansion of parameters
 function byparams(params)
   if length(params) == 1
     key,vals = first(params)
@@ -32,6 +40,7 @@ end
 
 unit_table = Dict(r"τ" => in_ms,r"Δt" => in_ms, r"^f$" => in_Hz)
 
+# save all specified parameters under a given label (to be run by `run_all_count_lengths.sh`)
 function write_params(label,df)
   dfsize = size(df,1)
   unique!(df)
@@ -65,10 +74,24 @@ function clean(x)
 end
 
 const default_params = Dict(
-    :Δt         => [120ms],
-    :Δf         => [3,6,12],
-    :f          => [500Hz],
+    :Δt         => [120ms], # SOA of A to B
+    :Δf         => [3,6,12], # semitone difference between A and B
+    :f          => [500Hz], # frequency of A
 
+    # naming conventions (these differ somewhat from the paper's notation)
+    # a = adaptation
+    # m = inhibition
+    # σ = noise
+    # c = magnitude parameter
+    # τ = time constant
+    # f = peripheral (f)requency representation
+    # s = central frequency (s)cale representation
+    # t = object (t)racking representation
+    # W_m = inhibition matrix related constants
+    # W_m_σ = inhibition breadth (Σ_b in the paper)
+    # W_m_c = inhibition strength (θ_b in the paper)
+    #    _σ_ϕ = inhibition breadth for prior variance (row 1, column 1 of Σ_b in paper)
+    #    _σ_N = inhibition breadth for prior mean (row 2, column 2 of Σ_b in paper)
     :f_c_x      => [3.0],    :f_τ_x     => [500ms],
     :f_c_σ      => [0.0],    :f_τ_σ     => [500ms],
     :f_c_a      => [0.0],   :f_τ_a     => [3s],
@@ -90,7 +113,6 @@ const default_params = Dict(
   )
 Params(pairs...) = merge(default_params,Dict(pairs...))
 
-kind = :sensitive_W
 
 # look at the variations at each level individually
 if kind == :individual
@@ -104,6 +126,7 @@ if kind == :individual
 # this parameter set surveys all variations across the levels simultaneously,
 # but for the 6st case only. A second search will cover all three stimuli across
 # any parameter sets that generate plausible bistability for 6st.
+# (see **TODO NOTEBOOK** for the generation of the second parameter set)
 elseif kind == :survey
   m_vals = a_vals = [0; clean.(10 .^ range(0.7,stop=4,length=4))]
 
@@ -117,7 +140,8 @@ elseif kind == :survey
   # implementation before I can test this)
 
 # this parameter set examines the sensitivity of the results at each individual
-# level to changes in various parameters within each analysis level.
+# level to changes in several parameters within each analysis level.
+# (noise magnitude, inhibition time constant and adaptation time constant)
 elseif kind == :sensitive
   m_vals = a_vals = [0; clean.(10 .^ range(0.7,stop=4,length=4))]
   tests = Dict(:c_σ => [0.4,0.8,1.2],
@@ -160,6 +184,7 @@ elseif kind == :sensitive_noise
     end
   end
   write_params("individual_sensitive_noise",vcat(alltests...))
+# sensitivity to inhibition breadth
 elseif kind == :sensitive_W
   m_vals = a_vals = [0; clean.(10 .^ range(0.7,stop=4,length=4))]
   tests = Dict("f_" => Dict(:f_W_m_σ => [2.8, 11.2]),
@@ -181,6 +206,7 @@ elseif kind == :sensitive_W
     end
   end
   write_params("individual_sensitive_W",vcat(alltests...))
+# incomplete test of buildup (not reported in paper)
 elseif kind = :buildup
   alltests =
   for τ_factor in range(0.2,stop=6.0,length=20)

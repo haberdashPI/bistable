@@ -8,8 +8,10 @@ using TOML
 config_file = joinpath(@__DIR__,"..","Config.toml")
 if isfile(config_file)
   config = TOML.parsefile(config_file)
+  if "data" ∉ keys(config)
+    error("Config file missing value for `data`.")
+  end
   datadir = config["data"]
-  juliadir = config["juliadev"]
 else
   error("""
 Missing a file named `Config.toml` with the following contents:
@@ -23,6 +25,10 @@ location in `Config.toml`.
 end
 
 function makelink(dir,link)
+  if isnothing(link)
+    return
+  end
+
   if !isdir(link)
     symlink(dir,link)
     @info "The folder `$link` now links to $dir"
@@ -31,4 +37,4 @@ function makelink(dir,link)
   end
 end
 makelink(joinpath(@__DIR__,"..","data"),datadir)
-makelink(joinpath(@__DIR__,"..","juliadev"),juliadir)
+makelink(joinpath(@__DIR__,"..","juliadev"),Pkg.devdir())
