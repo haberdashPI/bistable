@@ -47,7 +47,7 @@ These are the steps to initialize this code on a new machine.
 contains the line `data = "[data dir]"` where `[data dir]` is replaced with the location
 of the experimental data. This should be the location of the uncompressed archived data.
 You can use the same data as reported in our in-submission paper by downloading
-this [archive](TODO) of our data
+this [archive](https://osf.io/9shxv/) of our data
 3. Make sure the julia binary [can be found on your PATH](https://en.wikibooks.org/wiki/Introducing_Julia/Getting_started). 
 4. Run the install.sh (Mac or Unix) script or install.cmd (Windows). Or you can
 run the VSCode build task named "Install".
@@ -56,10 +56,11 @@ run the VSCode build task named "Install".
 
 The project is well set up to be easily edited in [Visual Studio
 Code](https://code.visualstudio.com/). When you open
-`bistable.code-workspace` inside VSCode, the project comes with
-recommendations for all of the extensions you will need to read and write code
-for the project. You can also search and edit all of the supporting packages
-written for this project within VSCode as well (e.g. AuditoryBistabilityLE).
+`bistable.code-workspace` inside VSCode (a file created by `install.sh`), the
+project comes with recommendations for all of the extensions you will need to
+read and write code for the project. You can also search and edit all of the
+supporting packages written for this project within VSCode as well (e.g.
+AuditoryBistabilityLE).
 
 ## Code Organization
 
