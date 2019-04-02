@@ -1,25 +1,30 @@
 # Plans
 
 ## Research plans
-
 What are the next obvious steps:
 
-test current model with additional stimuli:
-  e.g. the pure-tones organized by speech stimuli from stephen david's lab
-  "look in to" build-up
-  "look in to" context
-  examine characteristics of rates
+basic approach: justify subsequent innovations on the basis of new
+data/stimuli to incorporate into the model
 
-  collect some individual data for some set of pure-tone tasks??
+another important question: what would improve the pilot data for my grant?
 
-top-down effects: might be a way to start addressing context
-unifying NMF with predictive step - might be a way to
-  address build-up (or at least understanding this would help get to 
-  the bottom of this)
+things I might want the model to handle:
 
-More ambitious/risky steps:
+- individual data for aba task?
+- fill out the van-noorden diagram: handle ambiguity in temporal rates
+- the pure-tones organized by speech stimuli from stephen david's lab (might work with the model now?)
+- handle shepard tones (could be pretty straightforward, migth come along with build-up/context)
+- bulid-up & context (seems like the most obvious place)
 
-1. use beta-VAE to learn important factors and use these 
-    factors as potential sources of mutual-inhibition
+things I might do to help the model handle more:
 
+two broad ways to change: more realistic features / more intra-layer communication
 
+- extend object level to include top-down effects
+- follow brascamp's framework to extend layer-to-layer communication
+
+- more data driven object-level (e.g. some sort of NN trained to predict)
+- data driven layers - beta-VAE
+    - incorporate adapt, inhib, noise into computations? of data-driven layers?
+    - if I went this route might make sense to consider just a single trained layer to start with
+    could replace earlier layers later on
