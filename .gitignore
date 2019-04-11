@@ -16,3 +16,4 @@ presentation/paper/*.png
 presentation/paper/*.pdf
 ~$*
 juliadev
+*.code-workspace
