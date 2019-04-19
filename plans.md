@@ -70,6 +70,9 @@ There's also the stuff by Grave's --- look into that...
 
 How would decision making work here?
 
+I think this could be pretty simple; it would be about some readout of a mask
+of the pitch trajectory (and or, the read out of pitch-change features)
+
 ### Ambiguous Brightness 
 
 Ala Seidenberg '18 --- This would presumably be fairly similar to the work
@@ -83,8 +86,8 @@ in terms of getting build-up to work.
 ### Tone disruption
 
 These are my and Nathan's data --- also related is the data from Rankin '17.
-This would likely invovle modeling some form of attention of some kind; that
-is a layer following the object level analysis.
+This would likely invovle modeling some form of attention/buildup of some
+kind; that is a layer following the object level analysis.
 
 ### Verbal Transformations
 
