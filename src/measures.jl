@@ -35,7 +35,7 @@ end
 error_ratio(a,b=human_error()) = (a.stream / b.stream + a.lengths / b.lengths)/2
 function model_error(df::DataFrame,params::DataFrame;kwds...)
   mdata = model_data(df,params;kwds...)
-  model_error(mdata,HMEAN)
+  model_error(mdata,data_summarize(human_data()))
 end
 
 function model_error(data::NamedTuple,mean::NamedTuple)
@@ -49,7 +49,7 @@ end
 
 function model_stream_stats(data::DataFrame,params::DataFrame;kwds...)
   mdata = model_data(data,params;kwds...)
-  model_stream_stats(mdata,HMEAN)
+  model_stream_stats(mdata,data_summarize(human_data()))
 end
 
 function model_stream_stats(data::NamedTuple,mean::NamedTuple)
@@ -283,5 +283,3 @@ function stim_per_second(seconds;kwds...)
   end
 end
 
-const HMEAN = data_summarize(human_data())
-const HERR = human_error()
