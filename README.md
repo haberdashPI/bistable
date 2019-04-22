@@ -115,10 +115,10 @@ when running multiple instances of the script across a cluster.
 After re-running simulations, or using the previously run simulations, you
 can interact with the results. For this interactive use, and to re-create
 figures, you should first [install R](https://cloud.r-project.org/). Then,
-you'll also want to add the `IJulia`, `RCall` and `Gadfly`.
+you'll also want to add the `IJulia`, `RCall`, `Fontconfig`, `Cairo` and `Gadfly`.
 
 ```julia
-(bistability) pkg> add IJulia Gadfly RCall
+(bistability) pkg> add IJulia RCall Fontconfig Cairo Gadfly
 ```
 You can open a Jupyter notebook server and view the notebooks
 (under `notebooks` folder) by returning to the Julia prompt (by hitting
