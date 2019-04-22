@@ -24,7 +24,7 @@ Tasks
 
 One ideal way to go about this: identify novel stimuli that appear to play on
 the same challenges other paradigms of ABA play on. This way we can expand
-the scope of ABA pardaigms covered by the model *and* cover more types of
+the scope of ABA paradigms covered by the model *and* cover more types of
 stimuli.
 
 Based on our meeting:

@@ -2,7 +2,7 @@ library(stringr)
 library(dplyr)
 library(tidyr)
 
-dir = file.path("..","..","data","context","Exp1A")
+dir = file.path("..","..","data","Snyder_et_al_2009","Exp1A")
 files = list.files(dir,"*_Exp2.asc")
 
 raw_df = NULL

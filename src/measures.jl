@@ -204,8 +204,8 @@ end
 asnum(x::Real) = Float64(x)
 asnum(x::String) = x == "NA" ? missing : parse(Float64,x)
 function human_stream_data()
-  df1 = CSV.read(joinpath("..","analysis","yerkes","stream_prop.csv"))
-  df2 = CSV.read(joinpath("..","analysis","context","stream_prop.csv"))
+  df1 = CSV.read(joinpath(@__DIR__,"..","analysis","yerkes","stream_prop.csv"))
+  df2 = CSV.read(joinpath(@__DIR__,"..","analysis","context","stream_prop.csv"))
   df2[:experiment] = "3"
   df = vcat(df1,df2)
   df.sid = string.(df.sid)
@@ -218,7 +218,7 @@ const N_for_pressnitzer_hupe_2006 = 23
 const pressnitzer_hupe_binsize = 1/6
 
 function human_length_data()
-  df = CSV.read(joinpath("..","data","attention_higgins","phasedurations.csv"))
+  df = CSV.read(joinpath(@__DIR__,"..","data","Higgins_et_al_unpublished","phasedurations.csv"))
   rename!(df,:phase => :lengths)
   df.lengths = asnum.(df.lengths)/10000 # from micorseconds to seconds
   rename!(df,:subject => :sid)
