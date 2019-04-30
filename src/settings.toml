@@ -14,7 +14,7 @@ lowpass = 1.5
 lowpass_order = 3
 
 [scales.analyze]
-scales_cycoct = [0.5,1.0,2.0,4.0]
+scales = [0.5,1.0,2.0,4.0]
 bandonly = true
 
 [scales.bistable]
@@ -22,9 +22,11 @@ input_bound = [0.005, 0.1]
 lowpass = 1.5
 lowpass_order = 3
 
+[rates.freqbound]
+freq_limits = [400.0, 1200.0]
+
 [rates]
-rates_Hz = [2, 4, 8, 16, 32]
-freq_limits_Hz = [400.0, 1200.0]
+rates = [2, 4, 8, 16, 32]
 bandonly = true
 
 [nmf]
