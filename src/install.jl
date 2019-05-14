@@ -45,7 +45,7 @@ str = """
 			"path": "$(joinpath(Pkg.devdir(),"AuditoryBistabilityLE"))"
 		},
 		{
-			"path": "$(joinpath(Pkg.devdir(),"ShammaModel.jl"))"
+			"path": "$(joinpath(Pkg.devdir(),"ShammaModel"))"
 		},
 		{
 			"path": "$(joinpath(Pkg.devdir(),"PlotAxes.jl"))"

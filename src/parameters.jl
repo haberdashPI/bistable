@@ -33,6 +33,14 @@ function getparams(filterfn,file)
   end
 end
 
+function withunit(x,unitname)
+  if unitname == "nothing"
+    x
+  else
+    x * @eval(@u_str($unitname))
+  end
+end
+
 # handle all of the legacy formats I have used to store
 # data
 function load_params(params)
@@ -70,14 +78,6 @@ for unit in units
   @eval unitname(x::Quantity{<:Any,<:Any,typeof($unit)}) = $(string(unit))
 end
 unitname(x::Number) = "nothing"
-
-function withunit(x,unitname)
-  if unitname == "nothing"
-    x
-  else
-    x * @eval(@u_str($unitname))
-  end
-end
 
 const param_file_version = v"0.3.0"
 function save_params(file,params)

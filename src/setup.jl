@@ -15,6 +15,7 @@ using Formatting
 using CSV
 using DependentBootstrap
 import Cairo, Fontconfig
+using Revise # (we have to call this in IJulia... seems like a bug)
 
 const srcdir = @__DIR__
 const plotdir = joinpath(@__DIR__,"..","plots","paper")
