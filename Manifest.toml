@@ -452,7 +452,9 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[ShammaModel]]
 deps = ["AxisArrays", "Colors", "DSP", "DataFrames", "FFTW", "FileIO", "JLD2", "MetaArrays", "PlotAxes", "ProgressMeter", "Requires", "SampledSignals", "Statistics", "Test", "Unitful"]
-path = "/Users/davidlittle/Documents/juliadev/ShammaModel"
+git-tree-sha1 = "e04ffb4ae94a32b84f1930786de6bda38bbafed1"
+repo-rev = "cb5f8543ea0ce2589b1119aedcfb0398b05b2adc"
+repo-url = "https://github.com/haberdashPI/ShammaModel.jl"
 uuid = "80f90042-ac61-11e8-0ace-f1a8d5e03555"
 version = "0.2.13"
 
