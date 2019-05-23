@@ -48,7 +48,7 @@ str = """
 			"path": "$(joinpath(Pkg.devdir(),"ShammaModel"))"
 		},
 		{
-			"path": "$(joinpath(Pkg.devdir(),"PlotAxes.jl"))"
+			"path": "$(joinpath(Pkg.devdir(),"PlotAxes"))"
 		}
 	],
 	"settings": {},
