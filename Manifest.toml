@@ -289,9 +289,9 @@ version = "1.0.2"
 
 [[MetaArrays]]
 deps = ["Requires"]
-git-tree-sha1 = "fbb733588bbfcddd43a8e6aac71b715e69335312"
+git-tree-sha1 = "3baae0ac02f2bbbaecdd1384650a3a49668ae3a7"
 uuid = "36b8f3f0-b776-11e8-061f-1f20094e1fc8"
-version = "0.2.4"
+version = "0.2.5"
 
 [[Missings]]
 deps = ["SparseArrays", "Test"]
@@ -349,12 +349,10 @@ deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUID
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlotAxes]]
-deps = ["AxisArrays", "DataFrames", "Requires"]
-git-tree-sha1 = "6b7be23ba09ddd24894ff89d24a378f63bf06402"
-repo-rev = "master"
-repo-url = "https://github.com/haberdashPI/PlotAxes.jl"
+deps = ["AxisArrays", "DataFrames", "Dates", "Requires"]
+git-tree-sha1 = "8b72821c538d4947d0898971ae48c5eb5544d576"
 uuid = "8b6f5f00-d239-11e8-3a24-33314b00f6b0"
-version = "0.1.8"
+version = "0.1.10"
 
 [[Polynomials]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
