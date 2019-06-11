@@ -63,7 +63,7 @@ written for this project within VSCode as well (e.g. AuditoryBistabilityLE).
 
 ## Re-running computational simulations
 
-After installing, each experiment, listed under `data`, can be run using the
+After installation, each experiment, listed under `data`, can be run using the
 `src/run_all_count_lengths.sh` script. This uses
 [SLURM](https://slurm.schedmd.com/documentation.html) to run and manage jobs
 on a computer cluster.
