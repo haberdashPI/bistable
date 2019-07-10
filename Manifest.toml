@@ -59,9 +59,9 @@ version = "0.8.10"
 
 [[BinaryProvider]]
 deps = ["Libdl", "Logging", "SHA"]
-git-tree-sha1 = "8153fd64131cd00a79544bb23788877741f627bb"
+git-tree-sha1 = "c7361ce8a2129f20b0e05a89f7070820cfed6648"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
-version = "0.5.5"
+version = "0.5.6"
 
 [[CSTParser]]
 deps = ["Tokenize"]
@@ -71,9 +71,9 @@ version = "0.6.0"
 
 [[CSV]]
 deps = ["CategoricalArrays", "DataFrames", "Dates", "Mmap", "Parsers", "PooledArrays", "Profile", "Tables", "Unicode", "WeakRefStrings"]
-git-tree-sha1 = "f4a8ed808b7ee18638c5f8b278071ce0245e5e85"
+git-tree-sha1 = "2ea7620282c60902d7f0085d190abe9cf9928981"
 uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-version = "0.5.7"
+version = "0.5.8"
 
 [[CategoricalArrays]]
 deps = ["Compat", "Future", "JSON", "Missings", "Printf", "Reexport"]
@@ -411,9 +411,9 @@ uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlotAxes]]
 deps = ["AxisArrays", "Compat", "DataFrames", "Dates", "Requires"]
-git-tree-sha1 = "9c5e6f205c82ccb06e04921b7f10c6cbd034dfac"
+path = "/Users/davidlittle/Documents/juliadev/PlotAxes"
 uuid = "8b6f5f00-d239-11e8-3a24-33314b00f6b0"
-version = "0.1.12"
+version = "0.2.1"
 
 [[Polynomials]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
@@ -521,9 +521,9 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[ShammaModel]]
 deps = ["AxisArrays", "Colors", "DSP", "DataFrames", "FFTW", "FileIO", "ImageInTerminal", "JLD2", "MetaArrays", "PlotAxes", "ProgressMeter", "Requires", "SampledSignals", "Statistics", "Test", "Unitful"]
-git-tree-sha1 = "1f2653e4810f76040a9ee69691aa0d7a5ef97917"
+git-tree-sha1 = "f240c415b11f57d49e9604d7c6fc999dcf854145"
 uuid = "80f90042-ac61-11e8-0ace-f1a8d5e03555"
-version = "0.3.1"
+version = "0.3.2"
 
 [[SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]

@@ -47,9 +47,6 @@ str = """
 		{
 			"path": "$(joinpath(Pkg.devdir(),"AuditoryBistabilityLE"))"
 		},
-		{
-			"path": "$(joinpath(Pkg.devdir(),"ShammaModel"))"
-		}
 	],
 	"settings": {},
 	"extensions": {
