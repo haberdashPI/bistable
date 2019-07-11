@@ -14,6 +14,7 @@ using Colors
 using Formatting
 using CSV
 using DependentBootstrap
+using FFTW
 import Cairo, Fontconfig
 using Revise # (we have to call this in IJulia... seems like a bug)
 
