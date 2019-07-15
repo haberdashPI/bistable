@@ -153,9 +153,12 @@ function stream_summary(data,params;bound_threshold=0.8)
   result
 end
 
-function length_summary(data,params;Δf=6)
+function length_summary(data,params;Δf=6,bound_threshold=0.8)
   pindex = params.pindex[params.Δf .== Δf]
-  data[data.pindex .== pindex,:length]
+  mapreduce(vcat,groupby(data[data.pindex .== pindex,:],[:st,:created])) do g
+    handlebound(ixs -> g.length[ixs],g.length,threshold=bound_threshold)
+  end
+  # data[data.pindex .== pindex,:length]
 end
 
 function mean_streaming(df;findci=false)
@@ -230,13 +233,15 @@ end
 # makes more sense to do across all runs, because the simulation represents
 # repeated measurements from the same "individual"
 function normlength(x)
-  x = log.(filter(x -> x > 1.0,x))
-  x .-= mean(x)
-  s = std(x)
-  if !iszero(s)
-    x ./= s
-  end
-  exp.(x)
+  # x = log.(filter(x -> x > 1.0,x))
+  # x .-= mean(x)
+  # s = std(x)
+  # if !iszero(s)
+  #   x ./= s
+  # end
+  # exp.(x)
+  x ./= mean(x)
+  x
 end
 
 
