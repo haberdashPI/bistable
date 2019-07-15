@@ -1,10 +1,9 @@
 # run this to get started with a newly cloned repository
 using Pkg
 Pkg.activate(joinpath(@__DIR__,".."))
-Pkg.Registry.add("https://github.com/haberdashPI/LabRegistry.jl")
+Pkg.Registry.add(RegistrySpec(url = "https://github.com/haberdashPI/LabRegistry.jl"))
 Pkg.instantiate()
 Pkg.develop("AuditoryBistabilityLE")
-Pkg.develop("ShammaModel")
 
 using TOML
 
