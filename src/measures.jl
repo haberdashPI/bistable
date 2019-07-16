@@ -232,7 +232,7 @@ end
 # This might incline us to use a mean on a per-simulation basis, but I think it
 # makes more sense to do across all runs, because the simulation represents
 # repeated measurements from the same "individual"
-function normlength(x)
+function normlength(x;minlength = 0.1,sid = "UNKNOWN")
   # x = log.(filter(x -> x > 1.0,x))
   # x .-= mean(x)
   # s = std(x)
@@ -240,7 +240,13 @@ function normlength(x)
   #   x ./= s
   # end
   # exp.(x)
-  x ./= mean(x)
+  x̃ = filter(x -> x ≥ minlength,x)
+  x ./= mean(x̃)
+
+  if (1-length(x̃)/length(x)) > 0.05
+    percent = (round(100(1-length(x̃)/length(x)),digits=1))
+    @warn "Eliminating %$percent of data for $sid."
+  end
   x
 end
 

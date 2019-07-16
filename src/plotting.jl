@@ -215,7 +215,7 @@ function cleanline(xs,ys)
   xs[[1;indices;end]], ys[[1;indices;end]]
 end
 
-function plot_lengths_data(df,params,selections::Vector;normlengths=true,kwds...)
+function plot_lengths_data(df,params,selections::Vector;normlengths=true,minlength=0.5,kwds...)
   lengths = map(enumerate(selections)) do (i,sel)
     df_,params_ = select_data(df,params;sel...)
     lens = length_summary(df_,params_)
@@ -223,37 +223,43 @@ function plot_lengths_data(df,params,selections::Vector;normlengths=true,kwds...
   end |> x -> vcat(x...)
 
   if normlengths
+    sum_prop = 0.0
     normed = by(lengths,:sid) do df
-      DataFrame(sid = first(df.sid), lengths = Main.normlength(df.lengths))
+      sum_prop += mean(df.lengths .< minlength)
+      DataFrame(
+        sid = first(df.sid),
+        lengths = Main.normlength(df.lengths,sid = string("sim-",first(df.sid)),
+          minlength=minlength)
+      )
     end
     slens = normed.lengths
+
+    mean_percent = round(100sum_prop / length(unique(lengths.sid)),digits=2)
+    @info "The average simulation response less than minlength=$minlength is: %$mean_percent."
   else
     slens = collect(skipmissing(lengths.lengths))
   end
 
   hdata = human_data()
+  @warn "Eliminating subject 19, because they followed the incorrect "*
+    "instruction in their responses."
+  humanlens = hdata.lengths[hdata.lengths.sid .!= 19,:]
   if normlengths
-    normed = by(hdata.lengths,:sid) do df
-      DataFrame(sid = first(df.sid), lengths = Main.normlength(df.lengths))
+    sum_prop = 0.0
+    normed = by(humanlens,:sid) do df
+      sum_prop += mean(df.lengths .< minlength)
+      DataFrame(
+        sid = first(df.sid),
+        lengths = Main.normlength(df.lengths,sid = string("human-",first(df.sid)),
+          minlength=minlength)
+      )
     end
     hlens = normed.lengths
+
+    mean_percent = round(100sum_prop / length(unique(humanlens.sid)),digits=2)
+    @info "The average human response less than minlength=$minlength is: %$mean_percent."
   else
-    hlens = collect(skipmissing(hdata.lengths.lengths))
-  end
-
-  (human=hlens,simulation=slens)
-end
-
-function plot_lenths_data(df,params;normlengths=true,kwds...)
-  df,params = select_data(df,params;kwds...)
-  hdata = human_data()
-
-  if normlengths
-    hlens = normlength(hdata.lengths)
-    slens = normlength(length_summary(df,params))
-  else
-    hlens = collect(skipmissing(hdata.lengths))
-    slens = collect(skipmissing(length_summary(df,params)))
+    hlens = collect(skipmissing(humanlens.lengths))
   end
 
   (human=hlens,simulation=slens)
