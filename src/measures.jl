@@ -275,12 +275,26 @@ function buildup_mean(buildup_data;delta,length)
         j += 1
       end
       j <= Base.length(ts) || break
-      buildup.value[i] += (buildup_data.response[j]-1)
+      buildup.value[i] += run.response[j]-1
     end
   end
   buildup.value ./= Base.length(runs)
   buildup
 end
+
+# sanity check
+#=
+switches = clamp.(randn(1000).*0.2 .+ 0.5,0,1)
+plot(x=switches,Geom.density)
+
+df = DataFrame(
+  response = repeat([1,2],outer=1000),
+  length = mapreduce(x -> [x,1-x],vcat,switches),
+  run = repeat(1:1000,inner=2)
+)
+meandf = buildup_mean(df,delta=0.1,length=1.0)
+plot(meandf,x=:time,y=:value,Geom.line)
+=#
 
 function streamprop(percepts,seconds;kwds...)
   handlebound(seconds;kwds...) do range
