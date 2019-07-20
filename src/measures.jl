@@ -7,7 +7,7 @@ meansqr(x) = mean(x.^2)
 function select_params(params;kwds...)
   condition = trues(size(params,1))
   for (var,val) in pairs(kwds)
-    condition .&= ustrip.(abs.(params[var] .- val)) .<= 1e-2
+    condition .&= ustrip.(abs.(params[!,var] .- val)) .<= 1e-2
   end
   params[condition,:pindex]
 end
@@ -265,7 +265,7 @@ end
 
 function buildup_mean(buildup_data;delta,length)
   buildup = DataFrame(time=range(0,length,step=delta))
-  buildup[:value] = 0.0
+  buildup[!,:value] .= 0.0
   runs = groupby(buildup_data,:run)
   for run in runs
     j = 1
