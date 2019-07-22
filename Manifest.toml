@@ -132,8 +132,6 @@ version = "2.1.0"
 [[Compose]]
 deps = ["Base64", "Colors", "DataStructures", "Dates", "IterTools", "JSON", "LinearAlgebra", "Measures", "Printf", "Random", "Requires", "UUIDs"]
 git-tree-sha1 = "884ec27009f200f92268b37a9bfc1d5fb95c8973"
-repo-rev = "master"
-repo-url = "https://github.com/GiovineItalia/Compose.jl.git"
 uuid = "a81c6b42-2e10-5240-aca2-a61377ecd94b"
 version = "0.7.4"
 
@@ -299,8 +297,6 @@ uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 [[Gadfly]]
 deps = ["Base64", "CategoricalArrays", "Colors", "Compat", "Compose", "Contour", "CoupledFields", "DataStructures", "Dates", "Distributions", "DocStringExtensions", "Hexagons", "IndirectArrays", "IterTools", "JSON", "Juno", "KernelDensity", "LinearAlgebra", "Loess", "Measures", "Printf", "Random", "Requires", "Showoff", "Statistics"]
 git-tree-sha1 = "e34e88f3a3fee1b1fe7aaea3291627b7d9a4bf5d"
-repo-rev = "master"
-repo-url = "https://github.com/GiovineItalia/Gadfly.jl.git"
 uuid = "c91e804a-d5a3-530f-b6f0-dfbca275c004"
 version = "1.1.0"
 
