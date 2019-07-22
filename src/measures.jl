@@ -263,20 +263,42 @@ function handlebound(fn,seconds;bound=true,threshold=0.8)
     end
 end
 
+function update_buildup!(value,time,run)
+  j = 1
+  ts = cumsum(run.length)
+  for (i,t) in enumerate(time)
+    while j <= Base.length(ts) && t > ts[j]
+      j += 1
+    end
+    j <= Base.length(ts) || break
+    value[i] += run.response[j]-1
+  end
+  value
+end
+
+function buildup_image(buildup_data;delta,length)
+  len = length; length = Base.length
+
+  runs = groupby(buildup_data,:run)
+  times = range(0,len,step=delta)
+  buildup = DataFrame(time=repeat(times,outer=length(runs)),
+                      run=repeat(1:length(runs),inner=length(times)))
+  buildup[!,:value] .= 0.0
+
+  for (i,run) in enumerate(runs)
+    build_run = view(buildup,buildup.run .== i,:)
+    update_buildup!(build_run.value,build_run.time,run)
+  end
+
+  buildup
+end
+
 function buildup_mean(buildup_data;delta,length)
   buildup = DataFrame(time=range(0,length,step=delta))
   buildup[!,:value] .= 0.0
   runs = groupby(buildup_data,:run)
   for run in runs
-    j = 1
-    ts = cumsum(run.length)
-    for (i,t) in enumerate(buildup.time)
-      while j <= Base.length(ts) && t > ts[j]
-        j += 1
-      end
-      j <= Base.length(ts) || break
-      buildup.value[i] += run.response[j]-1
-    end
+    update_buildup!(buildup.value,buildup.time,run)
   end
   buildup.value ./= Base.length(runs)
   buildup
