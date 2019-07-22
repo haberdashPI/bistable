@@ -23,7 +23,7 @@ function select_data(df,params;kwds...)
           "\nInstead, only found entires: "*string(found)*
           "\nKeyword selection: "*String(take!(kwdbuf)))
   end
-  dfsel[:st] = params.Δf[indexin(dfsel.pindex,params.pindex)]
+  dfsel.st = params.Δf[indexin(dfsel.pindex,params.pindex)]
   dfsel, params[sel,:]
 end
 
