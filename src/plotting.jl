@@ -241,11 +241,12 @@ function plot_lengths_data(df,params,selections::Vector;normlengths=true,minleng
   end
 
   hdata = human_data()
-  @warn "Eliminating subject 19, because they followed the incorrect "*
-    "instruction in their responses."
-  humanlens = hdata.lengths[hdata.lengths.sid .!= 19,:]
+  # @warn "Eliminating subject 19, because they followed the incorrect "*
+  #   "instruction in their responses."
+  # humanlens = hdata.lengths[hdata.lengths.sid .!= 19,:]
   # humanlens = hdata.lengths[hdata.lengths.sid .!= 10,:]
   # humanlens = hdata.lengths[hdata.lengths.sid .!= 21,:]
+  humanlens = hdata.lengths
   if normlengths
     sum_prop = 0.0
     normed = by(humanlens,:sid) do df
