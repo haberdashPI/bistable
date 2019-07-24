@@ -149,13 +149,13 @@ function plot_stream_data(df,params;exclude_human=false,kwds...)
   sim = by(stream_summary(df,params),:st) do g
     DataFrame([findci(g.streaming)])
   end
-  sim.experiment = "simulation"
+  sim.experiment .= "simulation"
 
   if !exclude_human
     human = by(hdata.stream,:st) do g
       DataFrame([findci(g.streaming)])
     end
-    human.experiment = "human"
+    human.experiment .= "human"
 
     vcat(sim,human)
   else
@@ -317,13 +317,15 @@ function plot_fit(df,params;showci=true,
                          alpha=alpha,resample=resample))
 end
 
-function plot_responses((len,value))
+function plot_responses((len,value),args...)
   dfl = DataFrame(value=value,time=cumsum(len));
-  dfl = @transform(dfl,lagtime = lag(:time,default=0.0),ymin=-1,ymax=1);
+  dfl.lagtime = lag(dfl.time,default=0.0)
+  dfl[!,:ymin] .= -1
+  dfl[!,:ymax] .= 1
 
   plot(dfl,xmax=:time,ymin=:ymin,xmin=:lagtime,ymax=:ymax,color=:value,
        Scale.color_discrete_manual("black","lightgray"),
-       Geom.rect)
+       Geom.rect,args...)
 end
 
 function plot_fitmask(data,params,settings;Δf=6,simulation=1,start_time=0s,
