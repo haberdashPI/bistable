@@ -32,7 +32,7 @@ version = "0.2.3"
 
 [[AuditoryBistabilityLE]]
 deps = ["AxisArrays", "CodecZlib", "Combinatorics", "DSP", "DataFrames", "DataStructures", "Distributions", "FileIO", "JLD2", "LinearAlgebra", "MacroTools", "Match", "MetaArrays", "NMF", "Parameters", "PlotAxes", "ProgressMeter", "Requires", "Rmath", "SampledSignals", "ShammaModel", "SparseArrays", "SpecialFunctions", "Statistics", "StatsFuns", "TOML", "Unitful"]
-path = "/Users/davidlittle/Documents/juliadev/AuditoryBistabilityLE"
+path = "/home/davidlittle/Documents/juliadev/AuditoryBistabilityLE"
 uuid = "7e25a372-ade5-11e8-17af-a30e5a9e2c28"
 version = "0.6.1"
 
@@ -554,9 +554,9 @@ uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlotAxes]]
 deps = ["AxisArrays", "Compat", "DataFrames", "Dates", "Requires"]
-git-tree-sha1 = "cdcd22a79086574d2227cefd2b2d5f9ce13bccc5"
+git-tree-sha1 = "672d2db96bb770ad523b5c251302df73e59e1b15"
 uuid = "8b6f5f00-d239-11e8-3a24-33314b00f6b0"
-version = "0.2.2"
+version = "0.2.3"
 
 [[Polynomials]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
