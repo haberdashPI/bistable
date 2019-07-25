@@ -17,3 +17,5 @@ presentation/paper/*.pdf
 ~$*
 juliadev
 *.code-workspace
+.Rhistory
+tags
