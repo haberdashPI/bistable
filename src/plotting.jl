@@ -118,8 +118,8 @@ function plot_stream_data(df,params,selections::Vector;exclude_human=false)
     sim = by(stream_summary(df_,params_),:st) do g
       DataFrame([findci(g.streaming)])
     end
-    sim.experiment = "simulation"
-    sim.sid = "sel"*string(i)
+    sim.experiment .= "simulation"
+    sim.sid .= "sel"*string(i)
 
     sim
   end |> x -> vcat(x...)
@@ -127,14 +127,14 @@ function plot_stream_data(df,params,selections::Vector;exclude_human=false)
   sim = by(sims,:st) do g
     DataFrame([findci(g.mean)])
   end
-  sim.experiment = "simulation"
+  sim.experiment .= "simulation"
 
   if !exclude_human
     hdata = human_data()
     human = by(hdata.stream,:st) do g
       DataFrame([findci(collect(skipmissing(g.streaming)))])
     end
-    human.experiment = "human"
+    human.experiment .= "human"
 
     vcat(sim,human)
   else
