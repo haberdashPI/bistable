@@ -12,19 +12,17 @@ settings["stimulus"]["repeats"] = 24
 
 
 if endswith(gethostname(),".cluster")
-    addprocs(SlurmManager(20), partition="CPU", t="04:00:00",
+    addprocs(SlurmManager(10), partition="CPU", t="24:00:00",
              cpus_per_task=1)
     @everywhere include(joinpath(@__DIR__,"..","src","setup.jl"))
 end
 
-# todo: this might be why we didn't get the right thing
-# in our object-level simulation
-params.f_c_σ .= 0.5
-params.s_c_σ .= 0.5
-params.t_c_σ .= 0.5
-
 models = Dict(
-  :object => copy(params[select_params(params,t_c_a=5,t_c_m=5,Δf=6),:]),
+  :object => begin
+    p = copy(params[select_params(params,t_c_a=5,t_c_m=5,Δf=6),:])
+    p.t_c_σ .= 0.5
+    p
+  end
   # :central => copy(params[select_params(params,s_c_a=5,s_c_m=5,Δf=6),:]),
   # :peripheral => copy(params[select_params(params,f_c_a=15,f_c_m=130,Δf=6),:]),
 )
