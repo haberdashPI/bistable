@@ -59,6 +59,7 @@ lowpass = 1.5
 lowpass_order = 3
 
 [mask]
+mask_wait = 2
 window = 0.500
 delta = 0.250
 

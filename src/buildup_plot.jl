@@ -1,5 +1,7 @@
 
 include(joinpath(@__DIR__,"interactive_setup.jl"))
+curplotdir = joinpath(plotdir,string(Date(now())))
+isdir(curplotdir) || mkdir(curplotdir)
 
 datadir = joinpath(@__DIR__,"..","data","buildup")
 files = readdir(datadir)
@@ -25,7 +27,8 @@ means = by(df,[:level,:df]) do df
 end
 R"""
 ggplot($means,aes(x=time,y=value,color=factor(df))) + geom_line() +
-  facet_wrap(~level)
+  facet_wrap(~level) + xlim(0,5)
+ggsave($(joinpath(curplotdir,"buildup.pdf")))
 """
 
 obj = df[(df.level .== "object") .& (df.df .== 6),:]
