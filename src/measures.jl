@@ -144,9 +144,9 @@ function stream_summary(data,params;bound_threshold=0.8)
       DataFrame(streaming = streamprop(g.percepts,g.length,bound=false))
     end
   end
-  result[:sid] = 0
+  result[!,:sid] .= 0
   for g in groupby(result,:st)
-    g[:sid] = 1:size(g,1)
+    g.sid = 1:size(g,1)
   end
   sort!(result,(:sid,:st))
 
@@ -209,7 +209,7 @@ asnum(x::String) = x == "NA" ? missing : parse(Float64,x)
 function human_stream_data()
   df1 = CSV.read(joinpath(@__DIR__,"..","analysis","yerkes","stream_prop.csv"))
   df2 = CSV.read(joinpath(@__DIR__,"..","analysis","context","stream_prop.csv"))
-  df2[:experiment] = "3"
+  df2[!,:experiment] .= "3"
   df = vcat(df1,df2)
   df.sid = string.(df.sid)
   df.streaming = asnum.(df.streaming)
