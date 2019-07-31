@@ -1,7 +1,13 @@
 # run this to get started with a newly cloned repository
 using Pkg
-Pkg.activate(joinpath(@__DIR__,".."))
+root = joinpath(@__DIR__,"..")
+Pkg.activate(root)
 Pkg.Registry.add(RegistrySpec(url = "https://github.com/haberdashPI/LabRegistry.jl"))
+
+# we use a base.Manifest file, so that we can specify a local directory for
+# the AuditoryBistabilityLE package.  This allows the user to edit this package
+# as desired.
+cp(joinpath(root,"base.Manifest.toml"),joinpath(root,"Manifest.toml"))
 Pkg.instantiate()
 Pkg.develop("AuditoryBistabilityLE")
 

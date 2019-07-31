@@ -47,8 +47,7 @@ models = Dict(
   end
 )
 
-# N = 10^4
-N = 1000
+N = 10^3
 writedir = joinpath(@__DIR__,"..","data","buildup")
 for (name,model) in models
   for Δ in [3,6,12]

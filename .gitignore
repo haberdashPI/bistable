@@ -19,3 +19,4 @@ juliadev
 *.code-workspace
 .Rhistory
 tags
+Manifest.toml
