@@ -1,5 +1,5 @@
-# using ClusterManagers
-# using Distributed
+using ClusterManagers
+using Distributed
 
 include(joinpath(@__DIR__,"setup.jl"))
 datadir = joinpath(@__DIR__,"..","data","count_lengths","run_2018-11-26")
@@ -9,13 +9,14 @@ params[!,:pindex] .= 1:size(params,1)
 settings = joinpath(@__DIR__,"..","src","settings.toml")
 settings = TOML.parsefile(settings)
 settings["stimulus"]["repeats"] = 24
+settings["bandwidth_ratio"]["window"] = 1.2
+settings["bandwidth_ratio"]["delta"] = 0.3
 
-
-# if endswith(gethostname(),".cluster")
-#     addprocs(SlurmManager(10), partition="CPU", t="24:00:00",
-#              cpus_per_task=1)
-#     @everywhere include(joinpath(@__DIR__,"..","src","setup.jl"))
-# end
+if endswith(gethostname(),".cluster")
+    addprocs(SlurmManager(20), partition="CPU", t="24:00:00",
+             cpus_per_task=1)
+    @everywhere include(joinpath(@__DIR__,"..","src","setup.jl"))
+end
 
 models = Dict(
   :object => begin
@@ -45,12 +46,11 @@ models = Dict(
     p
   end
 )
-# models[:combined] = p
 
 # N = 10^4
-N = 100
+N = 1000
 writedir = joinpath(@__DIR__,"..","data","buildup")
-for (name,model) in [:object => models[:object]]
+for (name,model) in models
   for Δ in [3,6,12]
     p = copy(model)
     p.Δf .= Δ
