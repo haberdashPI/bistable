@@ -215,55 +215,42 @@ function cleanline(xs,ys)
   xs[[1;indices;end]], ys[[1;indices;end]]
 end
 
-function plot_lengths_data(df,params,selections::Vector;normlengths=true,minlength=0.5,kwds...)
+function plot_lengths_data(df,params,selections::Vector;norm=identity,
+  minlength=0.5,kwds...)
+
   lengths = map(enumerate(selections)) do (i,sel)
     df_,params_ = select_data(df,params;sel...)
     lens = length_summary(df_,params_)
     DataFrame(lengths = lens,sid = i)
   end |> x -> vcat(x...)
 
-  if normlengths
-    sum_prop = 0.0
-    normed = by(lengths,:sid) do df
-      sum_prop += mean(df.lengths .< minlength)
-      DataFrame(
-        sid = first(df.sid),
-        lengths = Main.normlength(df.lengths,sid = string("sim-",first(df.sid)),
-          minlength=minlength)
-      )
-    end
-    slens = normed.lengths
-
-    mean_percent = round(100sum_prop / length(unique(lengths.sid)),digits=2)
-    @info "The average simulation response less than minlength=$minlength is: %$mean_percent."
-  else
-    slens = collect(skipmissing(lengths.lengths))
+  sum_prop = 0.0
+  normed = by(lengths,:sid) do df
+    sum_prop += mean(df.lengths .< minlength)
+    lens = filter_minlength(minlength,string("sim-",first(df.sid)),
+      df.lengths)
+    DataFrame(sid = first(df.sid), lengths = norm(lens))
   end
+  slens = normed.lengths
+
+  mean_percent = round(100sum_prop / length(unique(lengths.sid)),digits=2)
+  @info "The average simulation response less than minlength=$minlength is:"*
+    " %$mean_percent."
 
   hdata = human_data()
-  # @warn "Eliminating subject 19, because they followed the incorrect "*
-  #   "instruction in their responses."
-  # humanlens = hdata.lengths[hdata.lengths.sid .!= 19,:]
-  # humanlens = hdata.lengths[hdata.lengths.sid .!= 10,:]
-  # humanlens = hdata.lengths[hdata.lengths.sid .!= 21,:]
   humanlens = hdata.lengths
-  if normlengths
-    sum_prop = 0.0
-    normed = by(humanlens,:sid) do df
-      sum_prop += mean(df.lengths .< minlength)
-      DataFrame(
-        sid = first(df.sid),
-        lengths = Main.normlength(df.lengths,sid = string("human-",first(df.sid)),
-          minlength=minlength)
-      )
-    end
-    hlens = normed.lengths
-
-    mean_percent = round(100sum_prop / length(unique(humanlens.sid)),digits=2)
-    @info "The average human response less than minlength=$minlength is: %$mean_percent."
-  else
-    hlens = collect(skipmissing(humanlens.lengths))
+  sum_prop = 0.0
+  normed = by(humanlens,:sid) do df
+    sum_prop += mean(df.lengths .< minlength)
+    lens = filter_minlength(minlength,string("human-",first(df.sid)),
+      df.lengths)
+    DataFrame(sid = first(df.sid), lengths = norm(lens))
   end
+  hlens = normed.lengths
+
+  mean_percent = round(100sum_prop / length(unique(humanlens.sid)),digits=2)
+  @info "The average human response less than minlength=$minlength is:"*
+    " %$mean_percent."
 
   (human=hlens,simulation=slens)
 end

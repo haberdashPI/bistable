@@ -23,17 +23,10 @@ df = mapreduce(vcat,files) do file
 end
 
 means = by(df,[:level,:df]) do df
-  buildup_mean(df,delta=0.2,length=12)
+  buildup_mean(df,delta=0.3,length=12)
 end
 R"""
 ggplot($means,aes(x=time,y=value,color=factor(df))) + geom_line() +
-  facet_wrap(~level) + xlim(0,5)
-ggsave($(joinpath(curplotdir,"buildup.pdf")))
-"""
-
-obj = df[(df.level .== "object") .& (df.df .== 6),:]
-img = buildup_image(df,delta=0.05,length=12)
-
-R"""
-ggplot($img,aes(x=time,y=run,fill=value)) + geom_raster()
+  facet_wrap(~level) + xlim(0,3)
+# ggsave($(joinpath(curplotdir,"buildup.pdf")))
 """
