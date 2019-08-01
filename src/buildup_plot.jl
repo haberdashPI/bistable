@@ -15,7 +15,7 @@ df = mapreduce(vcat,files) do file
   if isnothing(m)
     @warn("Filename $file doesn't match the expected naming convention.")
   else
-    df[!,:level] .= m[1]
+    df[!,:level] .= titlecase(m[1])
     df[!,:df] .= parse(Int,m[2])
     df[!,:date] .= Date(m[3])
     df
@@ -25,8 +25,13 @@ end
 means = by(df,[:level,:df]) do df
   buildup_mean(df,delta=0.3,length=12)
 end
+
 R"""
-ggplot($means,aes(x=time,y=value,color=factor(df))) + geom_line() +
-  facet_wrap(~level) + xlim(0,3)
-# ggsave($(joinpath(curplotdir,"buildup.pdf")))
+library(dplyr)
+df = $means
+df$level = factor(df$level, levels=c("Peripheral","Central","Object","Combined"), ordered=T)
+df = df %>% arrange(level)
+ggplot(df,aes(x=time,y=value,color=factor(df))) + geom_line() +
+  facet_grid(~level) + xlim(0,3) + theme_classic()
+ggsave($(joinpath(curplotdir,"buildup.pdf")))
 """
