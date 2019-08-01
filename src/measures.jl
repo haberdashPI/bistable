@@ -27,14 +27,14 @@ function select_data(df,params;kwds...)
   dfsel, params[sel,:]
 end
 
-function model_data(df,params;kwds...)
+function model_data(df,params;bound=true,kwds...)
   df,params = select_data(df,params;kwds...)
-  (stream=stream_summary(df,params), lengths=length_summary(df,params))
+  (stream=stream_summary(df,params,bound=bound), lengths=length_summary(df,params))
 end
 
 error_ratio(a,b=human_error()) = (a.stream / b.stream + a.lengths / b.lengths)/2
-function model_error(df::DataFrame,params::DataFrame;kwds...)
-  mdata = model_data(df,params;kwds...)
+function model_error(df::DataFrame,params::DataFrame;bound=true,kwds...)
+  mdata = model_data(df,params;bound=bound,kwds...)
   model_error(mdata,data_summarize(human_data()))
 end
 
@@ -134,9 +134,9 @@ function findci(x;kwds...)
   end
 end
 
-function stream_summary(data,params;bound_threshold=0.8)
+function stream_summary(data,params;bound=true,bound_threshold=0.8)
   result = by(data,[:st,:created]) do g
-    DataFrame(streaming = streamprop(g.percepts,g.length,bound=true,
+    DataFrame(streaming = streamprop(g.percepts,g.length,bound=bound,
                                      threshold=bound_threshold))
   end
   if all(ismissing,result.streaming)
