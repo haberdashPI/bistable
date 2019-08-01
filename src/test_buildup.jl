@@ -9,11 +9,11 @@ params[!,:pindex] .= 1:size(params,1)
 settings = joinpath(@__DIR__,"..","src","settings.toml")
 settings = TOML.parsefile(settings)
 settings["stimulus"]["repeats"] = 24
-settings["bandwidth_ratio"]["window"] = 1.2
-settings["bandwidth_ratio"]["delta"] = 0.3
+settings["bandwidth_ratio"]["window"] = 1.0
+settings["bandwidth_ratio"]["delta"] = 0.35
 
 if endswith(gethostname(),".cluster")
-    addprocs(SlurmManager(20), partition="CPU", t="24:00:00",
+    addprocs(SlurmManager(20), partition="CPU", t="4:00:00",
              cpus_per_task=1)
     @everywhere include(joinpath(@__DIR__,"..","src","setup.jl"))
 end
@@ -53,7 +53,7 @@ for (name,model) in models
   for Δ in [3,6,12]
     p = copy(model)
     p.Δf .= Δ
-    results = mapreduce(vcat,1:N) do i #@distributed (vcat) for i in 1:N
+    results = @distributed (vcat) for i in 1:N
       with_logger(NullLogger()) do
         results = bistable_model(p,settings,intermediate_results=true)
         len,val = results.percepts.counts
