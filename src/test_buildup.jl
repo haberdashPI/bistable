@@ -10,7 +10,7 @@ settings = joinpath(@__DIR__,"..","src","settings.toml")
 settings = TOML.parsefile(settings)
 settings["stimulus"]["repeats"] = 24
 settings["bandwidth_ratio"]["window"] = 1.0
-settings["bandwidth_ratio"]["delta"] = 0.35
+settings["bandwidth_ratio"]["delta"] = 0.25
 
 if endswith(gethostname(),".cluster")
     addprocs(SlurmManager(20), partition="CPU", t="4:00:00",
@@ -21,28 +21,28 @@ end
 models = Dict(
   :object => begin
     p = copy(params[select_params(params,t_c_a=5,t_c_m=5,Δf=6),:])
-    p.t_c_σ .= 0.5
+    p.t_c_σ .= 1.0
     p
   end,
   :central => begin
     p = copy(params[select_params(params,s_c_a=5,s_c_m=5,Δf=6),:])
-    p.s_c_σ .= 0.5
+    p.s_c_σ .= 1.0
     p
   end,
   :peripheral => begin
     p = copy(params[select_params(params,f_c_a=15,f_c_m=130,Δf=6),:])
-    p.f_c_σ .= 0.5
+    p.f_c_σ .= 1.0
     p
   end,
   :combined => begin
     p = copy(params[select_params(params,f_c_a=15,f_c_m=130,Δf=6),:])
-    p.f_c_σ .= 0.5
+    p.f_c_σ .= 1.0
     p.s_c_a .= 5
     p.s_c_m .= 5
-    p.s_c_σ .= 0.5
+    p.s_c_σ .= 1.0
     p.t_c_a .= 5
     p.t_c_m .= 5
-    p.t_c_σ .= 0.5
+    p.t_c_σ .= 1.0
     p
   end
 )
