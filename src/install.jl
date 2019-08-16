@@ -60,7 +60,6 @@ str = """
 			"ikuyadeu.r",
 			"julialang.language-julia",
 			"colinfang.markdown-julia",
-			"davidanson.vscode-markdownlint",
 			"haberdashPI.terminal-polyglot"
 		]
 	}
