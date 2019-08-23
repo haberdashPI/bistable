@@ -99,10 +99,10 @@ if endswith(gethostname(),".cluster")
 end
 
 # run the buildup simulation
-N = 10^1
+N = 100^1
 models = enumerate(eachrow(df_best))
 deltas = [3,6,12]
-runs = product(models,deltas,1:N)
+runs = collect(product(models,deltas,1:N))
 
 results = @distributed (vcat) for ((mindex,model),Δ,i) in runs
   # parameter setup
@@ -120,7 +120,8 @@ results = @distributed (vcat) for ((mindex,model),Δ,i) in runs
       length=len,
       response=val.+1,
       run=i,
-      model_index = mindex
+      model_index=mindex,
+      delta_f=Δ
     )
   end
 end
