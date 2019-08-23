@@ -1,22 +1,23 @@
 using ClusterManagers
 using Distributed
-using Iterators: product
+const product = Iterators.product
 
+# setup environment
 include(joinpath(@__DIR__,"setup.jl"))
 datadir = joinpath(@__DIR__,"..","data","count_lengths","run_2018-11-26")
 
+# load in the parameters
 params = load_params(joinpath(datadir,"params.jld2"))
 params[!,:pindex] .= 1:size(params,1)
+
+# load and modify settings
 settings = joinpath(@__DIR__,"..","src","settings.toml")
 settings = TOML.parsefile(settings)
 settings["stimulus"]["repeats"] = 24
 settings["bandwidth_ratio"]["window"] = 1.0
 settings["bandwidth_ratio"]["delta"] = 0.25
 
-params = load_params(joinpath(datadir,"params.jld2"))
-params[!,:pindex] = 1:size(params,1)
-settings = joinpath("..","src","settings.toml")
-
+# read in the simulation results in `datadir`
 results = []
 for_results_in(joinpath(datadir,"data"),reinterpret="reinterpret") do entry
   push!(results,DataFrame(length=entry["lengths"],
@@ -26,6 +27,7 @@ for_results_in(joinpath(datadir,"data"),reinterpret="reinterpret") do entry
 end
 df = vcat(results...);
 
+# load a summary of the data
 fields = [:f_c_a,:f_c_m,:f_c_σ,:s_c_a,:s_c_m,:s_c_σ,:t_c_a,:t_c_m,:t_c_σ]
 progress = Progress(nrow(unique(params[:,fields])))
 herr = human_error()
@@ -35,6 +37,7 @@ df_summary = by(params,fields) do row
     DataFrame(stream_error = err.stream,length_error = err.lengths,eratio = error_ratio(err,herr))
 end
 
+# compute the corresponding level for each summary row
 function level(row)
   if row.t_c_σ > 0
     @assert row.s_c_σ == 0
@@ -52,16 +55,17 @@ function level(row)
     error("Could not infer level")
   end
 end
-
 df_summary[!,:level] = level.(eachrow(df_summary))
-thresholds = by(df_summary,:level,thresh = :eratio => x->quantile(x,0.05))
 
+# find the top 5% performing models of each level
 df_best = by(df_summary,:level) do group
   threshold = quantile(group.eratio,0.05)
   group[group.eratio .<= threshold,Not(:level)]
 end
 df_best[!,:index] = 1:size(df_best,1)
 
+# use the top 5% of each level to get a putative set of ideal models
+# for the combined set (may not be perfect, but should be decent).
 N = sum(df_best.level .== "object")
 obji = df_best.index[df_best.level .== "object"]
 ceni = df_best.index[df_best.level .== "central"]
@@ -83,7 +87,10 @@ for comb in combined
   push!(df_best,(level = "combined", index = size(df_best,1)+1, newrow...))
 end
 
-params = [:f_c_a,:f_c_m,:f_c_σ,:s_c_a,:s_c_m,:s_c_σ,:t_c_a,:t_c_m,:t_c_σ]
+# save the models used for this buildup simulation
+writedir = joinpath(@__DIR__,"..","data","buildup",string(Date(now())))
+isdir(writedir) || mkdir(writedir)
+CSV.write(joinpath(writedir,"model_params.csv"),df_best[:,Not(:index)])
 
 if endswith(gethostname(),".cluster")
     addprocs(SlurmManager(20), partition="CPU", t="4:00:00",
@@ -91,15 +98,21 @@ if endswith(gethostname(),".cluster")
     @everywhere include(joinpath(@__DIR__,"..","src","setup.jl"))
 end
 
-writedir = joinpath(@__DIR__,"..","data","buildup")
-CSV.write(joinpath(writedir,"model_params.csv"),df_best[:,Not(:index)])
-
+# run the buildup simulation
 N = 10^1
 models = enumerate(eachrow(df_best))
 deltas = [3,6,12]
-@distributed (vcat) for ((mindex,model),Δ,i) in product(models,deltas,1:N)
-  p = copy(AuditoryBistabilityLE.read_params,model[params])
-  p.Δf .= Δ
+runs = product(models,deltas,1:N)
+
+results = @distributed (vcat) for ((mindex,model),Δ,i) in runs
+  # parameter setup
+  p = AuditoryBistabilityLE.read_params(params[1,:])
+  for k in names(model[Not(:level)])
+    p[k] = model[k]
+  end
+  p[:Δf] = Δ
+
+  # run simulation
   with_logger(NullLogger()) do
     results = bistable_model(p,settings,intermediate_results=true)
     len,val = results.percepts.counts
@@ -107,8 +120,10 @@ deltas = [3,6,12]
       length=len,
       response=val.+1,
       run=i,
-      model_index = mindex,
+      model_index = mindex
     )
   end
 end
+
 CSV.write(joinpath(writedir,"build_results.csv"),results)
+
