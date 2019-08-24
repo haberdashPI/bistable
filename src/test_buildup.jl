@@ -87,19 +87,23 @@ for comb in combined
   push!(df_best,(level = "combined", index = size(df_best,1)+1, newrow...))
 end
 
+df_best.f_c_σ .*= 5
+df_best.s_c_σ .*= 5
+df_best.t_c_σ .*= 5
+
 # save the models used for this buildup simulation
 writedir = joinpath(@__DIR__,"..","data","buildup",string(Date(now())))
 isdir(writedir) || mkdir(writedir)
 CSV.write(joinpath(writedir,"model_params.csv"),df_best[:,Not(:index)])
 
 if endswith(gethostname(),".cluster")
-    addprocs(SlurmManager(20), partition="CPU", t="4:00:00",
+    addprocs(SlurmManager(20), partition="CPU", t="24:00:00",
              cpus_per_task=1)
     @everywhere include(joinpath(@__DIR__,"..","src","setup.jl"))
 end
 
 # run the buildup simulation
-N = 100^1
+N = 500
 models = enumerate(eachrow(df_best))
 deltas = [3,6,12]
 runs = collect(product(models,deltas,1:N))
