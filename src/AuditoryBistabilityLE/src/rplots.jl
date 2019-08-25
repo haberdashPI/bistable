@@ -1,5 +1,5 @@
 using .RCall
-# import CorticalSpecrtralTemporalResponses: rplot, raster_plot
+# import CorticalSpectralTemporalResponses: rplot, raster_plot
 export rplot, scale_plot, cohere_plot
 
 R"""
@@ -145,7 +145,7 @@ end
 
 
 function rplot(tracks::AxisArray{<:SourceTracking},component=1;kwds...)
-  data = AxisArray(cat((sort_components(track)[:,:,component,:] 
+  data = AxisArray(cat((sort_components(track)[:,:,component,:]
                         for track in tracks)...,dims=4),
                    AxisArrays.axes(tracks[1])[[1,2,4]]...,
                    Axis{:track}(1:length(tracks)))

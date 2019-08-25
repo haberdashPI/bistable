@@ -13,8 +13,8 @@ using CategoricalArrays
 using Unitful
 using Unitful: ms, s, Hz, kHz
 using Dates
-using CorticalSpecrtralTemporalResponses
-using CorticalSpecrtralTemporalResponses: cycoct
+using CorticalSpectralTemporalResponses
+using CorticalSpectralTemporalResponses: cycoct
 
 include("parameters.jl")
 

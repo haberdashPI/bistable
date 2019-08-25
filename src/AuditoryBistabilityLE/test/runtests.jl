@@ -1,5 +1,5 @@
 using Test
-using CorticalSpecrtralTemporalResponses
+using CorticalSpectralTemporalResponses
 using AuditoryBistabilityLE
 using SampledSignals
 using TOML
@@ -34,7 +34,7 @@ pstream(p) = sum(p.counts[1][p.counts[2]]) / sum(p.counts[1])
     # mod)
     params[:Δf] = 12
     settings["stimulus"]["repeats"] = 50
-    df12 = bistable_model(params, "test_settings.toml", 
+    df12 = bistable_model(params, "test_settings.toml",
                           interactive=true, progressbar=true)
 
     params[:Δf] = 3

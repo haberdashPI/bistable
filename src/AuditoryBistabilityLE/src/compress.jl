@@ -53,8 +53,8 @@ function decompress(x::CompressedMask)
   mask = transcode(ZlibDecompressor,x.data) ./ typemax(UInt8)
   withaxes(reshape(mask,x.size...), x.axes)
 end
-  
-function CorticalSpecrtralTemporalResponses.audiospect(x::CompressedMask,settings)
+
+function CorticalSpectralTemporalResponses.audiospect(x::CompressedMask,settings)
   settings = read_settings(settings)
   audiospect(decompress(x);settings.freqs.analyze...)
 end

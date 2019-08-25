@@ -47,7 +47,7 @@ function bistable_model(stim::AbstractVector,params,settings;interactive=false,
                  intermediate_results=intermediate_results)
 end
 
-function bistable_model(spect::CorticalSpecrtralTemporalResponses.AuditorySpectrogram,params,settings;
+function bistable_model(spect::CorticalSpectralTemporalResponses.AuditorySpectrogram,params,settings;
                         interactive=false,
                         progressbar=interactive,
                         intermediate_results=interactive)
@@ -97,7 +97,7 @@ function bistable_model(spect::CorticalSpecrtralTemporalResponses.AuditorySpectr
   spmask = filt(inv(scalef),crmask)
 
   # compute the ratio of the mask's and the scene's bandwidth
-  ratio,sband,tband = bandwidth_ratio(spmask, spect[:,startHz .. stopHz]; 
+  ratio,sband,tband = bandwidth_ratio(spmask, spect[:,startHz .. stopHz];
                                       settings.bandwidth_ratio...)
 
   if intermediate_results

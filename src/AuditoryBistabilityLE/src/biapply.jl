@@ -1,4 +1,4 @@
-using CorticalSpecrtralTemporalResponses
+using CorticalSpectralTemporalResponses
 using AxisArrays
 using DSP
 const reasonable_response_maximum = 100
@@ -19,7 +19,7 @@ end
 function findweights(condition,x,normalize_start)
   weights = if condition == :scales
     AxisArray(meanabs(x,axisdim(x,Axis{:freq})) .*
-              ustrip.(uconvert.(cycoct,CorticalSpecrtralTemporalResponses.scales(x)))',
+              ustrip.(uconvert.(cycoct,CorticalSpectralTemporalResponses.scales(x)))',
               AxisArrays.axes(x,Axis{:time}), AxisArrays.axes(x,Axis{:scale}))
   elseif condition ∈ [:freqs,:track]
     x
