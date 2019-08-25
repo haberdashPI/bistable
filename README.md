@@ -77,6 +77,10 @@ It is recommended that before running a simulation you should first precompile.
 This will avoid race conditions that can occur in julia's package manager
 when running multiple instances of the script across a cluster.
 
+## Re-running the buildup results
+
+The analysis of the early "build-up" phase of the model was run separately, as a follow-up to the originally computational experiments. There are two files you need to reproduce these results: `buildup_test.jl` which can be run on a cluster of computers, to speed it up, and `buildup_plot.jl` which generates a plot given the output of `buildup_test.jl`.
+
 ## Interactive use and figure creation
 
 After re-running simulations, or using the previously run simulations, you
