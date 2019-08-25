@@ -10,8 +10,12 @@ params[!,:pindex] .= 1:size(params,1)
 settings = joinpath(@__DIR__,"..","src","settings.toml")
 settings = TOML.parsefile(settings)
 settings["stimulus"]["repeats"] = 24
+
 settings["bandwidth_ratio"]["window"] = 1.0
 settings["bandwidth_ratio"]["delta"] = 0.25
+settings["nmf"]["delta"] = 0.025
+settings["nmf"]["maxiter"] = 1000
+settings["nmf"]["tol"] = 1e-8
 
 # if endswith(gethostname(),".cluster")
 #     addprocs(SlurmManager(20), partition="CPU", t="24:00:00",
@@ -22,7 +26,7 @@ settings["bandwidth_ratio"]["delta"] = 0.25
 models = Dict(
   :object => begin
     p = copy(params[select_params(params,t_c_a=5,t_c_m=5,Δf=6),:])
-    p.t_c_σ .= 20.0
+    p.t_c_σ .= 100.0
     p
   end,
   :central => begin
@@ -47,6 +51,8 @@ models = Dict(
     p
   end
 )
+delete!(models,:peripheral)
+delete!(models,:central)
 
 writedir = joinpath(@__DIR__,"..","data","buildup",string(Date(now())))
 isdir(writedir) || mkdir(writedir)
@@ -74,6 +80,6 @@ results = @distributed (vcat) for ((name,model),Δ,i) in runs
   end
 end
 
-CSV.write(joinpath(writedir,"build_results.csv"),results)
+CSV.write(joinpath(writedir,"build_results_object_only.csv"),results)
 
 
