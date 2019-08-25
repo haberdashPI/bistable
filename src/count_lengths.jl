@@ -2,7 +2,7 @@ using Logging
 using FileIO
 using DataFrames
 using AuditoryBistabilityLE
-using ShammaModel
+using CorticalSpecrtralTemporalResponses
 using Dates
 using Printf
 using JLD2

@@ -13,8 +13,8 @@ using CategoricalArrays
 using Unitful
 using Unitful: ms, s, Hz, kHz
 using Dates
-using ShammaModel
-using ShammaModel: cycoct
+using CorticalSpecrtralTemporalResponses
+using CorticalSpecrtralTemporalResponses: cycoct
 
 include("parameters.jl")
 
