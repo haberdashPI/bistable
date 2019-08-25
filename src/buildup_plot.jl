@@ -3,10 +3,10 @@ include(joinpath(@__DIR__,"interactive_setup.jl"))
 curplotdir = joinpath(plotdir,string(Date(now())))
 isdir(curplotdir) || mkdir(curplotdir)
 
-datadir = joinpath(@__DIR__,"..","data","buildup","2019-08-24")
-df = DataFrame(CSV.File(joinpath(datadir,"build_results.csv")))
-models = DataFrame(CSV.File(joinpath(datadir,"model_params.csv")))
-df[!,:level] = categorical(models.level[df.model_index])
+datadir = joinpath(@__DIR__,"..","data","buildup","2019-08-25")
+df1 = DataFrame(CSV.File(joinpath(datadir,"build_results.csv")))
+df2 = DataFrame(CSV.File(joinpath(datadir,"build_results_object_only.csv")))
+df = vcat(df1[in.(df1.level,Ref(["peripheral","central"])),:],df2)
 
 means = by(df,[:delta_f,:level]) do df
   buildup_mean(df,delta=0.3,length=12)
