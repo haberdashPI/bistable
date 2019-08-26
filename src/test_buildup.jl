@@ -13,9 +13,6 @@ settings["stimulus"]["repeats"] = 24
 
 settings["bandwidth_ratio"]["window"] = 1.0
 settings["bandwidth_ratio"]["delta"] = 0.25
-settings["nmf"]["delta"] = 0.025
-settings["nmf"]["maxiter"] = 1000
-settings["nmf"]["tol"] = 1e-8
 
 # if endswith(gethostname(),".cluster")
 #     addprocs(SlurmManager(20), partition="CPU", t="24:00:00",
@@ -51,8 +48,6 @@ models = Dict(
     p
   end
 )
-delete!(models,:peripheral)
-delete!(models,:central)
 
 writedir = joinpath(@__DIR__,"..","data","buildup",string(Date(now())))
 isdir(writedir) || mkdir(writedir)
