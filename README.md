@@ -79,7 +79,7 @@ when running multiple instances of the script across a cluster.
 
 ## Re-running the buildup results
 
-The analysis of the early "build-up" phase of the model was run separately, as a follow-up to the originally computational experiments. There are two files you need to reproduce these results: `test_buildup.jl` which can be run on a cluster of computers, to speed it up, and `buildup_plot.jl` which generates a plot given the output of `buildup_test.jl`.
+The analysis of the early "build-up" phase of the model was run separately, as a follow-up to the originally computational experiments. There are two files you need to reproduce these results: `test_buildup.jl` which can be run on a cluster of computers, to speed it up. Then use `Figure - Buildup.ipyn` to generate the figure.
 
 ## Interactive use and figure creation
 

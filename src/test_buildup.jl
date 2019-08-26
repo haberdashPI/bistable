@@ -76,5 +76,3 @@ results = @distributed (vcat) for ((name,model),Δ,i) in runs
 end
 
 CSV.write(joinpath(writedir,"build_results_object_only.csv"),results)
-
-

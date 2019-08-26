@@ -1,4 +1,3 @@
-
 include(joinpath(@__DIR__,"interactive_setup.jl"))
 curplotdir = joinpath(plotdir,string(Date(now())))
 isdir(curplotdir) || mkdir(curplotdir)
