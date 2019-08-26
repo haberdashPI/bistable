@@ -2,14 +2,7 @@
 using Pkg
 root = joinpath(@__DIR__,"..")
 Pkg.activate(root)
-Pkg.Registry.add(RegistrySpec(url = "https://github.com/haberdashPI/LabRegistry.jl"))
-
-# we use a base.Manifest file, so that we can specify a local directory for
-# the AuditoryBistabilityLE package.  This allows the user to edit this package
-# as desired.
-cp(joinpath(root,"base.Manifest.toml"),joinpath(root,"Manifest.toml"))
 Pkg.instantiate()
-Pkg.develop("AuditoryBistabilityLE")
 
 using TOML
 
@@ -27,9 +20,12 @@ Missing a file named `Config.toml` with the following contents:
 
 data = "[folder where bistable data is located]"
 
-This data folder can be downloaded from https://osf.io/9shxv/ and stored
-almost anywhere you like; it should not be stored inside this project
-directory.
+This simulation data can be downloaded from this link
+
+https://osf.io/se795/?view_only=a0daa351467f4b84abe3f244d3aaf24e
+
+There are two tar files, which can be unzipped in the same location to create
+the final data folder.
 
 """) end
 
@@ -40,31 +36,4 @@ if !isdir(link)
   @info "The folder `$link` now links to $datadir"
 else
   @info "Directory `$link` has already been created."
-end
-
-# generate the workspace file
-str = """
-{
-	"folders": [
-		{
-			"path": "."
-		},
-		{
-			"path": "$(joinpath(Pkg.devdir(),"AuditoryBistabilityLE"))"
-		},
-	],
-	"settings": {},
-	"extensions": {
-		"recommendations": [
-			"bungcip.better-toml",
-			"ikuyadeu.r",
-			"julialang.language-julia",
-			"colinfang.markdown-julia",
-			"haberdashPI.terminal-polyglot"
-		]
-	}
-}
-"""
-open("bistable.code-workspace",write=true) do f
-  write(f,str)
 end
