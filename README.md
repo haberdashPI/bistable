@@ -9,7 +9,7 @@ Little, D.F. Snyder, J.S., Elhilali, M., Ensemble modeling of auditory
 streaming reveals potential sources of bistability across the perceptual
 hierarchy.
 
-### Abstract 
+### Abstract
 
 Perceptual bistability---the spontaneous fluctuation of perception between
 two interpretations of a stimulus---occurs when observing a large variety of
@@ -40,7 +40,7 @@ in later stages of perceptual processing.
 
 ## Installation
 
-These are the steps to initialize this code on a new machine. 
+These are the steps to initialize this code on a new machine.
 
 1. Install [Julia](https://julialang.org/downloads/) version v1.1 or v1.2
 2. Create a file called `Config.toml` in the base directory of the project that
@@ -48,7 +48,7 @@ contains the line `data = "[data dir]"` where `[data dir]` is replaced with the 
 of the experimental data. This should be the location of the uncompressed archived data.
 You can use the same data as reported in our in-submission paper by downloading
 this [archive](TODO) of our data
-3. Make sure the julia binary [can be found on your PATH](https://en.wikibooks.org/wiki/Introducing_Julia/Getting_started). 
+3. Make sure the julia binary [can be found on your PATH](https://en.wikibooks.org/wiki/Introducing_Julia/Getting_started).
 4. Run the install.sh (Mac or Unix) script or install.cmd (Windows). Or you can
 run the VSCode build task named "Install".
 
@@ -120,7 +120,7 @@ To reproduce the plot which makes use of statistics functions available in R
 > install.packages('logKDE')
 ```
 
-### Figure reproducibility 
+### Figure reproducibility
 
 Note that the raw figures will look somewhat different than the final
 published form: all of the figures were loaded into Adobe Illustrator and
