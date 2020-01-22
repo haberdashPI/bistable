@@ -1,9 +1,7 @@
 # Bistability Experiment
 
-Experiments to test behavior of the model defined by
-[AuditoryBistabilityLE](https://github.com/haberdashPI/AuditoryBistabilityLE).
-
-Part of the in-submission paper:
+Experiments to test behavior of the computational model of the in-submission
+paper:
 
 Little, D.F. Snyder, J.S., Elhilali, M., Ensemble modeling of auditory
 streaming reveals potential sources of bistability across the perceptual
@@ -71,7 +69,7 @@ on a computer cluster.
 It is recommended that before running a simulation you should first precompile.
 
 ```julia
-(bistable> pkg> precompile
+(bistable) pkg> precompile
 ```
 
 This will avoid race conditions that can occur in julia's package manager
@@ -89,7 +87,7 @@ figures, you should first [install R](https://cloud.r-project.org/). Then,
 you'll also want to add the `IJulia`, `RCall`, `Revise`, and `Gadfly`.
 
 ```julia
-(bistability) pkg> add IJulia RCall Revise Gadfly
+(bistable) pkg> add IJulia RCall Revise Gadfly
 ```
 You can open a Jupyter notebook server and view the notebooks
 (under `notebooks` folder) by returning to the Julia prompt (by hitting
