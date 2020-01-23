@@ -15,7 +15,6 @@ using CSV
 using DependentBootstrap
 using FFTW
 using Query
-using Interact
 
 const srcdir = @__DIR__
 const plotdir = joinpath(@__DIR__,"..","plots","paper")
