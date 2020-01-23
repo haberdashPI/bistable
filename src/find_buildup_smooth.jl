@@ -40,7 +40,7 @@ function find_models(ranks)
     result
 end
 
-models = find_models(1:10)
+models = find_models(11:20)
 
 writedir = joinpath(@__DIR__,"..","data","buildup_smooth",string(Date(now())))
 isdir(writedir) || mkdir(writedir)
@@ -64,4 +64,4 @@ results = mapreduce(vcat,runs) do (model,i)
   end
 end
 
-CSV.write(joinpath(writedir,"build_object_find_smooth.csv"),results)
+CSV.write(joinpath(writedir,"build_object_find_smooth_11_20.csv"),results)
