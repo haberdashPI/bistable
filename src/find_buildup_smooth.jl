@@ -1,3 +1,6 @@
+# NOTE: this script was used to find a good paramerer choice for a smooth
+# buildup curve for the object level analysis, some of the curves are more
+# deterministic than others
 
 # using ClusterManagers
 # using Distributed
@@ -20,8 +23,8 @@ function only(x)
   @assert length(x) == 1
   first(x)
 end
-model_ranks = 1:10
-models = begin
+
+function find_models(ranks)
     select = DataFrame(CSV.read(joinpath(datadir,"model_rankings.csv")) )
     sort!(select,:eratio)
     select = select[(select.t_c_m .> 0) .| (select.t_c_a .> 0),:]
@@ -32,22 +35,29 @@ models = begin
         t_c_a=select[i,:t_c_a],Δf=6))
       for i in model_ranks
     ]
-    params[indices,:]
+    result = params[indices,:]
+    result[!,:rank] = model_ranks
+    result
 end
+
+models = find_models(1:10)
 
 writedir = joinpath(@__DIR__,"..","data","buildup_smooth",string(Date(now())))
 isdir(writedir) || mkdir(writedir)
 
-N = 2
+N = 250
 runs = collect(product(eachrow(models),1:N))
 
 #@distributed (vcat) for ((name,model),Δ,i) in runs
+progress = Progress(prod(size(runs)))
 results = mapreduce(vcat,runs) do (model,i)
   with_logger(NullLogger()) do
     results = bistable_model(model,settings,intermediate_results=true)
     len,val = results.percepts.counts
+    next!(progress)
     DataFrame(
       length=len,
+      rank=model.rank,
       response=val.+1,
       run=i,
     )
