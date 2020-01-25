@@ -40,7 +40,7 @@ in later stages of perceptual processing.
 
 These are the steps to initialize this code on a new machine.
 
-1. Install [Julia](https://julialang.org/downloads/) version v1.1 or v1.2
+1. Install [Julia](https://julialang.org/downloads/), version 1.3
 2. Create a file called `Config.toml` in the base directory of the project that
 contains the line `data = "[data dir]"` where `[data dir]` is replaced with the location
 of the experimental data. This should be the location of the uncompressed archived data.
