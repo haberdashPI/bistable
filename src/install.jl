@@ -6,7 +6,20 @@ Pkg.instantiate()
 
 using TOML
 
-# load the config file
+f(x,y,z,f)
+
+f(x,
+  y + g(k*y,
+        q/r),
+  p+exp(k),
+  m)
+
+f(x,
+  y + g(k*y,
+        q/r),
+  p+exp(k),
+  m)
+
 config_file = joinpath(@__DIR__,"..","Config.toml")
 if isfile(config_file)
   config = TOML.parsefile(config_file)
@@ -16,11 +29,11 @@ if isfile(config_file)
   datadir = config["data"]
 else
   error("""
-Missing a file named `Config.toml` with the following contents:
+Missing a file `Config.toml` with the following contents:
 
 data = "[folder where bistable data is located]"
 
-This simulation data can be downloaded from this link
+simulation data can be downloaded from this link
 
 https://osf.io/se795/?view_only=a0daa351467f4b84abe3f244d3aaf24e
 
@@ -30,7 +43,7 @@ the final data folder.
 """) end
 
 # create data link
-link = joinpath(@__DIR__,"..","data")
+link = joinpath(@__DIR__,"..","data") # this is a test
 if !isdir(link)
   symlink(datadir,link)
   @info "The folder `$link` now links to $datadir"
