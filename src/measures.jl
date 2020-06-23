@@ -279,15 +279,15 @@ end
 function buildup_image(buildup_data;delta,length)
   len = length; length = Base.length
 
-  runs = groupby(buildup_data,:run)
-  times = range(0,len,step=delta)
-  buildup = DataFrame(time=repeat(times,outer=length(runs)),
-                      run=repeat(1:length(runs),inner=length(times)))
-  buildup[!,:value] .= 0.0
+  runs = groupby(buildup_data, :run)
+  times = range(0, len, step = delta)
+  buildup = DataFrame(time = repeat(times, outer = length(runs)),
+                      run = repeat(1:length(runs), inner = length(times)))
+  buildup[!, :value] .= 0.0
 
-  for (i,run) in enumerate(runs)
-    build_run = view(buildup,buildup.run .== i,:)
-    update_buildup!(build_run.value,build_run.time,run)
+  for (i, run) in enumerate(runs)
+    build_run = view(buildup, buildup.run .== i, :)
+    update_buildup!(build_run.value, build_run.time, run)
   end
 
   buildup
